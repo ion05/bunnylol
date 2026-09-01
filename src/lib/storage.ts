@@ -16,16 +16,10 @@ import type { Category, Command, HandlerId, Overrides, SearchEngineId, Settings,
 import { CATEGORIES, DEFAULT_OVERRIDES, DEFAULT_SETTINGS, DEFAULT_STOP_LIST, STORAGE_KEY } from './types';
 import { BUILTIN_COMMANDS, SEARCH_ENGINES } from './commands';
 import { mergeCommands } from './resolve';
+import { validateAlias, validateUrlTemplate } from './validate';
 
 /** Bumped only when the export file's shape changes incompatibly. */
 const EXPORT_VERSION = 1;
-
-/**
- * An import file must not be able to turn a shortcut into a script. `go.html`
- * navigates to whatever the resolver returns, so these schemes are rejected at
- * the storage boundary rather than at every consumer.
- */
-const DANGEROUS_SCHEME = /^\s*(?:javascript|data|vbscript|blob|filesystem):/i;
 
 const ENGINE_IDS = new Set<string>(SEARCH_ENGINES.map((engine) => engine.id));
 
@@ -148,8 +142,42 @@ export function importJson(text: string): ImportedState {
   return {
     overrides: parseOverrides(overrides),
     // Absent, not empty: `applyImport` keeps the user's current settings.
-    settings: root.settings === undefined ? null : normalizeSettings(root.settings),
+    settings: root.settings === undefined ? null : parseSettings(asRecord(root.settings) ?? {}),
   };
+}
+
+/**
+ * Strict counterpart to `normalizeSettings` for the URL-shaped fields only.
+ *
+ * A `defaultEngine` that is not a URL is the worst single value in the file:
+ * it does not break one shortcut, it breaks every query that matches none,
+ * because `toNavigableUrl` reads a scheme-less string as an extension-relative
+ * path. Silently swapping it for the default would hide the user's typo, so
+ * this is the one place settings refuse instead of degrade. Everything else —
+ * an unknown engine id, a negative account index — is still normalized away.
+ */
+function parseSettings(source: Record<string, unknown>): Settings {
+  // Absent or blank means "not configured" and keeps the shipped default; only
+  // a value that says something unusable is an error.
+  const engine = trimmed(source.defaultEngine);
+  if (engine) {
+    const check = validateUrlTemplate(engine);
+    if (!check.ok) throw new Error(`"settings.defaultEngine" ${check.reason}.`);
+  } else if (source.defaultEngine !== undefined && typeof source.defaultEngine !== 'string') {
+    throw new Error('"settings.defaultEngine" must be a URL template string containing {q}.');
+  }
+
+  const templates = asRecord(source.aiTemplates);
+  if (source.aiTemplates !== undefined && !templates) {
+    throw new Error('"settings.aiTemplates" must be an object mapping an AI provider id to a URL template.');
+  }
+  for (const [id, template] of Object.entries(templates ?? {})) {
+    if (!trimmed(template)) continue;
+    const check = validateUrlTemplate(trimmed(template));
+    if (!check.ok) throw new Error(`"settings.aiTemplates.${id}" ${check.reason}.`);
+  }
+
+  return normalizeSettings(source);
 }
 
 export function onStateChanged(cb: (s: StoredState) => void): void {
@@ -254,11 +282,11 @@ function normalizeKeyOverrides(raw: unknown): Record<string, string[]> {
   const out: Record<string, string[]> = {};
   if (!source) return out;
   for (const [key, aliases] of Object.entries(source)) {
-    const canonical = key.trim().toLowerCase();
+    const canonical = validateAlias(key);
     const list = normalizeAliases(aliases);
     // `mergeCommands` already reads an empty list as "no override", so dropping
     // the entry here keeps the stored blob from collecting dead keys.
-    if (canonical && list.length > 0) out[canonical] = list;
+    if (canonical.ok && list.length > 0) out[canonical.alias] = list;
   }
   return out;
 }
@@ -308,12 +336,13 @@ function normalizeCategory(raw: unknown): Category {
   return CATEGORIES.includes(value) ? value : 'custom';
 }
 
+/** Lenient recovery: an alias the resolver could never match is dropped, not kept. */
 function normalizeAliases(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   const aliases: string[] = [];
   for (const entry of raw) {
-    const alias = trimmed(entry).toLowerCase();
-    if (alias && !aliases.includes(alias)) aliases.push(alias);
+    const check = validateAlias(trimmed(entry));
+    if (check.ok && !aliases.includes(check.alias)) aliases.push(check.alias);
   }
   return aliases;
 }
@@ -333,10 +362,55 @@ function parseOverrides(source: Record<string, unknown> | null): Overrides {
     (entry: unknown, index: number) => parseCustomCommand(entry, index),
   );
   return {
+    // `disabled` stays lenient: its entries name builtins the user turned off,
+    // so an unmatchable one costs nothing but a dead line in the file.
     disabled: normalizeAliases(source.disabled),
-    keyOverrides: normalizeKeyOverrides(source.keyOverrides),
+    keyOverrides: parseKeyOverrides(source.keyOverrides),
     custom,
   };
+}
+
+/**
+ * Strict counterpart to `normalizeKeyOverrides`. A rebinding to `"foo bar"` is
+ * the same silent death as a custom command with a space in its keyword — the
+ * user rebinds `gh`, sees the file import cleanly, and their keyword answers to
+ * nothing.
+ */
+function parseKeyOverrides(raw: unknown): Record<string, string[]> {
+  const source = asRecord(raw);
+  const out: Record<string, string[]> = {};
+  if (!source) return out;
+  for (const [key, aliases] of Object.entries(source)) {
+    // A blank key carries no instruction at all; only a key that says something
+    // unusable is worth refusing the file over.
+    if (!key.trim()) continue;
+    const canonical = validateAlias(key);
+    if (!canonical.ok) {
+      throw new Error(`"keyOverrides" has a keyword that ${canonical.reason}.`);
+    }
+    if (!Array.isArray(aliases)) {
+      throw new Error(`"keyOverrides.${canonical.alias}" must be an array of replacement keywords.`);
+    }
+    const list = parseAliasList(aliases, `"keyOverrides.${canonical.alias}"`);
+    // `mergeCommands` already reads an empty list as "no override", so dropping
+    // the entry here keeps the stored blob from collecting dead keys.
+    if (list.length > 0) out[canonical.alias] = list;
+  }
+  return out;
+}
+
+/** Deduped and validated, throwing about the first entry that cannot ever match. */
+function parseAliasList(raw: unknown[], label: string): string[] {
+  const aliases: string[] = [];
+  for (const entry of raw) {
+    const text = trimmed(entry);
+    // An empty slot is a formatting artifact, not a mistake worth a refusal.
+    if (!text) continue;
+    const check = validateAlias(text);
+    if (!check.ok) throw new Error(`${label} has a keyword that ${check.reason}.`);
+    if (!aliases.includes(check.alias)) aliases.push(check.alias);
+  }
+  return aliases;
 }
 
 /**
@@ -349,7 +423,7 @@ function parseCustomCommand(raw: unknown, index: number): Command {
   const source = asRecord(raw);
   if (!source) throw new Error(`${label} is not a JSON object.`);
 
-  const keys = normalizeAliases(source.keys);
+  const keys = parseAliasList(Array.isArray(source.keys) ? source.keys : [], label);
   if (keys.length === 0) {
     throw new Error(`${label} has no keyword — every shortcut needs a "keys" list of strings.`);
   }
@@ -360,9 +434,24 @@ function parseCustomCommand(raw: unknown, index: number): Command {
     throw new Error(`Shortcut "${keys[0]}" has a "searchUrl" that is not a string.`);
   }
 
+  const url = validateUrlTemplate(trimmed(source.url));
+  if (!url.ok) {
+    throw new Error(`Shortcut "${keys[0]}" has a "url" BunnyLol will not open: it ${url.reason}.`);
+  }
+  const rawSearch = trimmed(source.searchUrl);
+  if (rawSearch) {
+    const searchUrl = validateUrlTemplate(rawSearch);
+    if (!searchUrl.ok) {
+      throw new Error(
+        `Shortcut "${keys[0]}" has a "searchUrl" BunnyLol will not open: it ${searchUrl.reason}.`,
+      );
+    }
+  }
+
   const cmd = normalizeCommand(source);
-  // Keys and url are already known good, so the only remaining failure is a
-  // scheme we refuse to navigate to.
+  // Unreachable while the checks above mirror `normalizeCommand`'s two bail-outs
+  // — kept so the strict and lenient paths cannot silently drift apart into an
+  // import that returns nothing and says nothing.
   if (!cmd) throw new Error(`Shortcut "${keys[0]}" points at a URL BunnyLol will not open.`);
   return cmd;
 }
@@ -380,9 +469,15 @@ function trimmed(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+/**
+ * The lenient half of the URL boundary: an unusable destination becomes an
+ * empty string, which each caller turns into a default or a dropped entry. A
+ * stored blob that predates this check must not be able to brick the profile,
+ * so nothing here throws.
+ */
 function safeUrl(value: unknown): string {
-  const url = trimmed(value);
-  return url && !DANGEROUS_SCHEME.test(url) ? url : '';
+  const check = validateUrlTemplate(trimmed(value));
+  return check.ok ? check.url : '';
 }
 
 function clone<T>(value: T): T {

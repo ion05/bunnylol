@@ -101,6 +101,7 @@ describe('the status syncRules reports matches the rules it registered', () => {
     const { status, rules } = await sync({ state: stored });
 
     expect(status.error).toBeNull();
+    expect(status.warning).toBeNull();
     expect(status.registered).toBe(rules.length);
     expect(rules.length).toBeLessThanOrEqual(MAX_RULES);
     expect(allows(rules).length).toBe(SEARCH_ENGINES.length);
@@ -130,6 +131,7 @@ describe('the status syncRules reports matches the rules it registered', () => {
     expect(status.keywords).toBe(keywords.length);
     expect(coverage(rules, keywords, SEARCH_ENGINES).length).toBe(keywords.length);
     expect(status.error).toBeNull();
+    expect(status.warning).toBeNull();
   });
 
   it('counts a user exemption as suppressed, not dropped', async () => {
@@ -149,6 +151,87 @@ describe('the status syncRules reports matches the rules it registered', () => {
     expect(stub.rules().length).toBe(second.registered);
     expect(second.registered).toBe(first.registered);
     expect(new Set(stub.rules().map((rule) => rule.id)).size).toBe(stub.rules().length);
+  });
+});
+
+/**
+ * A REJECTED UPDATE LEAVES THE OLD RULES RUNNING.
+ *
+ * `updateDynamicRules` is atomic, so when it throws the previous dynamic rules
+ * are still installed — the failure path used to assume the opposite and report
+ * `keywords: 0`, while sixty obsolete redirect rules kept intercepting. Those
+ * survivors are the redirect-loop condition on their own: they were built for
+ * settings the user has since changed, and the options page was meanwhile
+ * saying interception was off.
+ */
+describe('a Chrome that rejects the rule update', () => {
+  /** Succeeds once, then refuses every later write — including the teardown. */
+  const refuseAfterFirst = (call: number) =>
+    call === 1 ? null : 'Dynamic rule quota exceeded.';
+
+  it('removes the stale rules rather than leaving them live', async () => {
+    stub = installChromeStub({
+      state: state(),
+      // The replacement is refused; the remove-only retry behind it is allowed.
+      rejectUpdate: (call) => (call === 2 ? 'Dynamic rule quota exceeded.' : null),
+    });
+    const first = await syncRules();
+    expect(first.keywords).toBeGreaterThan(300);
+    expect(stub.rules().length).toBeGreaterThan(0);
+
+    const failed = await syncRules();
+
+    expect(stub.rules()).toEqual([]);
+    expect(failed.registered).toBe(0);
+    expect(failed.keywords).toBe(0);
+    expect(failed.error).toMatch(/quota/i);
+    // The honest half: a status claiming zero coverage must be true of the
+    // browser, and nothing may still be intercepted on any engine.
+    for (const engine of SEARCH_ENGINES) {
+      expect(claim(stub.rules(), resultsUrl(engine, 'gh+foo'))).toBeNull();
+    }
+  });
+
+  it('reports the coverage still live when the removal is refused too', async () => {
+    stub = installChromeStub({ state: state(), rejectUpdate: refuseAfterFirst });
+    const first = await syncRules();
+    const live = stub.rules().length;
+
+    const failed = await syncRules();
+
+    // Nothing could be torn down, so the truthful report is what the last good
+    // sync left running — not 0, and not the coverage we failed to install.
+    expect(stub.rules().length).toBe(live);
+    expect(failed.registered).toBe(live);
+    expect(failed.keywords).toBe(first.keywords);
+    expect(failed.dropped).toBe(0);
+    expect(failed.error).toMatch(/could not be removed/i);
+    expect(failed.warning).toBeNull();
+  });
+
+  it('leaves the previous rules alone when the sync fails before the update', async () => {
+    stub = installChromeStub({ state: state() });
+    const first = await syncRules();
+    const live = stub.rules().length;
+
+    // A read failure never reached `updateDynamicRules`, so the installed rules
+    // are untouched and still cover exactly what the last sync claimed.
+    const dnr = (globalThis as unknown as { chrome: { declarativeNetRequest: Record<string, unknown> } })
+      .chrome.declarativeNetRequest;
+    const realGet = dnr.getDynamicRules;
+    let calls = 0;
+    dnr.getDynamicRules = async () => {
+      calls += 1;
+      if (calls === 1) throw new Error('Storage read failed.');
+      return (realGet as () => Promise<chrome.declarativeNetRequest.Rule[]>)();
+    };
+    const failed = await syncRules();
+    dnr.getDynamicRules = realGet;
+
+    expect(stub.rules().length).toBe(live);
+    expect(failed.keywords).toBe(first.keywords);
+    expect(failed.error).toMatch(/Storage read failed/);
+    expect(claim(stub.rules(), resultsUrl(SEARCH_ENGINES[0], 'gh+foo'))).toBe('redirect');
   });
 });
 
@@ -201,8 +284,11 @@ describe('a Chrome that refuses the passthrough allow rule', () => {
     expect(redirects(rules).filter(onGoogle)).toEqual([]);
     expect(allows(rules).length).toBe(SEARCH_ENGINES.length - 1);
     expect(redirects(rules).length).toBeGreaterThan(0);
-    expect(status.error).toMatch(/Google/);
-    expect(status.error).toMatch(new RegExp(PASSTHROUGH_PARAM));
+    // A warning, not an error: the sync itself succeeded and the other two
+    // engines are intercepting. `error` is reserved for "this did not work".
+    expect(status.error).toBeNull();
+    expect(status.warning).toMatch(/Google/);
+    expect(status.warning).toMatch(new RegExp(PASSTHROUGH_PARAM));
   });
 
   it('leaves the loop url that used to bounce forever completely unclaimed', async () => {
@@ -235,6 +321,7 @@ describe('no engines selected', () => {
     expect(status.keywords).toBe(0);
     expect(status.dropped).toBe(0);
     expect(status.error).toBeNull();
+    expect(status.warning).toBeNull();
   });
 });
 
@@ -269,6 +356,7 @@ describe('a profile with several hundred custom shortcuts', () => {
     expect(status.keywords).toBe(covered.size);
     expect(status.dropped).toBe(0);
     expect(status.error).toBeNull();
+    expect(status.warning).toBeNull();
     expect(rules.length).toBeLessThanOrEqual(MAX_RULES);
   });
 });
@@ -289,7 +377,8 @@ describe('a profile far past the rule budget', () => {
     expect(status.dropped).toBeGreaterThan(0);
     expect(status.keywords).toBeGreaterThan(builtins.length);
     expect(status.keywords + status.dropped).toBe(eligible(stored).length);
-    expect(status.error).toMatch(/budget/);
+    expect(status.error).toBeNull();
+    expect(status.warning).toMatch(/budget/);
     expect(rules.length).toBeLessThanOrEqual(MAX_RULES);
   });
 

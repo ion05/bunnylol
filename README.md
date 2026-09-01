@@ -178,15 +178,19 @@ Open the options page from the popup, or right-click the toolbar icon → **Opti
 - **Rule status.** A pill at the top of the options page reports what the redirect rules are actually
   doing, read back from Chrome rather than from what BunnyLol asked for:
 
-  | Pill | Meaning |
-  |---|---|
-  | *Intercepting N keywords* | N aliases are intercepted on every engine you selected. |
-  | *…N exempted by you* (**suppressed**) | Your choice, not a failure — those N still work from `bl` + Tab and the popup. Zero unless you exempted something. |
-  | *…N Chrome would not accept* (**dropped**) | A partial failure: N eligible aliases ended up with no rule, because Chrome refused to compile their pattern or the rule budget filled up. They fall through to a normal search in the address bar. |
-  | *Rules not registered* | Nothing is intercepted; the detail text carries the error. Click **Re-sync**. |
+  | Pill | Colour | Meaning |
+  |---|---|---|
+  | *Intercepting N keywords* | green | N aliases are intercepted on every engine you selected, with nothing dropped. |
+  | *…N exempted by you* (**suppressed**) | green | Your choice, not a failure — those N still work from `bl` + Tab and the popup. Zero unless you exempted something. |
+  | *Intercepting N keywords* + a detail line | amber | Partial coverage: the rules are live, but some eligible aliases ended up without one because Chrome refused to compile their pattern or the rule budget filled up (**dropped**). The detail says which. They fall through to a normal search in the address bar. |
+  | *Interception off* | amber | You have no engines selected, so nothing is intercepted by design. |
+  | *Rules not registered* | red | The sync itself failed and nothing is intercepted; the detail text carries the error. Click **Re-sync**. |
 
-  `suppressed` is deliberate and leaves the pill green; `dropped` turns it amber, because something
-  you asked for is not happening. With nothing exempted the current registry registers **60 rules**
+  The two failure colours are two different fields: red is a sync `error`, amber is a `warning` from
+  a sync that worked. `suppressed` is deliberate and leaves the pill green; `dropped` turns it amber,
+  because something you asked for is not happening.
+
+  With nothing exempted the current registry registers **60 rules**
   — 54 keyword rules (18 shards × 3 engines), 3 passthrough allow rules and 3 escape rules — and
   intercepts all 317 aliases with none dropped.
 

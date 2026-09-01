@@ -173,23 +173,168 @@ describe('importJson leniency', () => {
       JSON.stringify({
         settings: {
           githubUser: 42,
-          defaultEngine: 'javascript:alert(1)',
           interceptEngines: ['google', 'google', 'yahoo'],
-          aiTemplates: { claude: 'data:text/html,x', chatgpt: 'https://chatgpt.com/?q={q}' },
           googleAccount: -1,
         },
       }),
     );
     expect(state.settings?.githubUser).toBe('');
-    expect(state.settings?.defaultEngine).toBe(DEFAULT_SETTINGS.defaultEngine);
     expect(state.settings?.interceptEngines).toEqual(['google']);
-    expect(state.settings?.aiTemplates).toEqual({ chatgpt: 'https://chatgpt.com/?q={q}' });
     expect(state.settings?.googleAccount).toBe(DEFAULT_SETTINGS.googleAccount);
   });
 
   it('drops keyOverride entries with no replacement aliases', () => {
     const state = importJson('{"overrides":{"keyOverrides":{"gh":[],"lh":["l"],"  ":["x"]}}}');
     expect(state.overrides.keyOverrides).toEqual({ lh: ['l'] });
+  });
+});
+
+/**
+ * F3/F4: what an import file is allowed to persist.
+ *
+ * Both failures here were silent. An alias with a space in it was stored and
+ * then never matched, because the resolver splits the query at the first
+ * whitespace; a `defaultEngine` that is not a URL was stored and then broke
+ * EVERY unmatched query, because `toNavigableUrl` reads a scheme-less string as
+ * an extension-relative path. A file that says something impossible now gets
+ * refused with a message naming the field.
+ */
+describe('an import that could never work', () => {
+  const rejected: Array<[string, string, RegExp]> = [
+    [
+      'a keyword with a space in it',
+      '{"overrides":{"custom":[{"keys":["foo bar"],"url":"https://x.test/"}]}}',
+      /space/i,
+    ],
+    [
+      'a keyword with a space among valid ones',
+      '{"overrides":{"custom":[{"keys":["ok","foo bar"],"url":"https://x.test/"}]}}',
+      /space/i,
+    ],
+    [
+      'a rebinding to a keyword with a space',
+      '{"overrides":{"keyOverrides":{"gh":["foo bar"]}}}',
+      /keyOverrides\.gh/,
+    ],
+    [
+      'a rebinding of a keyword with a space',
+      '{"overrides":{"keyOverrides":{"foo bar":["x"]}}}',
+      /keyOverrides/,
+    ],
+    [
+      'a rebinding whose replacements are not a list',
+      '{"overrides":{"keyOverrides":{"gh":"x"}}}',
+      /keyOverrides\.gh/,
+    ],
+    [
+      'a keyword past the length cap',
+      `{"overrides":{"custom":[{"keys":["${'x'.repeat(33)}"],"url":"https://x.test/"}]}}`,
+      /32 characters/,
+    ],
+    [
+      'a url that is not a url',
+      '{"overrides":{"custom":[{"keys":["x"],"url":"not a url"}]}}',
+      /"url" BunnyLol will not open/,
+    ],
+    [
+      'a searchUrl that is not a url',
+      '{"overrides":{"custom":[{"keys":["x"],"url":"https://x.test/","searchUrl":"tix.example/?q={q}"}]}}',
+      /"searchUrl" BunnyLol will not open/,
+    ],
+    [
+      'a mailto destination no surface can open',
+      '{"overrides":{"custom":[{"keys":["x"],"url":"mailto:someone@x.test"}]}}',
+      /"url" BunnyLol will not open/,
+    ],
+    [
+      'a defaultEngine that is not a url',
+      '{"settings":{"defaultEngine":"not a url"}}',
+      /settings\.defaultEngine/,
+    ],
+    [
+      'a defaultEngine with a scheme we refuse',
+      '{"settings":{"defaultEngine":"javascript:alert(1)"}}',
+      /settings\.defaultEngine/,
+    ],
+    [
+      'an AI template that is not a url',
+      '{"settings":{"aiTemplates":{"claude":"data:text/html,x"}}}',
+      /settings\.aiTemplates\.claude/,
+    ],
+    [
+      'an aiTemplates that is not an object',
+      '{"settings":{"aiTemplates":["https://x.test/?q={q}"]}}',
+      /settings\.aiTemplates/,
+    ],
+  ];
+
+  it.each(rejected)('refuses %s and names the field', (_label, input, pattern) => {
+    let thrown: unknown;
+    try {
+      importJson(input);
+    } catch (err) {
+      thrown = err;
+    }
+    expect(thrown).toBeInstanceOf(Error);
+    const message = (thrown as Error).message;
+    expect(message).toMatch(pattern);
+    expect(message).not.toMatch(/undefined|\[object Object\]/);
+  });
+
+  it('still accepts the shapes that do work', () => {
+    expect(() =>
+      importJson(
+        JSON.stringify({
+          overrides: {
+            custom: [
+              { keys: ['tix', 'ticket-2'], url: 'https://tix.example/', searchUrl: 'https://tix.example/?q={q}' },
+            ],
+            keyOverrides: { lh: ['local'] },
+          },
+          settings: { defaultEngine: 'https://kagi.com/search?q=%s', aiTemplates: { claude: 'https://c.test/?q={q}' } },
+        }),
+      ),
+    ).not.toThrow();
+  });
+});
+
+/**
+ * The lenient half of the same boundary. Already-stored state goes through
+ * `normalizeState`, which must never throw — a blob written by an older build,
+ * or half-written by an interrupted save, has to degrade to something usable or
+ * the extension is bricked on every surface at once.
+ */
+describe('lenient recovery from a corrupt stored blob', () => {
+  const corrupt = {
+    overrides: {
+      disabled: ['gh', 'foo bar'],
+      keyOverrides: { lh: ['local', 'foo bar'], 'bad key': ['x'] },
+      custom: [
+        { keys: ['foo bar'], url: 'https://x.test/' },
+        { keys: ['tix'], url: 'not a url' },
+        { keys: ['ok'], url: 'https://ok.test/', searchUrl: 'javascript:alert(1)' },
+      ],
+    },
+    settings: { defaultEngine: 'not a url', aiTemplates: { claude: 'nonsense' } },
+  };
+
+  /**
+   * `exportJson` normalizes on the way out, which is the same code path
+   * `loadState` runs on the way in — so this asserts the recovery without
+   * needing a `chrome.storage` stub.
+   */
+  const recovered = JSON.parse(exportJson(corrupt as unknown as StoredState));
+
+  it('drops what it cannot use instead of throwing', () => {
+    expect(recovered.overrides.disabled).toEqual(['gh']);
+    expect(recovered.overrides.keyOverrides).toEqual({ lh: ['local'] });
+    expect(recovered.overrides.custom.map((cmd: { keys: string[] }) => cmd.keys[0])).toEqual(['ok']);
+    expect(recovered.overrides.custom[0].searchUrl).toBeUndefined();
+  });
+
+  it('falls back to the shipped default engine rather than breaking every search', () => {
+    expect(recovered.settings.defaultEngine).toBe(DEFAULT_SETTINGS.defaultEngine);
+    expect(recovered.settings.aiTemplates).toEqual({});
   });
 });
 

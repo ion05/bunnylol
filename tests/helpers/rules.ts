@@ -31,7 +31,21 @@ export interface StubOptions {
   state?: StoredState;
   /** Stands in for Chrome's RE2 check. Defaults to accepting every pattern. */
   supports?: (regex: string) => boolean;
+  /**
+   * A Chrome that refuses a write. Returns the message to reject the nth
+   * (1-based) `updateDynamicRules` call with, or null to let it through.
+   *
+   * The call is REJECTED WITHOUT CHANGING THE TABLE, which is the behaviour
+   * that matters: `updateDynamicRules` is atomic, so the rules from the last
+   * successful sync are still live afterwards.
+   */
+  rejectUpdate?: (call: number, update: DynamicRuleUpdate) => string | null;
   extensionId?: string;
+}
+
+export interface DynamicRuleUpdate {
+  removeRuleIds?: number[];
+  addRules?: chrome.declarativeNetRequest.Rule[];
 }
 
 /** Replaces `globalThis.chrome`; call `restore()` when the test is done. */
@@ -63,11 +77,10 @@ export function installChromeStub(options: StubOptions = {}): ChromeStub {
     storage: { local: area(local), session: area(session) },
     declarativeNetRequest: {
       getDynamicRules: async () => [...dynamic],
-      updateDynamicRules: async (update: {
-        removeRuleIds?: number[];
-        addRules?: chrome.declarativeNetRequest.Rule[];
-      }) => {
+      updateDynamicRules: async (update: DynamicRuleUpdate) => {
         stub.updates += 1;
+        const refusal = options.rejectUpdate?.(stub.updates, update) ?? null;
+        if (refusal) throw new Error(refusal);
         const removed = new Set(update.removeRuleIds ?? []);
         dynamic = [...dynamic.filter((rule) => !removed.has(rule.id)), ...(update.addRules ?? [])];
       },

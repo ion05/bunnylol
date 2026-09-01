@@ -154,6 +154,9 @@ async function readRuleStatus(): Promise<RuleStatus> {
       // No sync has run in this browser session, so an empty rule list is a
       // real problem rather than a configuration the user chose.
       error: !synced && keywords > 0 ? 'Rules have not been synced yet.' : null,
+      // Nothing to warn about without a remembered sync: partial coverage is
+      // only knowable from the sync that produced it.
+      warning: null,
       extensionId,
     };
   } catch (err) {
@@ -168,6 +171,7 @@ function failedStatus(err: unknown): RuleStatus {
     suppressed: 0,
     dropped: 0,
     error: describeError(err),
+    warning: null,
     extensionId: chrome.runtime.id,
   };
 }

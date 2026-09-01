@@ -298,9 +298,10 @@ function initiatorDomains(engine: SearchEngine): string[] {
 }
 
 /**
- * Rebuilds the dynamic rule set from stored state. Never throws: a bad regex or
- * a quota error is reported through `RuleStatus.error`, because an exception
- * here would take down the service worker and with it the omnibox.
+ * Rebuilds the dynamic rule set from stored state. Never throws: a failed sync
+ * is reported through `RuleStatus.error` and mere partial coverage through
+ * `RuleStatus.warning`, because an exception here would take down the service
+ * worker and with it the omnibox.
  */
 export async function syncRules(): Promise<RuleStatus> {
   const extensionId = chrome.runtime.id;
@@ -328,10 +329,14 @@ export async function syncRules(): Promise<RuleStatus> {
     // Read the ids back rather than assuming our own numbering: a previous
     // build may have used a different sharding and left rules we must clear.
     const existing = await chrome.declarativeNetRequest.getDynamicRules();
-    await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: existing.map((rule) => rule.id),
-      addRules: fitted.rules,
-    });
+    try {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: existing.map((rule) => rule.id),
+        addRules: fitted.rules,
+      });
+    } catch (err) {
+      return await rememberStatus(await failClosed(err, extensionId, suppressed, eligible));
+    }
 
     return await rememberStatus({
       // Counted from the browser, not from what we asked for: the options page
@@ -340,21 +345,78 @@ export async function syncRules(): Promise<RuleStatus> {
       keywords: fitted.covered,
       suppressed,
       dropped,
-      error: engines.length === 0 ? null : describeCoverage(fitted, dropped),
+      error: null,
+      warning: engines.length === 0 ? null : describeCoverage(fitted, dropped),
       extensionId,
     });
   } catch (err) {
+    // We never reached the replacement, so whatever the last successful sync
+    // registered is still live and still intercepting. Reporting zero coverage
+    // here — as this used to — describes a browser state that does not exist.
+    const live = (await lastRuleStatus())?.keywords ?? 0;
     return await rememberStatus({
       registered: await countDynamicRules(),
-      // `updateDynamicRules` is the last step and is all-or-nothing, so nothing
-      // is covered once we land here.
-      keywords: 0,
+      keywords: live,
       suppressed,
-      dropped: eligible,
+      dropped: Math.max(eligible - live, 0),
       error: describeError(err),
+      warning: null,
       extensionId,
     });
   }
+}
+
+/**
+ * `updateDynamicRules` is atomic, so a rejected update leaves the PREVIOUS rule
+ * set live and untouched rather than leaving nothing behind.
+ *
+ * Those survivors are not a harmless leftover. They were built for the state
+ * the user has just changed — an alias they disabled, an engine they unchecked,
+ * a reload under a new extension id — and a redirect rule that outlives its
+ * matching allow and escape rules is precisely the redirect loop the priority
+ * tiers exist to prevent, with the options page meanwhile reporting that
+ * interception is off. So the failure path tears the whole dynamic table down,
+ * and when even that is refused it says what is still running instead of
+ * claiming zero.
+ */
+async function failClosed(
+  err: unknown,
+  extensionId: string,
+  suppressed: number,
+  eligible: number,
+): Promise<RuleStatus> {
+  const reason = describeError(err);
+  // Read before the teardown: it describes the rules that are live right now.
+  const stale = await lastRuleStatus();
+
+  try {
+    const existing = await chrome.declarativeNetRequest.getDynamicRules();
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: existing.map((rule) => rule.id),
+      addRules: [],
+    });
+  } catch (removeErr) {
+    const live = stale?.keywords ?? 0;
+    return {
+      registered: await countDynamicRules(),
+      keywords: live,
+      suppressed,
+      dropped: Math.max(eligible - live, 0),
+      error: `Rule sync failed (${reason}) and the rules from the last sync could not be removed either (${describeError(removeErr)}). Address-bar interception is still running on those older rules, so a shortcut you just changed may still go to its old destination — reload the extension.`,
+      warning: null,
+      extensionId,
+    };
+  }
+
+  return {
+    registered: await countDynamicRules(),
+    keywords: 0,
+    suppressed,
+    dropped: eligible,
+    error: `Rule sync failed: ${reason}. Address-bar interception is off — the rules from the last sync were removed rather than left running against settings they no longer match.`,
+    warning: null,
+    extensionId,
+  };
 }
 
 /**
@@ -411,9 +473,12 @@ function isRuleStatus(value: unknown): value is RuleStatus {
   return (
     typeof status.registered === 'number' &&
     typeof status.keywords === 'number' &&
-    // A status stored by an older build has no `dropped`; rejecting it here is
-    // what stops the options page from rendering "undefined dropped".
-    typeof status.dropped === 'number'
+    // A status stored by an older build has no `dropped`, and one stored before
+    // `error` was split has no `warning`; rejecting those here is what stops the
+    // options page from rendering "undefined dropped" or silently losing the
+    // partial-coverage message.
+    typeof status.dropped === 'number' &&
+    (typeof status.warning === 'string' || status.warning === null)
   );
 }
 

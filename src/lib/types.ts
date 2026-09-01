@@ -268,7 +268,16 @@ export interface RuleStatus {
   suppressed: number;
   /** Eligible aliases that ended up with no rule — `keywords + dropped` is the eligible total. */
   dropped: number;
+  /**
+   * Set only when the sync itself failed and interception is not working.
+   *
+   * Split from `warning` because the two need different words and a different
+   * colour: partial coverage used to be reported here, which painted the fatal
+   * red state over a working extension and left the amber one unreachable.
+   */
   error: string | null;
+  /** Set when the sync succeeded but could not cover every keyword. */
+  warning: string | null;
   extensionId: string;
 }
 

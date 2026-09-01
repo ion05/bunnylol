@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { describe, expect, it } from 'vitest';
 import { buildRules, MAX_RULES } from '../src/lib/dnr';
 import { BUILTIN_COMMANDS, SEARCH_ENGINES } from '../src/lib/commands';
@@ -102,8 +103,30 @@ describe('manifest support for the redirect target', () => {
   it('declares the permissions the rules and the omnibox need', () => {
     expect(MANIFEST.permissions).toContain('declarativeNetRequest');
     expect(MANIFEST.permissions).toContain('storage');
-    expect(MANIFEST.permissions).toContain('tabs');
     expect(MANIFEST.omnibox.keyword).toBe('bl');
+  });
+
+  /**
+   * `tabs` gates the sensitive Tab fields (`url`, `title`, `pendingUrl`) and
+   * costs a "read your browsing history" install warning. Creating and
+   * navigating tabs needs no permission at all, and creating/navigating is the
+   * whole of what BunnyLol does with them — so asking for it bought nothing but
+   * the warning. `activeTab` is not a substitute: it grants host access on a
+   * user gesture, which is a different and equally unneeded thing.
+   */
+  it('asks for no tab permission, because nothing reads a Tab property', () => {
+    expect(MANIFEST.permissions).not.toContain('tabs');
+    expect(MANIFEST.permissions).not.toContain('activeTab');
+
+    const sources = import.meta.glob('../src/**/*.ts', { query: '?raw', import: 'default', eager: true });
+    expect(Object.keys(sources).length).toBeGreaterThan(5);
+    for (const source of Object.values(sources) as string[]) {
+      // Every call site must be a create/update; a `tabs.query`, a `tabs.get`
+      // or a read of `.url` off a Tab needs the permission back.
+      for (const call of source.match(/chrome\.tabs\.\w+/g) ?? []) {
+        expect(['chrome.tabs.create', 'chrome.tabs.update']).toContain(call);
+      }
+    }
   });
 });
 

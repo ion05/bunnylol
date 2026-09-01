@@ -12,6 +12,9 @@ import { DEFAULT_SETTINGS, FORCE_SEARCH_PREFIXES, PASSTHROUGH_PARAM } from './ty
 // engine hosts have exactly one definition.
 import { SEARCH_ENGINES } from './commands';
 import { expandTemplate, HANDLERS } from './handlers';
+// Which aliases a DNR rule can carry is decided in one place; `activeKeywords`
+// and the storage boundary must not drift apart on it.
+import { isInterceptableAlias } from './validate';
 
 // Defined next to the encoder it uses, because the handlers need it too.
 export { expandTemplate } from './handlers';
@@ -20,17 +23,6 @@ export { expandTemplate } from './handlers';
 const PASSTHROUGH_MARKER = new RegExp(`([?&])${PASSTHROUGH_PARAM}=[^&#]*(&)?`, 'gi');
 
 const PASSTHROUGH_PRESENT = new RegExp(`[?&]${PASSTHROUGH_PARAM}=`, 'i');
-
-/**
- * Aliases handed to the DNR regex alternation: ASCII only, and no character
- * that is a regex metacharacter (`.`, `+`, `?`, `*`, `|`, `(`, …) or that the
- * browser would percent-encode inside a search query. Everything else still
- * works when typed via the omnibox or the popup; it just isn't intercepted.
- */
-const SAFE_KEYWORD = /^[a-z0-9_][a-z0-9_-]*$/;
-
-/** Nobody types a 33-character keyword; longer entries are imported junk. */
-const MAX_KEYWORD_LENGTH = 32;
 
 const SCORE_EXACT_ALIAS = 100;
 const SCORE_ALIAS_PREFIX = 80;
@@ -166,7 +158,7 @@ export function activeKeywords(commands: Command[], stopList?: string[]): string
   for (const cmd of commands) {
     for (const key of cmd.keys ?? []) {
       const alias = key.trim().toLowerCase();
-      if (!alias || alias.length > MAX_KEYWORD_LENGTH || !SAFE_KEYWORD.test(alias)) continue;
+      if (!alias || !isInterceptableAlias(alias)) continue;
       if (stopped.has(alias)) continue;
       seen.add(alias);
     }

@@ -24,6 +24,7 @@ import {
   saveState,
 } from '../lib/storage';
 import type { ImportedState } from '../lib/storage';
+import { isInterceptableAlias, validateAlias } from '../lib/validate';
 import type {
   BgMessage,
   Category,
@@ -40,6 +41,7 @@ import {
   DEFAULT_OVERRIDES,
   DEFAULT_SETTINGS,
 } from '../lib/types';
+import { PILL_CLASS, pillView, statusCount } from './status';
 
 type RouteName = 'help' | 'new' | 'edit' | 'settings';
 
@@ -104,10 +106,6 @@ const ENGINE_PRESETS: { label: string; template: string }[] = [
   { label: 'Kagi', template: 'https://kagi.com/search?q={q}' },
   { label: 'Brave Search', template: 'https://search.brave.com/search?q={q}' },
 ];
-
-/** Mirrors the resolver's DNR-safe alias rule; an unsafe key still works from
- *  the omnibox and the popup, it just cannot be intercepted mid-search. */
-const SAFE_KEYWORD = /^[a-z0-9_][a-z0-9_-]*$/;
 
 const root = document.getElementById('app') ?? document.body;
 
@@ -288,39 +286,17 @@ function paintStatus(): void {
   paintSuppressed();
   const host = statusHost;
   if (!host) return;
-  host.textContent = '';
-  const dot = el('span', { class: 'pill-dot' });
+  const view = pillView({
+    status,
+    busy: statusBusy,
+    engineCount: stored.settings.interceptEngines.length,
+  });
 
-  if (statusBusy || !status) {
-    host.className = 'pill';
-    host.append(dot, el('span', { text: statusBusy ? 'Syncing rules…' : 'Checking rules…' }));
-  } else if (status.error) {
-    host.className = 'pill pill-bad';
-    host.append(
-      dot,
-      el('span', { text: 'Rules not registered' }),
-      el('span', { class: 'pill-detail muted', text: status.error, title: status.error }),
-    );
-  } else if (status.registered > 0) {
-    const dropped = countOf(status, 'dropped');
-    const suppressed = countOf(status, 'suppressed');
-    // Rules Chrome refused are a partial failure, so the pill stops claiming
-    // everything is fine; an exemption is a choice, so it does not.
-    host.className = dropped > 0 ? 'pill pill-warn' : 'pill pill-ok';
-    host.append(dot, el('span', { text: `Intercepting ${status.keywords} keywords` }));
-    const notes: string[] = [];
-    if (suppressed > 0) notes.push(`${suppressed} exempted by you`);
-    if (dropped > 0) notes.push(`${dropped} Chrome would not accept`);
-    if (notes.length > 0) {
-      const detail = notes.join(' · ');
-      host.append(el('span', { class: 'pill-detail muted', text: detail, title: detail }));
-    }
-  } else if (stored.settings.interceptEngines.length === 0) {
-    host.className = 'pill pill-warn';
-    host.append(dot, el('span', { text: 'Interception off' }));
-  } else {
-    host.className = 'pill pill-bad';
-    host.append(dot, el('span', { text: 'Rules not registered' }));
+  host.textContent = '';
+  host.className = PILL_CLASS[view.tone];
+  host.append(el('span', { class: 'pill-dot' }), el('span', { text: view.text }));
+  if (view.detail) {
+    host.append(el('span', { class: 'pill-detail muted', text: view.detail, title: view.detail }));
   }
 
   if (resyncButton) resyncButton.disabled = statusBusy;
@@ -351,21 +327,11 @@ async function readStatus(message: BgMessage): Promise<RuleStatus> {
       suppressed: 0,
       dropped: 0,
       error: errorText(err),
+      warning: null,
       extensionId: runtimeId(),
     };
     return offline;
   }
-}
-
-/**
- * A count out of a `RuleStatus` the background may have sent in an older shape.
- * The options page outlives a worker update — Chrome keeps this tab open across
- * a reload of the extension — so a reply missing `dropped` or `suppressed` has
- * to render as "none reported" rather than as "undefined keywords".
- */
-function countOf(value: RuleStatus, field: 'dropped' | 'suppressed'): number {
-  const count = (value as RuleStatus & Partial<Record<typeof field, unknown>>)[field];
-  return typeof count === 'number' && Number.isFinite(count) && count > 0 ? count : 0;
 }
 
 /** The background is the source of truth for the id, but the page can be open
@@ -723,12 +689,23 @@ function renderKeyEditor(
     warning.hidden = true;
   };
 
+  const fail = (text: string): void => {
+    message.textContent = text;
+    message.hidden = false;
+    // A warning from a previous save reads as the outcome of this one.
+    warning.hidden = true;
+  };
+
   const save = (): void => {
-    const keys = splitKeys(input.value);
+    // The same validator the new-shortcut form and the import path use. An
+    // alias it rejects is unreachable from every surface, not merely
+    // un-intercepted, so it must not be saved at all.
+    const parsed = parseKeys(input.value);
+    if (!parsed.ok) return fail(parsed.reason);
+
+    const keys = parsed.keys;
     if (keys.length === 0) {
-      message.textContent = 'Enter at least one keyword, or use Reset to restore the default.';
-      message.hidden = false;
-      return;
+      return fail('Enter at least one keyword, or use Reset to restore the default.');
     }
     const owners = buildKeyOwner();
     const clash = keys.find((key) => {
@@ -736,9 +713,7 @@ function renderKeyEditor(
       return owner !== undefined && owner !== entry.id;
     });
     if (clash) {
-      message.textContent = `“${clash}” is already taken by ${describeOwner(owners.get(clash) ?? '')}.`;
-      message.hidden = false;
-      return;
+      return fail(`“${clash}” is already taken by ${describeOwner(owners.get(clash) ?? '')}.`);
     }
 
     const keyOverrides = { ...stored.overrides.keyOverrides, [entry.id]: keys };
@@ -748,12 +723,13 @@ function renderKeyEditor(
     reset.hidden = false;
     void commitOverrides({ ...stored.overrides, keyOverrides }).catch(reportFailure);
 
-    // Non-blocking, and the same copy `validate()` uses: the rebind is saved,
-    // the keyword simply cannot be caught mid-search. Leaving the editor open
-    // is what makes the warning visible at all.
-    const blocked = keys.filter((key) => !SAFE_KEYWORD.test(key) || stopSet().has(key));
+    // Non-blocking, and the same copy `validate()` uses: the rebind is saved
+    // and the keyword resolves everywhere the resolver runs; it is only the
+    // address-bar redirect that cannot carry it. Leaving the editor open is
+    // what makes the warning visible at all.
+    const blocked = keys.filter((key) => !isInterceptableAlias(key) || stopSet().has(key));
     if (blocked.length > 0) {
-      warning.textContent = `Saved. “${blocked.join('”, “')}” cannot be intercepted mid-search — it still works from the address bar via the bl keyword and from the popup.`;
+      warning.textContent = `Saved, but “${blocked.join('”, “')}” ${blocked.length === 1 ? 'is' : 'are'} not intercepted in the address bar — typing ${blocked.length === 1 ? 'it' : 'them'} there runs a normal search. ${blocked.length === 1 ? 'It still works' : 'They still work'} from the toolbar popup and from bl + Tab.`;
       warning.hidden = false;
       message.hidden = true;
       return;
@@ -1105,7 +1081,10 @@ function previewOverrides(draft: Command, editing: string): Overrides {
 }
 
 function buildCommand(draft: Draft): Command {
-  const keys = splitKeys(draft.keys);
+  const parsed = parseKeys(draft.keys);
+  // The live preview builds a command while the form is still being typed into,
+  // so a rejected alias falls back to the raw split rather than blanking the row.
+  const keys = parsed.ok ? parsed.keys : splitKeys(draft.keys);
   const cmd: Command = {
     keys,
     name: draft.name.trim() || keys[0] || 'Untitled',
@@ -1123,29 +1102,24 @@ function buildCommand(draft: Draft): Command {
 
 function validate(draft: Draft, editing: string): Problem[] {
   const problems: Problem[] = [];
-  const keys = splitKeys(draft.keys);
+  const parsed = parseKeys(draft.keys);
+  const keys = parsed.ok ? parsed.keys : [];
 
-  if (keys.length === 0) {
+  if (!parsed.ok) {
+    problems.push({ level: 'error', field: 'keys', text: parsed.reason });
+  } else if (keys.length === 0) {
     problems.push({
       level: 'error',
       field: 'keys',
       text: 'Add at least one keyword — that is what you type in the address bar.',
     });
   }
-  const spaced = keys.find((key) => /\s/.test(key));
-  if (spaced) {
-    problems.push({
-      level: 'error',
-      field: 'keys',
-      text: `“${spaced}” contains a space. Only the first word of a query is read as a keyword — separate aliases with commas.`,
-    });
-  }
   for (const key of keys) {
-    if (!SAFE_KEYWORD.test(key)) {
+    if (!isInterceptableAlias(key)) {
       problems.push({
         level: 'warn',
         field: 'keys',
-        text: `“${key}” cannot be intercepted mid-search — it still works from the address bar via the bl keyword and from the popup.`,
+        text: `“${key}” is not intercepted in the address bar — typing it there runs a normal search. It still works from the toolbar popup and from bl + Tab.`,
       });
     }
   }
@@ -1610,8 +1584,9 @@ function paintSuppressed(): void {
     host.textContent = 'Checking rules…';
     return;
   }
-  const count = countOf(status, 'suppressed');
-  host.textContent = `${status.keywords} ${status.keywords === 1 ? 'keyword is' : 'keywords are'} intercepted in the address bar; ${count} ${count === 1 ? 'is' : 'are'} exempted by this list.`;
+  const count = statusCount(status, 'suppressed');
+  const keywords = statusCount(status, 'keywords');
+  host.textContent = `${keywords} ${keywords === 1 ? 'keyword is' : 'keywords are'} intercepted in the address bar; ${count} ${count === 1 ? 'is' : 'are'} exempted by this list.`;
 }
 
 function renderAiTemplates(): HTMLElement {
@@ -2189,6 +2164,28 @@ function canonical(cmd: Command): string {
   return (cmd.keys[0] ?? '').trim().toLowerCase();
 }
 
+/**
+ * Splits a comma-separated keyword list through the shared alias validator, so
+ * the new-shortcut form, the builtin key editor and the import path all reject
+ * the same aliases. An alias the resolver cannot read as a keyword — one with a
+ * space in it, say — works on no surface at all, so it has to fail here rather
+ * than save and quietly fall through to a search.
+ */
+function parseKeys(value: string): { ok: true; keys: string[] } | { ok: false; reason: string } {
+  const keys: string[] = [];
+  for (const part of value.split(',')) {
+    if (!part.trim()) continue;
+    const result = validateAlias(part);
+    if (!result.ok) {
+      return { ok: false, reason: `That keyword ${result.reason}. Separate keywords with commas.` };
+    }
+    if (!keys.includes(result.alias)) keys.push(result.alias);
+  }
+  return { ok: true, keys };
+}
+
+/** The lenient split, for the live preview and the `add …` prefill: it keeps
+ *  whatever was typed so a half-finished keyword still renders. */
 function splitKeys(value: string): string[] {
   const keys: string[] = [];
   for (const part of value.split(',')) {
