@@ -1,0 +1,237 @@
+:root {
+  color-scheme: light dark;
+
+  --bg: #ffffff;
+  --surface: #f5f6f8;
+  --text: #1a1d23;
+  --muted: #59606d;
+  --faint: #646b78;
+  --border: #e3e6ec;
+  /* A control's own edge, which WCAG 1.4.11 holds to 3:1 against both the fill
+     it encloses and the page behind it — `--border` manages 1.25:1 at best. */
+  --control-border: #838d9f;
+  --accent: #2f5fe0;
+  --accent-soft: rgba(47, 95, 224, 0.1);
+  --selected: rgba(47, 95, 224, 0.12);
+
+  --font: ui-sans-serif, -apple-system, 'SF Pro Text', system-ui, 'Segoe UI', sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, 'Cascadia Mono', monospace;
+  --radius: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1115;
+    --surface: #181b22;
+    --text: #e6e8ee;
+    --muted: #a4abb8;
+    --faint: #8b95a6;
+    --border: #262b35;
+    --control-border: #6b7484;
+    --accent: #8fb0ff;
+    --accent-soft: rgba(143, 176, 255, 0.14);
+    --selected: rgba(143, 176, 255, 0.16);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  /* Fixed: a popup that resizes while you type reads as broken. */
+  width: 380px;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.45 var(--font);
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+}
+
+.bar {
+  padding: 10px 12px 0;
+}
+
+.query {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: 15px/1.3 var(--font);
+}
+
+.query::placeholder {
+  color: var(--faint);
+}
+
+.query:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.dest {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  padding: 7px 13px 9px;
+  font: 11.5px/1.4 var(--mono);
+  color: var(--muted);
+}
+
+.dest.is-error {
+  color: #c0392b;
+  font-family: var(--font);
+}
+
+@media (prefers-color-scheme: dark) {
+  .dest.is-error {
+    color: #ff8f80;
+  }
+}
+
+.dest-arrow {
+  flex: none;
+  color: var(--faint);
+}
+
+.dest-url {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.results {
+  /* Fixed height, not max-height: the box keeps its size as matches come and go. */
+  height: 268px;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid var(--border);
+  list-style: none;
+}
+
+.results::-webkit-scrollbar {
+  width: 8px;
+}
+
+.results::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: var(--control-border);
+  background-clip: content-box;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 7px 9px;
+  border-radius: 6px;
+  cursor: default;
+}
+
+.row.is-selected {
+  background: var(--selected);
+}
+
+.row-key {
+  flex: 0 0 64px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: 12.5px/1.4 var(--mono);
+  color: var(--muted);
+}
+
+.row.is-selected .row-key {
+  color: var(--text);
+}
+
+.row-key mark {
+  background: none;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.row-text {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  min-width: 0;
+  flex: 1;
+}
+
+.row-name {
+  flex: 0 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.row-desc {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--faint);
+  font-size: 12px;
+}
+
+.empty {
+  padding: 14px 10px;
+  color: var(--faint);
+}
+
+.footer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 11.5px;
+}
+
+.link {
+  margin: -3px -5px;
+  padding: 3px 5px;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.hint {
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
