@@ -8,8 +8,8 @@ anything that isn't a registered keyword falls through to a normal Google search
 ## Install
 
 ```bash
-npm install
-npm run build
+pnpm install
+pnpm build
 ```
 
 Then load the built extension:
@@ -19,7 +19,7 @@ Then load the built extension:
 3. Click **Load unpacked** and select the `dist/` folder in this repo.
 
 Works the same in **Brave** (`brave://extensions`) and **Dia** — both are Chromium, so the MV3
-manifest, the service worker and the redirect rules behave identically. Rebuild with `npm run build`
+manifest, the service worker and the redirect rules behave identically. Rebuild with `pnpm build`
 after pulling changes, then hit the reload arrow on the extension card.
 
 ## How triggering works
@@ -248,9 +248,9 @@ actually arrives prefilled.
 ## Development
 
 ```bash
-npm run dev        # vite build --watch
-npm test           # vitest over the resolver, the handlers and the rule builder
-npm run typecheck  # tsc --noEmit
+pnpm dev        # vite build --watch
+pnpm test       # vitest over the resolver, the handlers and the rule builder
+pnpm typecheck  # tsc --noEmit
 node scripts/gen-icons.mjs   # regenerate public/icons/*.png
 ```
 
