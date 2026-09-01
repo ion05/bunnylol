@@ -1,0 +1,1011 @@
+:root {
+  color-scheme: light dark;
+
+  --bg: #ffffff;
+  --bg-soft: #f5f6f8;
+  --surface: #ffffff;
+  --surface-2: #fafbfc;
+  --chip: #f1f3f7;
+  --border: #e3e6ec;
+  --border-strong: #cdd3dd;
+  /* Borders and off-state fills of interactive controls, which WCAG 1.4.11
+     holds to 3:1 against what surrounds them — `--border-strong` is 1.5:1.
+     Verified against the darkest thing they ever sit on, `--chip` (3.01:1),
+     not just `--surface`: a hovered button swaps its fill for `--chip`. */
+  --control-border: #838d9f;
+  --switch-off: #838d9f;
+  --text: #13161c;
+  --text-dim: #576070;
+  --text-faint: #6b7280;
+  /* Purely decorative marks (dots, arrows) that carry no text. */
+  --text-decor: #8992a1;
+  --accent: #5250d8;
+  --accent-hover: #4341c0;
+  --accent-fg: #ffffff;
+  --accent-soft: #eeeefc;
+  --ok: #10794a;
+  --ok-soft: #e6f5ed;
+  --warn: #8a5d09;
+  --warn-soft: #fdf3e0;
+  --danger: #b83228;
+  --danger-soft: #fdeceb;
+  --danger-fg: #ffffff;
+  --ring: #7c7af0;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1015;
+    --bg-soft: #11151c;
+    --surface: #141922;
+    --surface-2: #181e28;
+    --chip: #1b2029;
+    --border: #232935;
+    --border-strong: #333c4b;
+    --control-border: #6b7484;
+    --switch-off: #6b7484;
+    --text: #e7eaf0;
+    --text-dim: #98a2b3;
+    --text-faint: #8b95a6;
+    --text-decor: #6d7686;
+    --accent: #8b8bf6;
+    --accent-hover: #a3a3f9;
+    --accent-fg: #0d1015;
+    --accent-soft: #1e1f3d;
+    --ok: #4cc38a;
+    --ok-soft: #10251c;
+    --warn: #d9a441;
+    --warn-soft: #2a2114;
+    --danger: #f0796b;
+    --danger-soft: #2c1614;
+    --danger-fg: #1b0f0d;
+    --ring: #8b8bf6;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Author `display` on .row/.msg/.empty would otherwise beat the UA rule, and
+   filtering hides rows with the `hidden` property. */
+[hidden] {
+  display: none !important;
+}
+
+html {
+  background: var(--bg-soft);
+}
+
+body {
+  margin: 0;
+  background: var(--bg-soft);
+  color: var(--text);
+  font: 15px/1.55 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.muted {
+  color: var(--text-dim);
+}
+
+.faint {
+  color: var(--text-faint);
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ------------------------------------------------------------- topbar -- */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(140%) blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-right: auto;
+}
+
+.brand-name {
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.brand-tag {
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 46ch;
+  padding: 5px 11px 5px 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--text-dim);
+}
+
+.pill-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-decor);
+}
+
+.pill-ok {
+  color: var(--ok);
+  background: var(--ok-soft);
+  border-color: var(--ok-soft);
+  border-color: color-mix(in srgb, var(--ok) 34%, transparent);
+}
+
+.pill-ok .pill-dot {
+  background: var(--ok);
+}
+
+.pill-bad {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 34%, transparent);
+}
+
+.pill-bad .pill-dot {
+  background: var(--danger);
+}
+
+.pill-warn {
+  color: var(--warn);
+  background: var(--warn-soft);
+  border-color: var(--warn-soft);
+  border-color: color-mix(in srgb, var(--warn) 34%, transparent);
+}
+
+.pill-warn .pill-dot {
+  background: var(--warn);
+}
+
+.pill-detail {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav {
+  display: flex;
+  gap: 2px;
+  width: 100%;
+  padding-top: 2px;
+}
+
+.nav-link {
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.nav-link:hover {
+  background: var(--chip);
+  color: var(--text);
+}
+
+.nav-link[aria-current='page'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* -------------------------------------------------------------- shell -- */
+
+.shell {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 28px 24px 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.panel-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-head-text {
+  margin-right: auto;
+}
+
+.panel-title {
+  font-size: 15px;
+}
+
+.panel-sub {
+  margin-top: 3px;
+  font-size: 13px;
+  color: var(--text-dim);
+  max-width: 62ch;
+}
+
+.panel-body {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.saved {
+  font-size: 12.5px;
+  color: var(--ok);
+  opacity: 0;
+  transition: opacity 140ms ease;
+  white-space: nowrap;
+}
+
+.saved.show {
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------ buttons -- */
+
+.btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: var(--chip);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.btn-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-dim);
+}
+
+.btn-sm {
+  padding: 4px 9px;
+  font-size: 12.5px;
+}
+
+.btn-danger {
+  color: var(--danger);
+  border-color: var(--control-border);
+  /* Blended against the button's own fill, not `transparent`: a 40% tint over
+     whatever happened to be behind it came out at 1.94:1. */
+  border-color: color-mix(in srgb, var(--danger) 75%, var(--surface));
+}
+
+.btn-danger:hover {
+  background: var(--danger-soft);
+}
+
+.btn-armed {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--danger-fg);
+}
+
+.btn-armed:hover {
+  background: var(--danger);
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ------------------------------------------------------------- browse -- */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.search-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.count {
+  flex: none;
+  font-size: 13px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.groups {
+  display: flex;
+  flex-direction: column;
+}
+
+.group {
+  border-bottom: 1px solid var(--border);
+}
+
+.group:last-child {
+  border-bottom: 0;
+}
+
+.group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 14px 20px 8px;
+}
+
+.group-title {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.group-count {
+  font-size: 12px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(96px, 168px) minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 8px 16px;
+  padding: 9px 20px;
+  border-top: 1px solid var(--border);
+  border-top-color: color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.row:hover {
+  background: var(--surface-2);
+}
+
+/* Dimmed by colour rather than `opacity: 0.45`, which took this text to
+   1.83:1. The `off` badge, not a wash, is what says the row is turned off. */
+.row.off .row-name,
+.row.off .chip {
+  color: var(--text-dim);
+}
+
+.row.off .row-desc,
+.row.off .row-url {
+  color: var(--text-faint);
+}
+
+.row-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.chip {
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--chip);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.row-name {
+  font-size: 14px;
+  font-weight: 550;
+}
+
+.badge {
+  margin-left: 7px;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+
+.row-desc {
+  font-size: 13.5px;
+  color: var(--text-dim);
+}
+
+/* A marker, not a status: it sits next to the name without claiming its weight. */
+.badge-quiet {
+  background: var(--chip);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+
+.row-url {
+  margin-top: 3px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-example {
+  margin-top: 3px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-faint);
+  overflow-wrap: anywhere;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: end;
+}
+
+.row-editor {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.row-editor .input {
+  flex: 1;
+  min-width: 220px;
+}
+
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: var(--text-dim);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------ switch --- */
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.switch input {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 34px;
+  height: 20px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--switch-off);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.switch input::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  /* The knob has to read as an object on both track colours; a ring gives it an
+     edge that does not depend on the track behind it. */
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 35%), 0 1px 2px rgb(0 0 0 / 25%);
+  transition: transform 120ms ease;
+}
+
+.switch input:checked {
+  background: var(--accent);
+}
+
+.switch input:checked::after {
+  transform: translateX(14px);
+}
+
+/* -------------------------------------------------------------- forms -- */
+
+.form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.field-wide {
+  grid-column: 1 / -1;
+}
+
+.field-label {
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.field-hint {
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.input,
+.select {
+  width: 100%;
+  padding: 8px 11px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.input::placeholder {
+  color: var(--text-faint);
+}
+
+.input.mono {
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.input.bad {
+  border-color: var(--danger);
+}
+
+.select {
+  appearance: none;
+  padding-right: 30px;
+  background-image: linear-gradient(45deg, transparent 50%, currentcolor 50%),
+    linear-gradient(135deg, currentcolor 50%, transparent 50%);
+  background-position: right 15px top 55%, right 10px top 55%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+.msg {
+  display: flex;
+  gap: 7px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.msg::before {
+  content: '';
+  flex: none;
+  width: 3px;
+  border-radius: 2px;
+  background: currentcolor;
+}
+
+.msg-error {
+  color: var(--danger);
+}
+
+.msg-warn {
+  color: var(--warn);
+}
+
+.msg-ok {
+  color: var(--ok);
+}
+
+.msg-list,
+.field-errors {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-errors:empty {
+  display: none;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.form-actions .spacer {
+  margin-right: auto;
+}
+
+/* ------------------------------------------------------------ preview -- */
+
+.preview {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.preview-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.preview-head h3 {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-right: auto;
+}
+
+.preview-sample {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.preview-sample .input {
+  width: 210px;
+  padding: 4px 8px;
+  font-size: 12.5px;
+}
+
+.preview-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-row {
+  display: grid;
+  grid-template-columns: minmax(0, 34%) 14px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  border-top-color: color-mix(in srgb, var(--border) 60%, transparent);
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+
+.preview-row:first-child {
+  border-top: 0;
+}
+
+.preview-typed {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.preview-arrow {
+  color: var(--text-decor);
+}
+
+.preview-url {
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
+.preview-url.is-fallback {
+  color: var(--warn);
+}
+
+/* ----------------------------------------------------------- settings -- */
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.chip-removable {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 2px;
+}
+
+.chip-x {
+  appearance: none;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.chip-x:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.stop-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.stop-add .field {
+  flex: 1 1 240px;
+}
+
+/* Lines the buttons up with the input rather than with its label. */
+.stop-add .btn-row {
+  padding-top: 25px;
+}
+
+.import-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.import-title {
+  font-size: 14px;
+}
+
+.import-line {
+  font-size: 13px;
+  color: var(--text-dim);
+  max-width: 66ch;
+}
+
+.templates {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.code-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-soft);
+}
+
+.code-block code {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+.steps {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13.5px;
+  color: var(--text-dim);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.danger-zone {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-color: color-mix(in srgb, var(--danger) 26%, var(--border));
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+}
+
+.danger-zone p {
+  margin-right: auto;
+  font-size: 13px;
+  color: var(--text-dim);
+  max-width: 52ch;
+}
+
+@media (max-width: 760px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .row-keys {
+    grid-column: 1 / -1;
+  }
+
+  .form,
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-row {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-arrow {
+    display: none;
+  }
+}
