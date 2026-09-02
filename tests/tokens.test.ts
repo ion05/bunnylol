@@ -165,6 +165,13 @@ describe('the stylesheets are wired to the tokens', () => {
     expect(stripComments(popupCss).match(/%23[0-9a-fA-F]{3,8}\b/g)).toBeNull();
   });
 
+  it.each(SHEETS)('%s takes every font weight from the scale', (_name, css) => {
+    // 550 and 650 are steps the scale does not have — a variable font draws
+    // them happily, which is exactly why they survived unnoticed between
+    // --fw-medium and --fw-semibold.
+    expect(stripComments(css)).not.toMatch(/font-weight:(?!\s*var\(--fw-)/);
+  });
+
   it.each(SHEETS)('%s sizes every rule from the scale', (_name, css) => {
     expect(css).not.toMatch(/font(?:-size)?:[^;]*\d+\.\d+px/);
     expect(css).not.toMatch(/font-size:\s*\d/);
@@ -398,13 +405,6 @@ describe('the options page implements the approved component contract', () => {
     }
   });
 
-  it('takes every font weight from the scale', () => {
-    // 550 and 650 are steps the scale does not have — a variable font will draw
-    // them, which is exactly why they survived unnoticed between --fw-medium
-    // and --fw-semibold. (popup.css joins this sweep with the popup restyle.)
-    expect(stripComments(optionsCss)).not.toMatch(/font-weight:(?!\s*var\(--fw-)/);
-  });
-
   it('has no shim or dead rule left from the pre-contract vocabulary', () => {
     // `.badge-mod` existed only to undo the old uppercase `.badge`; `.brand-tag`
     // was the lowercase tagline under the wordmark.
@@ -415,6 +415,39 @@ describe('the options page implements the approved component contract', () => {
     // The -soft companions were the tinted status backgrounds; the design has
     // no tinted surface at all.
     expect(options).not.toMatch(/--(?:accent|ok|warn|danger|bg)-soft/);
+  });
+});
+
+describe('the popup implements the approved component contract', () => {
+  const popup = stripComments(popupCss);
+
+  it('keeps a focus indicator on the query input', () => {
+    // The input was `outline: none` plus a 3px --accent-soft box-shadow standing
+    // in for a ring. A negative offset draws a real outline inside the control,
+    // so it cannot be clipped at the popup's edge and cannot shift its metrics.
+    expect(popup).not.toMatch(/outline:\s*none/);
+    expect(rulesFor(popupCss, '.query:focus-visible')).toEqual([
+      expect.stringMatching(/outline:\s*2px solid var\(--ring\)/),
+    ]);
+    expect(rulesFor(popupCss, '.query:focus-visible')).toEqual([
+      expect.stringMatching(/outline-offset:\s*-2px/),
+    ]);
+  });
+
+  it('sizes its rows from the token and marks the keyword with the readable accent', () => {
+    const [row, ...more] = rulesFor(popupCss, '.row');
+    expect(more).toEqual([]);
+    expect(row).toMatch(/min-height:\s*var\(--row-h-popup\)/);
+    // A neutral recessed fill, not an accent tint: the list sits on --bg.
+    expect(rulesFor(popupCss, '.row.is-selected')).toEqual([
+      expect.stringMatching(/background:\s*var\(--bg-sunken\)/),
+    ]);
+    // The keyword highlight is the one place the accent is text here, and the
+    // UA's yellow <mark> fill has to go for --accent-text to be what is read.
+    const [mark, ...extra] = rulesFor(popupCss, '.row-key mark');
+    expect(extra).toEqual([]);
+    expect(mark).toMatch(/background:\s*none/);
+    expect(mark).toMatch(/color:\s*var\(--accent-text\)/);
   });
 });
 

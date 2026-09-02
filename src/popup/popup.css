@@ -27,12 +27,16 @@ body {
 }
 
 .bar {
-  padding: 10px 12px 0;
+  padding: var(--sp-4) var(--sp-4) 0;
 }
 
+/* 32px rather than --control-h: this is the only control on the surface and
+   the one the popup opens on, so it is a touch taller than an options-page
+   field. The value is the contract's. */
 .query {
   width: 100%;
-  padding: 9px 11px;
+  height: 32px;
+  padding: 0 var(--sp-4);
   border: 1px solid var(--control-border);
   border-radius: var(--radius-2);
   background: var(--bg-sunken);
@@ -44,7 +48,11 @@ body {
   color: var(--text-faint);
 }
 
-.query:focus {
+/* :focus-visible, not :focus — and a real outline, not the 3px accent-soft
+   box-shadow that used to stand in for one. A text input matches
+   :focus-visible whenever it is focused, including the programmatic focus the
+   popup opens with, so nothing is lost by the narrower selector. */
+.query:focus-visible {
   /* Drawn inside the control: a negative offset keeps the ring within the
      input's own box, so focusing it cannot shift the 380px popup's metrics. */
   outline: 2px solid var(--ring);
@@ -54,16 +62,18 @@ body {
 
 .dest {
   display: flex;
-  gap: 6px;
+  gap: var(--sp-2);
   align-items: baseline;
-  padding: 7px 13px 9px;
+  padding: var(--sp-3) var(--sp-5) var(--sp-4);
   font: var(--fs-11)/var(--lh-body) var(--font-mono);
   color: var(--text-dim);
 }
 
+/* Weight moves with the colour, so the error is never the colour alone. */
 .dest.is-error {
   color: var(--danger);
   font-family: var(--font-sans);
+  font-weight: var(--fw-medium);
 }
 
 .dest-arrow {
@@ -82,7 +92,7 @@ body {
   /* Fixed height, not max-height: the box keeps its size as matches come and go. */
   height: var(--popup-list-h);
   margin: 0;
-  padding: 4px;
+  padding: var(--sp-2);
   overflow-y: auto;
   overscroll-behavior: contain;
   border-top: 1px solid var(--border);
@@ -95,26 +105,29 @@ body {
 
 .results::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--radius-2);
   background: var(--control-border);
   background-clip: content-box;
 }
 
 .row {
   display: flex;
-  gap: 10px;
-  align-items: baseline;
-  padding: 7px 9px;
-  border-radius: 6px;
+  gap: var(--sp-5);
+  align-items: center;
+  min-height: var(--row-h-popup);
+  padding: 0 var(--sp-4);
+  border-radius: var(--radius-1);
   cursor: default;
 }
 
+/* A recessed neutral fill, not an accent tint: the list sits on --bg, so the
+   sunken row is the only fill in it and needs no border of its own. */
 .row.is-selected {
   background: var(--bg-sunken);
 }
 
 .row-key {
-  flex: 0 0 64px;
+  flex: 0 0 68px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -126,18 +139,23 @@ body {
   color: var(--text);
 }
 
+/* The one place the accent appears as text in the popup, which is exactly why
+   --accent-text exists: 5.59:1 on the selected row's sunken fill, where the raw
+   sand would be 1.82:1. No background — a highlight that fills is a second
+   surface inside a 32px row. */
 .row-key mark {
   background: none;
   color: var(--accent-text);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .row-text {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-4);
   align-items: baseline;
   min-width: 0;
   flex: 1;
+  overflow: hidden;
 }
 
 .row-name {
@@ -145,7 +163,7 @@ body {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-weight: 500;
+  font-weight: var(--fw-medium);
 }
 
 .row-desc {
@@ -159,26 +177,26 @@ body {
 }
 
 .empty {
-  padding: 14px 10px;
+  padding: var(--sp-5) var(--sp-4);
   color: var(--text-faint);
+  font-size: var(--fs-12);
 }
 
 .footer {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-4);
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: var(--sp-4) var(--sp-5);
   border-top: 1px solid var(--border);
   background: var(--bg-sunken);
   font-size: var(--fs-11);
 }
 
 .link {
-  margin: -3px -5px;
-  padding: 3px 5px;
-  border: none;
-  border-radius: 5px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-1);
   background: none;
   color: var(--accent-text);
   font: inherit;
