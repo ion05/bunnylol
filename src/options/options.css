@@ -360,6 +360,13 @@ a {
   font-variant-numeric: tabular-nums;
 }
 
+.toolbar-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
 .groups {
   display: flex;
   flex-direction: column;
@@ -373,11 +380,60 @@ a {
   border-bottom: 0;
 }
 
+/* The layout wrapper, per design/components.css. It is an h2 here — the groups
+   are the document's outline — so it also has to drop the UA heading margin and
+   type. */
 .group-head {
   display: flex;
   align-items: baseline;
   gap: 8px;
+  margin: 0;
   padding: 14px 20px 8px;
+  font: inherit;
+}
+
+/* The disclosure button fills the wrapper: the whole heading strip folds the
+   group, because a 12px chevron is not a target and the label is what the user
+   aims at. These are the UA button resets from design/components.css. */
+.group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.group-toggle:hover .group-title {
+  color: var(--text);
+}
+
+/* While a filter is live the fold is not writable — `applyFilter` force-expands
+   every group — so the control says so rather than accepting a click that
+   changes nothing visible. */
+.group-toggle[aria-disabled='true'] {
+  cursor: default;
+}
+
+/* A CSS triangle rather than an SVG: one element, and it inherits the colour it
+   is drawn from. It points right when the group is folded and down when it is
+   open, so the shape says which way the control goes. */
+.group-chevron {
+  width: 0;
+  height: 0;
+  border-left: 5px solid var(--text-dim);
+  border-top: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+  transition: transform 120ms ease;
+}
+
+[aria-expanded='true'] .group-chevron {
+  transform: rotate(90deg);
 }
 
 .group-title {
@@ -919,6 +975,43 @@ a {
   padding-top: var(--sp-5);
 }
 
+/* ----------------------------------------------------------- sections -- */
+
+/* The one class the Sections card adds to the row vocabulary, and why it needs
+   one: a section row has no keyword column and carries an inline rename field,
+   so the grid drops to name + actions and the card's own padding supplies the
+   gutters. Everything else here is `.row`, `.row-body`, `.row-name`,
+   `.row-desc`, `.row-actions` and `.count`.
+
+   Note for PR 10: when design/components.css lands, `.row-actions .btn
+   { opacity: 0 }` reveals a row's buttons on hover. These rows must be
+   EXEMPTED — Restore default name, Delete and Add section are why the card
+   exists, and a card whose only controls appear under the pointer reads as a
+   card with no controls. */
+.section-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.section-row:first-child {
+  border-top: 0;
+}
+
+.section-row .row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* A section label is capped at 40 characters, so a field the width of the card
+   is a field that says the name may be far longer than it may be. */
+.section-row .row-name .input {
+  max-width: 32ch;
+}
+
 @media (max-width: 760px) {
   .row {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -926,6 +1019,15 @@ a {
 
   .row-keys {
     grid-column: 1 / -1;
+  }
+
+  .section-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .section-row .row-actions {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 
   .form {

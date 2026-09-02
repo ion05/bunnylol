@@ -18,10 +18,12 @@ import { firstKey, sectionLabel, sectionOrder, shortcutId } from '../../lib/over
 import { activeKeywords, suggest } from '../../lib/resolve';
 import { stripScheme } from '../../lib/text';
 import type { Overrides, ShortcutEdit } from '../../lib/types';
-import { el } from '../../ui/dom';
+import { el, nextId } from '../../ui/dom';
 import { button, confirmButton, switchControl } from '../dom';
 import { browseEntries, exampleOf, haystackOf } from '../model/browse';
 import type { Entry } from '../model/browse';
+import type { CollapseState } from '../model/collapse';
+import { createCollapseState, groupExpanded, safeLocalStorage } from '../model/collapse';
 import { go } from '../router';
 import {
   commitOverrides,
@@ -39,6 +41,9 @@ import {
 const META_DELETE_TITLE =
   'Restore from Settings → Restore shipped shortcuts; the toolbar popup still opens this page.';
 
+/** Why a heading refuses to fold while the filter is live. */
+const FOLD_LOCKED_TITLE = 'Clear the filter to fold groups';
+
 interface RowRef {
   matchKey: string;
   haystack: string;
@@ -47,9 +52,28 @@ interface RowRef {
 }
 
 interface GroupRef {
+  /** The section id, which is what the collapsed state is remembered under. */
+  id: string;
   node: HTMLElement;
+  /** The disclosure button inside the heading; it owns `aria-expanded`. */
+  toggle: HTMLElement;
+  /** The element `toggle` controls — the only thing collapsing hides. */
+  rowsHost: HTMLElement;
   count: HTMLElement;
   rows: RowRef[];
+}
+
+/**
+ * Created once for the page rather than per render, and lazily so nothing
+ * touches `localStorage` while this module is being imported. A fresh state per
+ * render would be correct as long as the store works and would silently forget
+ * every fold the moment it does not.
+ */
+let collapseState: CollapseState | null = null;
+
+function collapse(): CollapseState {
+  collapseState ??= createCollapseState(safeLocalStorage());
+  return collapseState;
 }
 
 export function renderBrowse(): Node[] {
@@ -114,25 +138,48 @@ export function renderBrowse(): Node[] {
     if (inGroup.length === 0) continue;
 
     const countNode = el('span', { class: 'group-count', text: String(inGroup.length) });
-    const rows = el('div', { class: 'rows' });
-    const group = el('section', {
-      class: 'group',
+    const rows = el('div', { class: 'rows', id: nextId('rows') });
+    // The contract's shape: `.group-head` is the h2 that carries the layout —
+    // the groups are this page's outline — and `.group-toggle` is the button
+    // inside it. The whole heading strip folds the group rather than a chevron
+    // beside it: a 12px triangle is not a target, and the label is what the
+    // user aims at.
+    const toggle = el('button', {
+      class: 'group-toggle',
+      attrs: { type: 'button', 'aria-expanded': 'true', 'aria-controls': rows.id },
       children: [
-        el('div', {
-          class: 'group-head',
-          children: [
-            el('h2', {
-              class: 'group-title',
-              text: sectionLabel(category, getState().overrides.sections),
-            }),
-            countNode,
-          ],
+        el('span', { class: 'group-chevron', attrs: { 'aria-hidden': 'true' } }),
+        el('span', {
+          class: 'group-title',
+          text: sectionLabel(category, getState().overrides.sections),
         }),
-        rows,
+        countNode,
       ],
     });
+    const group = el('section', {
+      class: 'group',
+      children: [el('h2', { class: 'group-head', children: [toggle] }), rows],
+    });
 
-    const ref: GroupRef = { node: group, count: countNode, rows: [] };
+    toggle.addEventListener('click', () => {
+      // Inert while a query is live, because `applyFilter` force-expands every
+      // group then: the fold would be recorded and nothing on screen would
+      // move, so the click would read as a control that did not take.
+      if (filtering()) return;
+      collapse().set(category, !collapse().isCollapsed(category));
+      // The toggle records the intent and nothing else; `applyFilter` is the
+      // only writer of what is on screen.
+      applyFilter();
+    });
+
+    const ref: GroupRef = {
+      id: category,
+      node: group,
+      toggle,
+      rowsHost: rows,
+      count: countNode,
+      rows: [],
+    };
     inGroup.forEach((entry, index) => {
       const node = renderRow(entry, intercepted, (deleted) => {
         removed.add(deleted);
@@ -150,21 +197,61 @@ export function renderBrowse(): Node[] {
     groups.append(group);
   }
 
+  // A section id is minted from its label, so deleting `Client work` and making
+  // another one by the same name mints `sec-client-work` again — and the fold
+  // the first one left behind would land on the second as a group the user
+  // never folded. Pruning to what was actually drawn, before anything reads the
+  // state, is what stops a fold outliving the group it was about.
+  collapse().prune(groupRefs.map((group) => group.id));
+
+  const toolbarActions = el('div', {
+    class: 'toolbar-actions',
+    children: [
+      button(
+        'Collapse all',
+        () => {
+          collapse().collapseAll(groupRefs.map((group) => group.id));
+          applyFilter();
+        },
+        'btn btn-sm btn-ghost',
+      ),
+      button(
+        'Expand all',
+        () => {
+          collapse().expandAll();
+          applyFilter();
+        },
+        'btn btn-sm btn-ghost',
+      ),
+    ],
+  });
+
   const panel = el('section', {
     class: 'panel',
     children: [
       el('div', {
         class: 'toolbar',
-        children: [el('div', { class: 'search-field', children: [filter] }), count],
+        children: [el('div', { class: 'search-field', children: [filter] }), count, toolbarActions],
       }),
       groups,
       empty,
     ],
   });
 
+  /** Whether a query is live. The fold is not writable while one is: see
+   *  `groupExpanded`. */
+  function filtering(): boolean {
+    return filter.value.trim() !== '';
+  }
+
   function applyFilter(): void {
     const query = filter.value.trim().toLowerCase();
     setFilter(filter.value);
+    // Collapse all / Expand all would record a fold nothing shows, so they are
+    // not offered while a query is live. `applyFilter` is the single writer of
+    // this too, so there is one place the filter's effect on the page is
+    // decided.
+    toolbarActions.hidden = query !== '';
 
     // `suggest()` gives keyword-first ranking; the substring pass then widens it
     // to descriptions so the box behaves like a filter and not just a launcher.
@@ -193,6 +280,23 @@ export function renderBrowse(): Node[] {
       }
       group.count.textContent = String(inGroup);
       group.node.hidden = inGroup === 0;
+      // The one place `rowsHost.hidden` is written, for the same reason
+      // `row.hidden` is written only here: the filter and the fold both decide
+      // it, and two writers would race whenever a query was typed into a
+      // folded group.
+      const expanded = groupExpanded(query, collapse().isCollapsed(group.id));
+      group.rowsHost.hidden = !expanded;
+      group.toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      // `aria-disabled` rather than `disabled`: the heading stays in the tab
+      // order and keeps its accessible name, so a keyboard user reading down
+      // the list is told why it will not fold instead of skipping past it.
+      if (query) {
+        group.toggle.setAttribute('aria-disabled', 'true');
+        group.toggle.title = FOLD_LOCKED_TITLE;
+      } else {
+        group.toggle.removeAttribute('aria-disabled');
+        group.toggle.removeAttribute('title');
+      }
       visible += inGroup;
     }
 

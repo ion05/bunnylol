@@ -32,6 +32,26 @@ export function prettyUrl(url: string): string {
   return stripScheme(stripPassthrough(url));
 }
 
+/**
+ * `a`, `a and b`, `a, b and c` — the last clause joined with "and" so a
+ * sentence built out of clauses still reads as one statement.
+ */
+export function joinClauses(clauses: string[]): string {
+  if (clauses.length < 2) return clauses[0] ?? '';
+  return `${clauses.slice(0, -1).join(', ')} and ${clauses[clauses.length - 1]}`;
+}
+
+/**
+ * "3 shipped shortcuts" / "1 shipped shortcut".
+ *
+ * "Shipped", not "built-in": "built-in" is what the export sentence calls the
+ * registry FILE, and one word doing both jobs in the same card is a word doing
+ * neither.
+ */
+export function countShipped(n: number): string {
+  return `${n} shipped ${n === 1 ? 'shortcut' : 'shortcuts'}`;
+}
+
 /** An unknown thrown value as a message safe to show. */
 export function errorText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);

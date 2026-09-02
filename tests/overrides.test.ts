@@ -668,6 +668,76 @@ describe('sectionLabelTaken', () => {
   it('says nothing about a blank label — that is the validator\'s answer', () => {
     expect(sectionLabelTaken('   ', WORK)).toBe(false);
   });
+
+  describe('with a selfId — the rename question, not the add one', () => {
+    it('lets a section keep its own name', () => {
+      // Blurring the field without changing it must not refuse the value that
+      // is already stored.
+      expect(sectionLabelTaken('Work', WORK, 'sec-work')).toBe(false);
+      expect(sectionLabelTaken('  WORK ', WORK, 'sec-work')).toBe(false);
+      expect(sectionLabelTaken('Engineering', [{ id: 'dev', label: 'Engineering' }], 'dev')).toBe(
+        false,
+      );
+    });
+
+    it('refuses a shipped label no one has renamed away from', () => {
+      expect(sectionLabelTaken('Developer', WORK, 'sec-work')).toBe(true);
+      expect(sectionLabelTaken('developer', WORK, 'sec-work')).toBe(true);
+    });
+
+    it('refuses another user section\'s label', () => {
+      const two: Section[] = [...WORK, { id: 'sec-play', label: 'Play' }];
+      expect(sectionLabelTaken('Play', two, 'sec-work')).toBe(true);
+      expect(sectionLabelTaken('Client work', two, 'sec-work')).toBe(false);
+    });
+
+    it('folds case and width the way the labels themselves are compared', () => {
+      // NFKC: the full-width lookalike renders as the same heading.
+      expect(sectionLabelTaken('\uff37\uff4f\uff52\uff4b', WORK, 'sec-play')).toBe(true);
+      expect(sectionLabelTaken('wOrK', WORK, 'sec-play')).toBe(true);
+    });
+
+    it('frees the label the section being renamed used to carry', () => {
+      // `dev` is called "Work" here, so nothing else is — and `sec-work` may
+      // take it the moment `dev` gives it up. Only the would-produce reading
+      // gets this right: "is Work in use, ignoring sec-work" says yes.
+      const renamed: Section[] = [
+        { id: 'dev', label: 'Work' },
+        { id: 'sec-work', label: 'Jobs' },
+      ];
+      expect(sectionLabelTaken('Work', renamed, 'dev')).toBe(false);
+    });
+
+    it('allows restoring a shipped default name that nothing else answers to', () => {
+      const renamed: Section[] = [{ id: 'dev', label: 'Hacking' }];
+      // Restoring drops the entry, so `dev` falls back to "Developer" — and
+      // that is the only thing on the list called it.
+      expect(sectionLabelTaken('Developer', renamed, 'dev')).toBe(false);
+    });
+
+    it('refuses restoring a shipped default name a section has since taken', () => {
+      // The shipped bug: rename Developer to Hacking, add a section called
+      // Developer, press Restore default name and end up with two headings
+      // reading "Developer".
+      const clashing: Section[] = [
+        { id: 'dev', label: 'Hacking' },
+        { id: 'sec-developer', label: 'Developer' },
+      ];
+      expect(sectionLabelTaken('Developer', clashing, 'dev')).toBe(true);
+    });
+
+    it('tolerates the duplicate an import legitimately carried', () => {
+      // `mergeOverrides` keeps two ids with one label rather than merging them,
+      // so a section that is ALREADY one of a pair may still be renamed to
+      // something free.
+      const dupes: Section[] = [
+        { id: 'sec-work', label: 'Work' },
+        { id: 'sec-work-2', label: 'Work' },
+      ];
+      expect(sectionLabelTaken('Client work', dupes, 'sec-work')).toBe(false);
+      expect(sectionLabelTaken('Work', dupes, 'sec-work')).toBe(true);
+    });
+  });
 });
 
 describe('addSection', () => {
@@ -728,6 +798,44 @@ describe('renameSection', () => {
     expect(renameSection(overrides, 'sec-work', '   ')).toBe(overrides);
     expect(renameSection(overrides, '  ', 'Anything')).toBe(overrides);
     expect(overrides.sections).toEqual(WORK);
+  });
+
+  it('refuses past the cap when the rename would APPEND an entry', () => {
+    // Renaming a shipped group the user has not touched adds a section entry,
+    // and an entry over the cap is one the storage boundary drops on the next
+    // save — the heading would go back to "Developer" with nothing on the page
+    // to say why. Refused the way `addSection` refuses: the same reference back.
+    const full = overridesWith({
+      sections: Array.from({ length: MAX_SECTIONS }, (_, n) => ({
+        id: `sec-${n}`,
+        label: `S${n}`,
+      })),
+    });
+    expect(renameSection(full, 'dev', 'Engineering')).toBe(full);
+  });
+
+  it('renames in place at the cap, because that appends nothing', () => {
+    const full = overridesWith({
+      sections: Array.from({ length: MAX_SECTIONS }, (_, n) => ({
+        id: `sec-${n}`,
+        label: `S${n}`,
+      })),
+    });
+    expect(renameSection(full, 'sec-0', 'Renamed').sections[0]).toEqual({
+      id: 'sec-0',
+      label: 'Renamed',
+    });
+    // And dropping an entry to restore a shipped name is always allowed.
+    const atCap = overridesWith({
+      sections: [
+        { id: 'dev', label: 'Hacking' },
+        ...Array.from({ length: MAX_SECTIONS - 1 }, (_, n) => ({
+          id: `sec-${n}`,
+          label: `S${n}`,
+        })),
+      ],
+    });
+    expect(renameSection(atCap, 'dev', 'Developer').sections).toHaveLength(MAX_SECTIONS - 1);
   });
 });
 

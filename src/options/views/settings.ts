@@ -1,22 +1,35 @@
 /**
- * The "Settings" route: defaults, search interception, the address-bar
- * exemption list, AI prompt templates, and (via `renderData`) import/export.
+ * The "Settings" route: defaults, the section list, the undo for a deleted
+ * shipped shortcut, search interception, the address-bar exemption list, AI
+ * prompt templates, and (via `renderData`) import/export.
  */
 
 import { BUILTIN_COMMANDS, SEARCH_ENGINES } from '../../lib/commands';
 import { AI_PROVIDERS } from '../../lib/handlers';
 import {
+  MAX_SECTIONS,
+  addSection,
   applyEdit,
+  deleteSection,
+  isShippedSection,
   knownCategoryIds,
+  renameSection,
   restorableShipped,
+  sectionKey,
+  sectionLabel,
+  sectionLabelTaken,
+  sectionMembers,
+  sectionOptions,
   shortcutId,
 } from '../../lib/overrides';
-import type { SearchEngineId } from '../../lib/types';
-import { DEFAULT_SETTINGS } from '../../lib/types';
-import { el } from '../../ui/dom';
+import type { Overrides, SearchEngineId } from '../../lib/types';
+import { DEFAULT_SETTINGS, FALLBACK_SECTION } from '../../lib/types';
+import { validateSectionLabel } from '../../lib/validate';
+import { el, nextId } from '../../ui/dom';
 import {
   button,
   checkbox,
+  confirmButton,
   errorField,
   field,
   flash,
@@ -26,6 +39,7 @@ import {
 } from '../dom';
 import { buildKeyOwner, browseEntries } from '../model/browse';
 import { engineProblem } from '../model/form';
+import { go } from '../router';
 import { getStatus, runtimeId, setSuppressedHost } from '../rule-status';
 import {
   commitOverrides,
@@ -35,7 +49,7 @@ import {
   reportFailure,
   stopSet,
 } from '../store';
-import { renderData } from './data';
+import { countShortcuts, renderData } from './data';
 
 const ENGINE_PRESETS: { label: string; template: string }[] = [
   { label: 'Google', template: 'https://www.google.com/search?q={q}' },
@@ -48,6 +62,7 @@ const ENGINE_PRESETS: { label: string; template: string }[] = [
 export function renderSettings(): Node[] {
   return [
     renderDefaults(),
+    renderSections(),
     renderRestore(),
     renderInterception(),
     renderStopList(),
@@ -181,6 +196,261 @@ export function renderDefaults(): HTMLElement {
     }),
   );
   return card.section;
+}
+
+/**
+ * The headings the browse list draws, and the three different acts that shape
+ * them: renaming a shipped group (which stores a section entry whose id IS the
+ * shipped category id), renaming or deleting one the user made, and adding one.
+ *
+ * They are one card because to the user they are one list — the same groups in
+ * the same order the browse page shows them, with the ones that ship marked so
+ * it is clear why they cannot be deleted.
+ */
+export function renderSections(): HTMLElement {
+  const card = panelCard(
+    'Sections',
+    `Group your shortcuts however you like. Renaming a shipped section only changes what it is called here — nothing moves. Deleting one of your own moves everything in it to ${fallbackLabel()}, so nothing is lost.`,
+  );
+
+  const rows = el('div', { class: 'rows' });
+
+  const commit = (next: Overrides): void => {
+    void commitOverrides(next)
+      .then(() => {
+        flash(card.saved);
+        paint();
+      })
+      .catch(reportFailure);
+  };
+
+  const capMessage = `You already have ${MAX_SECTIONS} sections, which is as many as BunnyLol keeps.`;
+
+  function sectionRow(id: string, label: string): HTMLElement {
+    const overrides = getState().overrides;
+    const shipped = isShippedSection(id);
+    const members = sectionMembers(id, BUILTIN_COMMANDS, overrides).length;
+
+    const input = textInput(label, label);
+    input.setAttribute('aria-label', `Name of the ${label} section`);
+    const errors = el('div', {
+      class: 'field-errors',
+      id: nextId('section-err'),
+      attrs: { 'aria-live': 'polite' },
+    });
+
+    const setError = (text: string): void => {
+      errors.textContent = '';
+      input.classList.toggle('bad', text !== '');
+      if (!text) {
+        input.removeAttribute('aria-invalid');
+        input.removeAttribute('aria-describedby');
+        return;
+      }
+      input.setAttribute('aria-invalid', 'true');
+      input.setAttribute('aria-describedby', errors.id);
+      errors.append(el('p', { class: 'msg msg-error', text }));
+    };
+
+    /** The one write both Rename and Restore-default-name go through, so the
+     *  clash check and the cap refusal cannot be applied to one and not the
+     *  other — which is exactly how two sections both ended up called
+     *  "Developer". */
+    const applyRename = (wanted: string): void => {
+      const overrides = getState().overrides;
+      // Already what it is called: a second click on Restore before the commit
+      // repainted the row, which would otherwise reach the refusal below.
+      if (sectionLabel(id, overrides.sections) === wanted) {
+        setError('');
+        return;
+      }
+      if (sectionLabelTaken(wanted, overrides.sections, id)) {
+        setError(`Another section is already called “${wanted}”.`);
+        return;
+      }
+      const next = renameSection(overrides, id, wanted);
+      // Nothing else can hand back the same object here: the label is valid, it
+      // is not the one on screen, and it is free. `renameSection` refuses past
+      // the cap because renaming a shipped group APPENDS an entry.
+      if (next === overrides) {
+        setError(capMessage);
+        return;
+      }
+      setError('');
+      commit(next);
+    };
+
+    const rename = (): void => {
+      const check = validateSectionLabel(input.value);
+      if (!check.ok) {
+        setError(`That name ${check.reason}.`);
+        return;
+      }
+      if (check.label === label) {
+        // Shown as it would have been stored, so the field stops offering
+        // whitespace the save was never going to keep.
+        input.value = check.label;
+        setError('');
+        return;
+      }
+      applyRename(check.label);
+    };
+
+    input.addEventListener('change', rename);
+    // Enter commits through `blur` rather than by calling `rename` itself: the
+    // commit repaints these rows, and a keydown that renamed directly would
+    // then get the `change` event the blur fires on the detached input and
+    // write the same rename a second time.
+    input.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      input.blur();
+    });
+
+    // "15 shortcuts · shipped": the count and what kind of section it is, in
+    // the row's own description line rather than as a badge.
+    const desc = el('div', {
+      class: 'row-desc',
+      children: [el('span', { class: 'count', text: countShortcuts(members) })],
+    });
+    if (shipped) {
+      desc.append(
+        el('span', {
+          text: ' · shipped',
+          title: 'Ships with BunnyLol. It can be renamed, but not deleted.',
+        }),
+      );
+    }
+
+    const actions = el('div', { class: 'row-actions' });
+    if (shipped && overrides.sections.some((section) => sectionKey(section.id) === id)) {
+      actions.append(
+        button(
+          'Restore default name',
+          // `renameSection` answers a rename back to the shipped label by
+          // dropping the entry, so this leaves the blob it started from rather
+          // than a stored rename that changes nothing. It goes through the same
+          // guard as a typed rename: the shipped name can have been taken by
+          // another section while this one was called something else.
+          () => applyRename(sectionLabel(id, [])),
+          'btn btn-sm btn-ghost',
+        ),
+      );
+    }
+    if (!shipped) {
+      const moves = members === 1 ? '1 shortcut moves' : `${members} shortcuts move`;
+      actions.append(
+        confirmButton(
+          members === 0 ? 'Delete' : `Delete · ${countShortcuts(members)}`,
+          members === 0
+            ? 'Click again — the section is empty'
+            : `Click again — ${moves} to ${fallbackLabel()}`,
+          'btn btn-sm btn-danger',
+          () => commit(deleteSection(getState().overrides, id)),
+        ),
+      );
+    }
+
+    return el('div', {
+      class: 'row section-row',
+      children: [
+        el('div', {
+          class: 'row-body',
+          children: [el('div', { class: 'row-name', children: [input] }), errors, desc],
+        }),
+        actions,
+      ],
+    });
+  }
+
+  function paint(): void {
+    rows.textContent = '';
+    const overrides = getState().overrides;
+    const commands = browseEntries(BUILTIN_COMMANDS, overrides).map((entry) => entry.cmd);
+    for (const section of sectionOptions(overrides.sections, commands)) {
+      rows.append(sectionRow(section.id, section.label));
+    }
+  }
+
+  const addInput = textInput('', 'Client work');
+  const addField = errorField(
+    'New section',
+    addInput,
+    'err-section',
+    'It shows up in the browse list and in every shortcut’s Section menu.',
+  );
+
+  const add = (): void => {
+    const overrides = getState().overrides;
+    const check = validateSectionLabel(addInput.value);
+    if (!check.ok) {
+      addField.setProblems([{ level: 'error', text: `That name ${check.reason}.` }]);
+      return;
+    }
+    if (sectionLabelTaken(check.label, overrides.sections)) {
+      addField.setProblems([
+        { level: 'error', text: `There is already a section called “${check.label}”.` },
+      ]);
+      return;
+    }
+    const added = addSection(overrides, check.label);
+    if (!added.id) {
+      addField.setProblems([{ level: 'error', text: capMessage }]);
+      return;
+    }
+    addInput.value = '';
+    addField.setProblems([]);
+    commit(added.overrides);
+  };
+
+  addInput.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    add();
+  });
+
+  paint();
+
+  card.body.append(
+    rows,
+    el('div', {
+      class: 'row section-row',
+      children: [
+        el('div', { class: 'row-body', children: [addField.node] }),
+        el('div', {
+          class: 'row-actions',
+          children: [button('Add section', add, 'btn')],
+        }),
+      ],
+    }),
+    el('div', {
+      class: 'row section-row',
+      children: [
+        el('div', {
+          class: 'row-body',
+          children: [
+            el('div', { class: 'row-name', text: 'Shortcut packs' }),
+            el('div', {
+              class: 'row-desc',
+              text: 'Turn whole groups of shipped shortcuts on or off at once. Continue on that screen re-enables every shortcut in the packs you pick, including ones you had switched off by hand.',
+            }),
+          ],
+        }),
+        el('div', {
+          class: 'row-actions',
+          children: [button('Choose shortcut packs…', () => go('#welcome'), 'btn')],
+        }),
+      ],
+    }),
+  );
+  return card.section;
+}
+
+/** What "My shortcuts" is called right now: it is a shipped section like any
+ *  other, so the copy that promises where a deleted section's members land has
+ *  to name the heading the user will actually go looking for. */
+function fallbackLabel(): string {
+  return sectionLabel(FALLBACK_SECTION, getState().overrides.sections);
 }
 
 /**

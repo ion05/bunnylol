@@ -526,17 +526,44 @@ export function fitSectionId(base: string, suffix = '', prefix = ''): string {
  * Asked of the labels in EFFECT, not of `CATEGORY_LABELS` as shipped: a user
  * who renamed "Developer" to "Engineering" has freed the word "Developer", and
  * refusing it would be refusing a name nothing on the page shows.
+ *
+ * `selfId` names the section being renamed, and turns the question into the one
+ * a rename actually has to ask: does the list this rename WOULD PRODUCE show
+ * one label twice? That is the only formulation that answers all three acts
+ * with one rule — a section may keep its own name, and restoring a shipped
+ * group's default name drops its entry so the id falls back to the shipped
+ * label, which is free unless some other section has since taken it. Asking
+ * instead "is this label in use, ignoring me" gets the restore case wrong in
+ * both directions. Duplicate labels an import legitimately carried
+ * (`mergeOverrides` keeps two ids with one label rather than merging them) are
+ * tolerated: only a SECOND holder of the label being typed is a refusal.
  */
-export function sectionLabelTaken(label: string, sections: Section[] | undefined): boolean {
-  const wanted = foldLabel(label);
-  if (!wanted) return false;
-  const inUse = new Set<string>();
-  for (const category of CATEGORIES) inUse.add(foldLabel(sectionLabel(category, sections)));
-  for (const section of sections ?? []) {
+export function sectionLabelTaken(
+  label: string,
+  sections: Section[] | undefined,
+  selfId?: string,
+): boolean {
+  const check = validateSectionLabel(label);
+  const wanted = check.ok ? check.label : label;
+  const folded = foldLabel(wanted);
+  if (!folded) return false;
+
+  const list = sections ?? [];
+  const self = sectionKey(selfId);
+  const next = self ? renamedSections(list, self, wanted) : list;
+
+  const ids = new Set<string>(CATEGORIES);
+  for (const section of next) {
     const id = sectionKey(section?.id);
-    if (id) inUse.add(foldLabel(sectionLabel(id, sections)));
+    if (id) ids.add(id);
   }
-  return inUse.has(wanted);
+  let holders = 0;
+  for (const id of ids) {
+    if (foldLabel(sectionLabel(id, next)) === folded) holders += 1;
+  }
+  // An add lands a NEW holder on that list, so one existing holder is already
+  // the clash; a rename replaces its own holder, so the refusal is a second.
+  return holders > (self ? 1 : 0);
 }
 
 /**
@@ -564,6 +591,12 @@ export function addSection(overrides: Overrides, label: string): { overrides: Ov
  * Renaming a shipped group BACK to its shipped label removes the entry instead
  * of storing a rename that changes nothing, so "undo the rename" leaves the
  * blob it started from rather than a permanent record of a round trip.
+ *
+ * Refuses past `MAX_SECTIONS` by returning its input UNCHANGED, for the same
+ * reason `addSection` does: renaming a shipped group that has no entry yet
+ * APPENDS one, and an appended entry over the cap is one the storage boundary
+ * drops on the next save — leaving the heading back under its shipped name with
+ * nothing on screen to say why.
  */
 export function renameSection(overrides: Overrides, id: string, label: string): Overrides {
   const key = sectionKey(id);
@@ -571,18 +604,29 @@ export function renameSection(overrides: Overrides, id: string, label: string): 
   if (!key || !check.ok) return overrides;
   const sections = overrides?.sections ?? [];
 
-  if (isShippedSection(key) && check.label === CATEGORY_LABELS[key as keyof typeof CATEGORY_LABELS]) {
-    const kept = sections.filter((section) => sectionKey(section?.id) !== key);
-    return kept.length === sections.length ? overrides : { ...overrides, sections: kept };
+  const next = renamedSections(sections, key, check.label);
+  if (next.length > sections.length && sections.length >= MAX_SECTIONS) return overrides;
+  // The rename-back of a shipped id that had no entry rewrites nothing, so the
+  // blob it started from is what comes back rather than a fresh copy of itself.
+  if (next.length === sections.length && next.every((section, n) => section === sections[n])) {
+    return overrides;
   }
-
-  const existing = sections.some((section) => sectionKey(section?.id) === key);
-  const next = existing
-    ? sections.map((section) =>
-        sectionKey(section?.id) === key ? { id: key, label: check.label } : section,
-      )
-    : [...sections, { id: key, label: check.label }];
   return { ...overrides, sections: next };
+}
+
+/**
+ * The section list a rename produces, without the surrounding `Overrides` —
+ * shared with `sectionLabelTaken` so the clash check is asked of exactly the
+ * list the save would write, and cannot drift from it.
+ */
+function renamedSections(sections: Section[], key: string, label: string): Section[] {
+  if (isShippedSection(key) && label === CATEGORY_LABELS[key as keyof typeof CATEGORY_LABELS]) {
+    return sections.filter((section) => sectionKey(section?.id) !== key);
+  }
+  const existing = sections.some((section) => sectionKey(section?.id) === key);
+  return existing
+    ? sections.map((section) => (sectionKey(section?.id) === key ? { id: key, label } : section))
+    : [...sections, { id: key, label }];
 }
 
 /**
@@ -621,10 +665,16 @@ export function deleteSection(overrides: Overrides, id: string): Overrides {
   };
 }
 
-/** Reads a section id off untrusted data. Shape only — `validateSectionId` is
- *  the boundary that decides what may be STORED; this is how what is already
- *  stored gets compared. */
-function sectionKey(raw: unknown): string {
+/**
+ * Reads a section id off untrusted data. Shape only — `validateSectionId` is
+ * the boundary that decides what may be STORED; this is how what is already
+ * stored gets compared.
+ *
+ * Exported because the options page keys things by section id too — the folded
+ * groups in `options/model/collapse.ts`, the rows in the Sections card — and a
+ * private copy in each was already three spellings of one rule.
+ */
+export function sectionKey(raw: unknown): string {
   return typeof raw === 'string' ? raw.trim().toLowerCase() : '';
 }
 

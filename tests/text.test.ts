@@ -12,7 +12,16 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { clone, errorText, firstToken, prettyUrl, restOfLine, stripScheme } from '../src/lib/text';
+import {
+  clone,
+  countShipped,
+  errorText,
+  firstToken,
+  joinClauses,
+  prettyUrl,
+  restOfLine,
+  stripScheme,
+} from '../src/lib/text';
 import { withPassthrough } from '../src/lib/resolve';
 
 describe('firstToken', () => {
@@ -101,5 +110,41 @@ describe('clone', () => {
     expect(copy).toEqual(source);
     copy.custom[0].keys.push('tickets');
     expect(source.custom[0].keys).toEqual(['tix']);
+  });
+});
+
+describe('joinClauses', () => {
+  it('answers nothing for nothing, so the caller can test the sentence itself', () => {
+    expect(joinClauses([])).toBe('');
+  });
+
+  it('leaves a single clause alone rather than dressing it up', () => {
+    expect(joinClauses(['turns off 1 shipped shortcut'])).toBe('turns off 1 shipped shortcut');
+  });
+
+  it('joins two clauses with "and" and no comma', () => {
+    expect(joinClauses(['adds 2 sections', 'leaves out 1 section'])).toBe(
+      'adds 2 sections and leaves out 1 section',
+    );
+  });
+
+  it('commas every clause but the last at four, which is where the copy caps', () => {
+    // Four is the most the import dialog ever builds; past that the sentence
+    // stops being readable and the copy splits, so this is the boundary case.
+    expect(joinClauses(['a', 'b', 'c', 'd'])).toBe('a, b, c and d');
+  });
+});
+
+describe('countShipped', () => {
+  it('agrees the noun with the number', () => {
+    expect(countShipped(1)).toBe('1 shipped shortcut');
+    expect(countShipped(0)).toBe('0 shipped shortcuts');
+    expect(countShipped(3)).toBe('3 shipped shortcuts');
+  });
+
+  it('says "shipped", never "built-in"', () => {
+    // "Built-in" is what the export sentence calls the registry FILE. One word
+    // doing both jobs in one card is a word doing neither.
+    expect(countShipped(2)).not.toContain('built-in');
   });
 });
