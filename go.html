@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>BunnyLol</title>
+    <meta name="color-scheme" content="light dark" />
+    <style>
+      html,body{height:100%;margin:0;background:#0f1115;color:#e6e8ee;
+        font:14px/1.5 ui-sans-serif,-apple-system,'SF Pro Text',system-ui,sans-serif}
+      @media (prefers-color-scheme: light){html,body{background:#fff;color:#1a1d23}}
+      #wrap{height:100%;display:grid;place-items:center;text-align:center;padding:24px}
+      #status{margin:0;opacity:.6}
+      #err{display:none;max-width:520px}
+      code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+      #toast{position:fixed;left:16px;bottom:16px;display:flex;align-items:center;gap:2px;
+        padding:8px 10px;border-radius:8px;background:#1c2029;color:#e6e8ee;
+        border:1px solid #2c313d;box-shadow:0 4px 16px rgba(0,0,0,.35);max-width:calc(100vw - 32px)}
+      @media (prefers-color-scheme: light){#toast{background:#fff;color:#1a1d23;border-color:#dcdfe6;
+        box-shadow:0 4px 16px rgba(0,0,0,.12)}}
+      #toast[hidden]{display:none}
+      #toast a{text-decoration:underline}
+      .toast-x{margin-left:8px;padding:0 4px;border:0;background:none;color:inherit;
+        font:inherit;line-height:1;opacity:.6;cursor:pointer}
+      .toast-x:hover{opacity:1}
+    </style>
+  </head>
+  <body>
+    <!-- go.ts unhides #status only if the storage read outlasts a short timer,
+         so a normal dispatch shows nothing rather than a flash of this copy. -->
+    <div id="wrap"><p id="status" hidden>Opening…</p><div id="err"></div></div>
+    <!-- Only populated when settings.dispatchToast is on: it holds the
+         navigation for TOAST_MS, so it is opt-in rather than the default. -->
+    <div id="toast" hidden></div>
+    <script type="module" src="/src/go/go.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,4 @@
+# esbuild (vite's bundler) needs its postinstall to fetch the platform binary.
+# pnpm 11 refuses to run any dependency build script that isn't reviewed here.
+allowBuilds:
+  esbuild: true

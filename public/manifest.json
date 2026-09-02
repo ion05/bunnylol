@@ -16,8 +16,7 @@
   },
   "permissions": [
     "storage",
-    "declarativeNetRequest",
-    "tabs"
+    "declarativeNetRequest"
   ],
   "host_permissions": [
     "https://www.google.com/*",
