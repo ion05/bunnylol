@@ -42,8 +42,20 @@ export interface PickRow {
   count: number;
   /** The first three canonical keywords, as a hint at what is in the pack. */
   sample: string[];
+  /** Every shortcut in the pack, in registry order, so the card can unfold
+   *  and show what a tick actually turns on. */
+  members: PickMember[];
   starter: boolean;
   optional: boolean;
+}
+
+/** One shortcut as the picker lists it: enough to recognise it, nothing the
+ *  page would have to keep in step with the registry by hand. */
+export interface PickMember {
+  id: string;
+  keys: string[];
+  name: string;
+  description: string;
 }
 
 /**
@@ -159,12 +171,20 @@ export function categoryPicks(builtins: BuiltinCommand[]): PickRow[] {
 
   return CATEGORIES.filter((category) => !hidden.has(category))
     .map((category) => {
-      const members = (builtins ?? []).filter((cmd) => cmd.category === category);
+      const members = (builtins ?? [])
+        .filter((cmd) => cmd.category === category)
+        .map((cmd) => ({
+          id: shortcutId(cmd),
+          keys: [...cmd.keys],
+          name: cmd.name,
+          description: cmd.description,
+        }));
       return {
         id: category,
         label: CATEGORY_LABELS[category],
         count: members.length,
-        sample: members.slice(0, 3).map((cmd) => cmd.keys[0]),
+        sample: members.slice(0, 3).map((member) => member.keys[0]),
+        members,
         starter: starter.has(category),
         optional: optional.has(category),
       };

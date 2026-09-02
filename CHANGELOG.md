@@ -12,8 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - A first-run picker. Installing now opens a welcome screen that asks which
-  packs of shipped shortcuts you want. Search, Developer and AI are ticked;
-  every other pack — Google, Microsoft, Social, Productivity, and Purdue under
+  packs of shipped shortcuts you want, and each pack unfolds to list the
+  shortcuts a tick turns on. Search, Developer and AI are ticked; every other
+  pack — Google, Microsoft, Social, Productivity, and Purdue under
   "Optional packs" — is offered unticked, and its shortcuts start switched off.
   The screen states the first-word rule and the escape prefixes before any
   shortcut can surprise you, and closing the tab keeps the ticked set. Reopen it

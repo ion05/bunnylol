@@ -102,8 +102,9 @@ export function renderWelcome(): Node[] {
 }
 
 /** One pack: a checkbox, its name, how many shortcuts it holds and the first
- *  three keywords in it. Everything but the checkbox comes off the registry, so
- *  the card cannot go stale when a command is added. */
+ *  three keywords in it, plus a chevron that unfolds the full list so a tick is
+ *  never a guess. Everything but the checkbox comes off the registry, so the
+ *  card cannot go stale when a command is added. */
 function pickCard(row: PickRow, picked: Set<string>): HTMLElement {
   const input = el('input', { attrs: { type: 'checkbox' } });
   input.checked = picked.has(row.id);
@@ -123,7 +124,58 @@ function pickCard(row: PickRow, picked: Set<string>): HTMLElement {
     ],
   });
 
-  return el('label', { class: 'pick', children: [input, text] });
+  const list = el('ul', {
+    class: 'pick-list',
+    id: nextId('pick-list'),
+    children: row.members.map((member) =>
+      el('li', {
+        class: 'pick-item',
+        children: [
+          el('span', {
+            class: 'pick-item-keys',
+            children: member.keys.map((key) => el('code', { class: 'chip', text: key })),
+          }),
+          el('span', { class: 'pick-item-name', text: member.name }),
+          el('span', { class: 'pick-item-desc', text: member.description }),
+        ],
+      }),
+    ),
+  });
+  list.hidden = true;
+
+  // Outside the label on purpose: a button inside it would be a second
+  // activation target for the checkbox, and unfolding the list must not tick
+  // or untick the pack.
+  const toggle = el('button', {
+    class: 'pick-toggle',
+    title: `Show the shortcuts in ${row.label}`,
+    attrs: {
+      type: 'button',
+      'aria-expanded': 'false',
+      'aria-controls': list.id,
+      'aria-label': `Show the shortcuts in ${row.label}`,
+    },
+    children: [el('span', { class: 'group-chevron', attrs: { 'aria-hidden': 'true' } })],
+  });
+  toggle.addEventListener('click', () => {
+    const open = list.hidden;
+    list.hidden = !open;
+    toggle.setAttribute('aria-expanded', String(open));
+    const label = `${open ? 'Hide' : 'Show'} the shortcuts in ${row.label}`;
+    toggle.setAttribute('aria-label', label);
+    toggle.title = label;
+  });
+
+  return el('div', {
+    class: 'pick',
+    children: [
+      el('div', {
+        class: 'pick-head',
+        children: [el('label', { class: 'pick-main', children: [input, text] }), toggle],
+      }),
+      list,
+    ],
+  });
 }
 
 /**

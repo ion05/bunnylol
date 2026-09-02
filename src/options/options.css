@@ -1142,18 +1142,34 @@ a {
 }
 
 .pick {
-  display: grid;
-  grid-template-columns: 14px 1fr;
+  display: flex;
+  flex-direction: column;
   gap: var(--sp-4);
-  align-items: start;
   padding: var(--sp-5);
   border: 1px solid var(--border);
   border-radius: var(--radius-2);
-  cursor: pointer;
 }
 
 .pick:hover {
   background: var(--bg-raised);
+}
+
+/* The label (tick + text) and the unfold button share a row; only the label is
+   a click target for the checkbox, so the pointer cursor stops at its edge. */
+.pick-head {
+  display: flex;
+  align-items: start;
+  gap: var(--sp-4);
+}
+
+.pick-main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: var(--sp-4);
+  align-items: start;
+  cursor: pointer;
 }
 
 .pick input {
@@ -1164,6 +1180,61 @@ a {
   /* A fill, not a mark — see `.check input`. */
   accent-color: var(--accent);
   cursor: pointer;
+}
+
+/* The same chevron the browse groups use, on a small square target. */
+.pick-toggle {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--btn-h-sm);
+  height: var(--btn-h-sm);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-1);
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.pick-toggle:hover {
+  background: var(--bg-sunken);
+}
+
+/* The unfolded list: every shortcut the tick turns on, as the browse rows
+   would show them, under a hairline so it reads as part of the card. */
+.pick-list {
+  margin: 0;
+  padding: var(--sp-4) 0 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.pick-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  font-size: var(--fs-12);
+}
+
+.pick-item-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.pick-item-name {
+  color: var(--text);
+  font-weight: var(--fw-medium);
+}
+
+.pick-item-desc {
+  font-size: var(--fs-11);
+  color: var(--text-faint);
 }
 
 .pick-name {

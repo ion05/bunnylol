@@ -239,6 +239,26 @@ describe('categoryPicks', () => {
     }
   });
 
+  it('lists every member of a pack, in registry order, so the card can unfold', () => {
+    for (const row of rows) {
+      const members = BUILTIN_COMMANDS.filter((cmd) => cmd.category === row.id);
+      expect(row.members.map((member) => member.id)).toEqual(members.map(shortcutId));
+      expect(row.members.map((member) => member.keys)).toEqual(members.map((cmd) => cmd.keys));
+      expect(row.members.map((member) => member.name)).toEqual(members.map((cmd) => cmd.name));
+      expect(row.members).toHaveLength(row.count);
+      // The sample is the head of the same list, not a second derivation.
+      expect(row.sample).toEqual(row.members.slice(0, 3).map((member) => member.keys[0]));
+    }
+  });
+
+  it('copies the keys rather than aliasing the registry', () => {
+    const row = rows[0];
+    row.members[0].keys.push('zz-probe');
+    expect(BUILTIN_COMMANDS.find((cmd) => shortcutId(cmd) === row.members[0].id)?.keys).not.toContain(
+      'zz-probe',
+    );
+  });
+
   it('hides the packs nobody chooses', () => {
     for (const hidden of HIDDEN_CATEGORIES) {
       expect(rows.map((row) => row.id)).not.toContain(hidden);
