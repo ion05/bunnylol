@@ -67,8 +67,12 @@ async function boot(): Promise<void> {
     applyState(next);
     if (echo) return;
     // Re-rendering under a half-typed shortcut would discard it; `applyState`
-    // has already refreshed what the preview and the validator read.
-    if (getRoute().name === 'new' || getRoute().name === 'edit') return;
+    // has already refreshed what the preview and the validator read. The
+    // welcome picker is the same hazard: its ticks live in a Set that belongs
+    // to the render, so a write from another window would repaint the page
+    // with boxes the user did not tick.
+    const route = getRoute().name;
+    if (route === 'new' || route === 'edit' || route === 'welcome') return;
     // Same hazard on every other route: the settings fields only commit on
     // blur, so repainting the one the user is inside throws their text away.
     if (isTextEntry(document.activeElement)) return;

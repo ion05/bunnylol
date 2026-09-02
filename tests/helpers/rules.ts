@@ -4,9 +4,12 @@
  * Two things live here. `installChromeStub` is a `chrome` object complete
  * enough to run the REAL `syncRules()` in Node — storage, the dynamic-rule
  * table and `isRegexSupported` — so the production path can be tested instead
- * of the pure `buildRules` mirror of it. `claim`/`redirectTo` replay Chrome's
- * own matching against a rule set, so a test can ask what the browser would
- * actually do with a url rather than trusting a rule count.
+ * of the pure `buildRules` mirror of it. It also counts local writes and
+ * records `tabs.create` / `openOptionsPage`, which is what lets the install
+ * branch be driven end to end here rather than reasoned about.
+ * `claim`/`redirectTo` replay Chrome's own matching against a rule set, so a
+ * test can ask what the browser would actually do with a url rather than
+ * trusting a rule count.
  *
  * Not a suite: vitest only collects files ending in `.test.ts`.
  */
@@ -23,6 +26,13 @@ export interface ChromeStub {
   probed: string[];
   /** How many times `updateDynamicRules` was called. */
   updates: number;
+  /** How many times `chrome.storage.local.set` was called — "did that path
+   *  write" is a question the install branch has to be able to answer. */
+  writes: number;
+  /** The urls handed to `chrome.tabs.create`, in order. */
+  opened: string[];
+  /** How many times `chrome.runtime.openOptionsPage` was called. */
+  optionsPages: number;
   restore(): void;
 }
 
@@ -49,6 +59,9 @@ export interface StubOptions {
    * than one rebuild at a time.
    */
   strictIds?: boolean;
+  /** A Chrome that refuses to open a tab, which is the only way to reach the
+   *  `openOptionsPage` fallback. */
+  rejectTabsCreate?: boolean;
   extensionId?: string;
 }
 
@@ -69,21 +82,39 @@ export function installChromeStub(options: StubOptions = {}): ChromeStub {
     rules: () => dynamic,
     probed: [],
     updates: 0,
+    writes: 0,
+    opened: [],
+    optionsPages: 0,
     restore: () => {
       globals.chrome = previous;
     },
   };
 
-  const area = (bag: Map<string, unknown>) => ({
+  const area = (bag: Map<string, unknown>, counted = false) => ({
     get: async (key: string) => (bag.has(key) ? { [key]: bag.get(key) } : {}),
     set: async (values: Record<string, unknown>) => {
+      if (counted) stub.writes += 1;
       for (const [key, value] of Object.entries(values)) bag.set(key, value);
     },
   });
 
+  const extensionId = options.extensionId ?? EXT_ID;
+
   const chromeStub = {
-    runtime: { id: options.extensionId ?? EXT_ID },
-    storage: { local: area(local), session: area(session) },
+    runtime: {
+      id: extensionId,
+      getURL: (path: string) => `chrome-extension://${extensionId}/${path.replace(/^\//, '')}`,
+      openOptionsPage: async () => {
+        stub.optionsPages += 1;
+      },
+    },
+    tabs: {
+      create: async (info: { url?: string }) => {
+        if (options.rejectTabsCreate) throw new Error('Tabs cannot be created right now.');
+        stub.opened.push(info.url ?? '');
+      },
+    },
+    storage: { local: area(local, true), session: area(session) },
     declarativeNetRequest: {
       getDynamicRules: async () => [...dynamic],
       updateDynamicRules: async (update: DynamicRuleUpdate) => {

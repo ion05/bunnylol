@@ -9,6 +9,7 @@
  */
 
 import { lastRuleStatus, syncRules } from './lib/dnr';
+import { onInstalled } from './lib/install';
 import { activeKeywords, resolve, suggest } from './lib/resolve';
 import { loadResolveContext, onStateChanged } from './lib/storage';
 import { errorText, firstToken, prettyUrl, restOfLine } from './lib/text';
@@ -31,9 +32,11 @@ const XML_ESCAPES: Record<string, string> = {
 
 // Dynamic rules survive restarts, so there is no need to re-sync on every
 // wake — but the extension id changes on every load-unpacked, which would
-// leave the redirects pointing at a dead origin. onInstalled covers that.
-chrome.runtime.onInstalled.addListener(() => {
-  void syncRules();
+// leave the redirects pointing at a dead origin. onInstalled covers that, and
+// on a real install it also writes the starter pick and opens the picker.
+// The work is in lib/install.ts; this stays a one-line synchronous listener.
+chrome.runtime.onInstalled.addListener((details) => {
+  void onInstalled(details);
 });
 
 chrome.runtime.onStartup.addListener(() => {

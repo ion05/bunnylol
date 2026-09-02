@@ -1012,6 +1012,105 @@ a {
   max-width: 32ch;
 }
 
+/* ------------------------------------------------------------ welcome -- */
+
+/* The first-run picker: one centred column, no panel chrome. Narrower than
+   `.shell` because the page is prose plus a small grid, and a 960px line of
+   13px text is unreadable. */
+.welcome {
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-7);
+}
+
+.welcome h1 {
+  font-size: var(--fs-20);
+  letter-spacing: -0.015em;
+}
+
+/* `:where()` so this contributes no specificity: the error line below is a
+   paragraph too, and `.msg-error` has to keep its colour. */
+:where(.welcome) p {
+  font-size: var(--fs-13);
+  line-height: var(--lh-body);
+  color: var(--text-dim);
+  max-width: 62ch;
+}
+
+.picks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--sp-4);
+}
+
+.pick {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: var(--sp-4);
+  align-items: start;
+  padding: var(--sp-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2);
+  cursor: pointer;
+}
+
+.pick:hover {
+  background: var(--bg-raised);
+}
+
+.pick input {
+  width: 14px;
+  height: 14px;
+  /* Optical: the box lines up with the cap height of the name beside it. */
+  margin: 2px 0 0;
+  /* A fill, not a mark — see `.check input`. */
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.pick-name {
+  font-size: var(--fs-13);
+  font-weight: var(--fw-medium);
+}
+
+.pick-count {
+  font-size: var(--fs-12);
+  color: var(--text-dim);
+}
+
+.pick-keys {
+  display: block;
+  margin-top: var(--sp-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  color: var(--text-faint);
+}
+
+.optional-head {
+  font-size: var(--fs-12);
+  font-weight: var(--fw-medium);
+  color: var(--text-dim);
+}
+
+/* The escape hatch is the one thing on this page the user has to remember, so
+   it is a block rather than another paragraph. */
+.escape {
+  padding: var(--sp-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2);
+  background: var(--bg-sunken);
+  font-size: var(--fs-12);
+  line-height: var(--lh-body);
+  color: var(--text-dim);
+}
+
+.escape code {
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+
 @media (max-width: 760px) {
   .row {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -1040,5 +1139,9 @@ a {
 
   .preview-arrow {
     display: none;
+  }
+
+  .picks {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
