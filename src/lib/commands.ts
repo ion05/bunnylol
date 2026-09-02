@@ -166,16 +166,6 @@ export const BUILTIN_COMMANDS: Command[] = [
     example: 'gmeet abc-defg-hij',
   },
   {
-    keys: ['gcontacts', 'contacts'],
-    name: 'Google Contacts',
-    description: 'Open Contacts or search people.',
-    url: 'https://contacts.google.com/',
-    searchUrl: 'https://contacts.google.com/search/{q}',
-    category: 'google',
-    builtin: true,
-    example: 'gcontacts jordan',
-  },
-  {
     keys: ['gmaps', 'maps', 'map'],
     name: 'Google Maps',
     description: 'Search Google Maps.',

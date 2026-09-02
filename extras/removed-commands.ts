@@ -803,4 +803,14 @@ export const REMOVED_COMMANDS: Command[] = [
     builtin: true,
     example: 'sch attention is all you need',
   },
+  {
+    keys: ['gcontacts', 'contacts'],
+    name: 'Google Contacts',
+    description: 'Open Contacts or search people.',
+    url: 'https://contacts.google.com/',
+    searchUrl: 'https://contacts.google.com/search/{q}',
+    category: 'google',
+    builtin: true,
+    example: 'gcontacts jordan',
+  },
 ];
