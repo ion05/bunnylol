@@ -771,12 +771,6 @@ a {
 
 /* ----------------------------------------------------------- settings -- */
 
-.grid-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
 .checks {
   display: flex;
   flex-wrap: wrap;
@@ -894,16 +888,6 @@ a {
   overflow-wrap: anywhere;
 }
 
-.steps {
-  margin: 0;
-  padding-left: 18px;
-  font-size: var(--fs-13);
-  color: var(--text-dim);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
 .danger-zone {
   display: flex;
   flex-wrap: wrap;
@@ -931,8 +915,7 @@ a {
     grid-column: 1 / -1;
   }
 
-  .form,
-  .grid-2 {
+  .form {
     grid-template-columns: 1fr;
   }
 
