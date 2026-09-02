@@ -4,6 +4,17 @@
  * Nothing in here touches `chrome.*`, the DOM, or async work, and no handler
  * may throw — odd input degrades to a sensible URL so the resolver always has
  * somewhere to navigate.
+ *
+ * HOST DERIVATION. A handler whose destination is a MULTI-TENANT product
+ * (Brightspace, Gradescope) reads its host from `cmd.url` and its words-degrade
+ * from `cmd.searchUrl`, because the tenant is the user's and not ours: pointing
+ * `bs` at another university's D2L has to keep the deep links working. A
+ * handler whose host IS its identity (github*, reddit, npm, youtube, outlook,
+ * onedrive, teams) keeps its literal — a `github` handler aimed somewhere other
+ * than github.com is not a github handler — and `cmd.url` still governs its
+ * bare destination. The Google Workspace handlers (gmail, gdrive, gcal) go one
+ * further and ignore `cmd.url` entirely: their destination is keyed by the
+ * account index, which lives in settings and not in the command.
  */
 
 import type { AiProvider, Command, HandlerFn, HandlerId, Settings } from './types';
@@ -140,14 +151,79 @@ function googleSite(host: string, query: string): string {
 }
 
 /**
+ * A command's own url as a web url, or null. `validateUrlTemplate` is the
+ * boundary that decides which urls can be stored and it parses, so everything
+ * downstream parses too: a second, stricter test would accept
+ * `https:/school.brightspace.com/d2l/home` into storage and then read a
+ * different host out of it than the validator saw. Parsing also normalizes
+ * case, separates the port from the host, and drops any userinfo — none of
+ * which a landing page carries.
+ */
+function parseHttpUrl(url: string): URL | null {
+  try {
+    const parsed = new URL((url ?? '').trim());
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * The registrable domain behind a command's own url, so `tools.usps.com`
  * degrades to a search of `usps.com`. Every command that uses this ships a
  * plain two-label domain.
+ *
+ * The regex is only the fallback for a scheme-less host — a form storage
+ * rejects, but cheap to keep accepting. Reading the host the way `joinPath`
+ * reads it is what keeps a multi-tenant handler's two halves agreeing about one
+ * field: on the stored-verbatim `https:/school.brightspace.com/...` the regex
+ * alone degrades to `site:https:`, and on a url with a port to
+ * `site:school.test:8443`.
  */
 function commandHost(url: string): string {
-  const host = /^(?:https?:\/\/)?([^/?#]+)/i.exec((url ?? '').trim())?.[1]?.toLowerCase() ?? '';
+  const parsed = parseHttpUrl(url);
+  const host =
+    parsed?.hostname ??
+    (/^(?:https?:\/\/)?([^/?#]+)/i.exec((url ?? '').trim())?.[1]?.toLowerCase() || '');
   const labels = host.split('.');
   return labels.length > 2 ? labels.slice(-2).join('.') : host;
+}
+
+/**
+ * Hangs a product's canonical path off the ORIGIN of the command's own url, so
+ * a user who repoints a multi-tenant command at their institution keeps working
+ * deep links. Only the origin is used: the row's own path is its landing page —
+ * `/d2l/home`, `/`, or whatever the user pasted — and not a prefix the
+ * product's deep links live under, and its query and fragment belong to that
+ * landing page too.
+ */
+function joinPath(base: string, segment: string): string {
+  // Unparseable means no deep link at all; matching a host out of the string
+  // instead would silently drop the course id from every deep link.
+  const origin = parseHttpUrl(base)?.origin ?? '';
+  return origin ? `${origin}/${encodePath(segment)}` : '';
+}
+
+/**
+ * The words-degrade for a login-walled destination that the command itself
+ * defines. The command's own `searchUrl` first — that is where the institution
+ * or vendor domain lives now, and it is user-editable — then a `site:` search
+ * of the registrable domain behind `cmd.url`, and `fallbackHost` only when the
+ * command carries no usable url at all.
+ *
+ * A repointed tenant should carry its own `searchUrl`: the `site:` floor reads
+ * the REGISTRABLE domain, so `iu.brightspace.com` degrades to the D2L vendor
+ * site rather than to IU. The shipped rows do — `bs` searches `purdue.edu` —
+ * and that field is the one to edit alongside `url`.
+ */
+function ownSearch(query: string, cmd: Command, fallbackHost: string): string {
+  // Any non-empty template, with a placeholder or without: `expandTemplate`
+  // appends the words as `q` when there is no `{q}`/`%s`, which is what
+  // `resolve()` already does for every command that has no handler. Requiring a
+  // placeholder here would silently throw the user's own endpoint away.
+  const template = (cmd.searchUrl ?? '').trim();
+  if (template) return expandTemplate(template, query);
+  return googleSite(commandHost(cmd.url) || fallbackHost, query);
 }
 
 /**
@@ -422,11 +498,10 @@ function brightspace(args: string, cmd: Command, _settings: Settings): string {
   const query = args.trim();
   const home = cmd.url || 'https://purdue.brightspace.com/d2l/home';
   if (!query) return home;
-  // D2L's only stable deep link is the per-course home keyed by org unit id.
-  if (/^\d+$/.test(query)) return `https://purdue.brightspace.com/d2l/home/${query}`;
-  // The D2L host is login-walled, but Purdue's course and Brightspace pages on
-  // purdue.edu are indexed — the same fallback `boilerconnect` already uses.
-  return googleSite('purdue.edu', query);
+  // D2L's only stable deep link is the per-course home keyed by org unit id,
+  // and it hangs off the tenant this command points at.
+  if (/^\d+$/.test(query)) return joinPath(home, `d2l/home/${query}`) || home;
+  return ownSearch(query, cmd, commandHost(home));
 }
 
 function gradescope(args: string, cmd: Command, _settings: Settings): string {
@@ -434,8 +509,8 @@ function gradescope(args: string, cmd: Command, _settings: Settings): string {
   const home = cmd.url || 'https://www.gradescope.com/';
   if (!query) return home;
   // Courses are keyed by numeric id; nothing else is a deep link.
-  if (/^\d+$/.test(query)) return `https://www.gradescope.com/courses/${query}`;
-  return googleSite('gradescope.com', query);
+  if (/^\d+$/.test(query)) return joinPath(home, `courses/${query}`) || home;
+  return ownSearch(query, cmd, commandHost(home));
 }
 
 /** A channel handle: one token, no spaces. `@lofi girl` is a search. */

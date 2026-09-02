@@ -271,11 +271,20 @@ export const BUILTIN_COMMANDS: Command[] = [
   },
 
   // ------------------------------------------------------------ purdue ----
+  // For these two rows `url` is the HOST, not just a destination. Brightspace
+  // and Gradescope are multi-tenant products, so their handlers derive both the
+  // deep link and the `site:` degrade from `url` and `searchUrl`: editing them
+  // re-targets the command at another institution without touching any code.
+  // Hosts that ARE a handler's identity — github.com, reddit.com, npmjs.com —
+  // stay literal in `handlers.ts` instead.
   {
     keys: ['bs', 'brightspace', 'd2l'],
     name: 'Purdue Brightspace',
     description: 'Purdue course pages in Brightspace.',
     url: 'https://purdue.brightspace.com/d2l/home',
+    // The D2L host is login-walled, but Purdue's course and Brightspace pages on
+    // purdue.edu are indexed — the same fallback `boilerconnect` already uses.
+    searchUrl: siteSearch('purdue.edu'),
     handler: 'brightspace',
     category: 'purdue',
     builtin: true,
@@ -286,6 +295,7 @@ export const BUILTIN_COMMANDS: Command[] = [
     name: 'Gradescope',
     description: 'Gradescope courses and assignments.',
     url: 'https://www.gradescope.com/',
+    searchUrl: siteSearch('gradescope.com'),
     handler: 'gradescope',
     category: 'purdue',
     builtin: true,
@@ -988,3 +998,37 @@ export const SEARCH_ENGINES: SearchEngine[] = [
     urlPrefixPattern: '^https://duckduckgo\\.com/\\?(?:[^#]*&)?q=',
   },
 ];
+
+const SEARCH_ENGINE_HOSTS = new Set(SEARCH_ENGINES.map((engine) => engine.host));
+
+/**
+ * True for a template that runs on a search engine — a `site:` degrade for a
+ * login-walled destination, not a page on the command's own site.
+ */
+function isEngineSearch(template: string): boolean {
+  try {
+    return SEARCH_ENGINE_HOSTS.has(new URL(template).hostname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Which of a command's two urls to advertise as "where this goes": the search
+ * template when there is one, because that is where the keyword goes once it
+ * has arguments.
+ *
+ * Except when a handler owns the arguments AND its template is a plain web
+ * search: `bs 12345` opens a course on the Brightspace the row itself points
+ * at, and `site:purdue.edu` is only what the words degrade to. Showing that
+ * search would hide `url` — the one field a user at another institution has to
+ * edit — from the list they would look in for it.
+ *
+ * It lives beside the registry rather than in the options page because it is a
+ * fact about the rows, and because the options page has no test suite.
+ */
+export function destinationOf(cmd: Command): string {
+  const search = cmd.searchUrl;
+  if (!search) return cmd.url;
+  return cmd.handler && isEngineSearch(search) ? cmd.url : search;
+}

@@ -40,6 +40,15 @@ export interface StubOptions {
    * successful sync are still live afterwards.
    */
   rejectUpdate?: (call: number, update: DynamicRuleUpdate) => string | null;
+  /**
+   * Chrome's own duplicate-id check: an add whose id is still present once
+   * `removeRuleIds` have been applied is refused, and — like every refusal —
+   * the whole call is refused WITHOUT CHANGING THE TABLE.
+   *
+   * Off by default, because it only matters for the suites that drive more
+   * than one rebuild at a time.
+   */
+  strictIds?: boolean;
   extensionId?: string;
 }
 
@@ -82,7 +91,14 @@ export function installChromeStub(options: StubOptions = {}): ChromeStub {
         const refusal = options.rejectUpdate?.(stub.updates, update) ?? null;
         if (refusal) throw new Error(refusal);
         const removed = new Set(update.removeRuleIds ?? []);
-        dynamic = [...dynamic.filter((rule) => !removed.has(rule.id)), ...(update.addRules ?? [])];
+        const survivors = dynamic.filter((rule) => !removed.has(rule.id));
+        if (options.strictIds) {
+          const taken = new Set(survivors.map((rule) => rule.id));
+          for (const rule of update.addRules ?? []) {
+            if (taken.has(rule.id)) throw new Error(`Rule with id ${rule.id} already exists.`);
+          }
+        }
+        dynamic = [...survivors, ...(update.addRules ?? [])];
       },
       isRegexSupported: async (check: { regex: string }) => {
         stub.probed.push(check.regex);

@@ -10,7 +10,7 @@
  * is user input, and this page renders it next to the URL it will navigate to.
  */
 
-import { BUILTIN_COMMANDS, SEARCH_ENGINES } from '../lib/commands';
+import { BUILTIN_COMMANDS, SEARCH_ENGINES, destinationOf } from '../lib/commands';
 import { AI_PROVIDERS } from '../lib/handlers';
 import { activeKeywords, mergeCommands, resolve, stripPassthrough, suggest } from '../lib/resolve';
 import {
@@ -554,12 +554,6 @@ function haystackOf(cmd: Command): string {
 /** The aliases exempted through `interceptStopList`, lowercased. */
 function stopSet(): Set<string> {
   return new Set((stored.settings.interceptStopList ?? []).map((key) => key.trim().toLowerCase()));
-}
-
-/** What a row's destination line shows: the search template when there is one,
- *  because that is where the keyword goes once it has arguments. */
-function destinationOf(cmd: Command): string {
-  return cmd.searchUrl ?? cmd.url;
 }
 
 function shortUrl(url: string): string {

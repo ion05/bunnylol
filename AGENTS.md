@@ -121,6 +121,18 @@ tests. **If a test in this list fails, do not "fix" the test.**
     `chrome-extension://` page the browser treats `crossorigin` as a cross-world mismatch and
     discards the preload, so the attribute costs the very thing it was meant to enable.
 
+15. **`syncRules` is serialized, with one trailing coalesced slot.** Rule ids are renumbered
+    densely from the current keyword count, so two overlapping rebuilds read the same `existing`
+    ids and both add them; Chrome refuses the second and `failClosed` answers a refusal by tearing
+    the whole dynamic table down, leaving no address-bar interception at all. A burst of saves —
+    one `onStateChanged` per onboarding write — is exactly that pattern. The fast path consults the
+    trailing slot **before** the in-flight slot, because `chain` is cleared a microtask or two
+    before the follow-up it scheduled starts, and a caller landing in that gap would otherwise open
+    a third rebuild alongside it. Guarded by `tests/sync-rules.test.ts` `describe('concurrent
+    syncs')`, which can only see the collision because `StubOptions.strictIds` reproduces Chrome's
+    duplicate-id refusal — a burst against the unserialized path costs 7 writes and an empty rule
+    table, and the naive chain-only ordering fails the sweep at arrival tick 105.
+
 ## Verify by executing, not by reading
 
 The most valuable bugs here were found by *running* code, not inspecting it. The DNR regex looked
@@ -135,7 +147,7 @@ drives `buildRules` alone is not testing what ships.
 
 ```bash
 pnpm install
-pnpm test          # vitest, 644 tests across 10 suites
+pnpm test          # vitest, 666 tests across 10 suites
 pnpm typecheck     # tsc --noEmit
 pnpm build         # gen-icons + typecheck + vite build -> dist/
 ```

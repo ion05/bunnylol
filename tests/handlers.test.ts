@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { BUILTIN_COMMANDS } from '../src/lib/commands';
 import { AI_PROVIDERS, HANDLERS, aiUrl } from '../src/lib/handlers';
 import { DEFAULT_SETTINGS } from '../src/lib/types';
 import type { Command, HandlerId, Settings } from '../src/lib/types';
@@ -44,6 +45,17 @@ function cmd(keys: string[], url: string, handler?: HandlerId): Command {
     category: 'custom',
     builtin: false,
   };
+}
+
+/**
+ * The shipped row, not a lookalike. These handlers now read `url` and
+ * `searchUrl` off the command, so a hand-built fixture can agree with the
+ * handler while the registry it is meant to stand for does not.
+ */
+function builtin(key: string): Command {
+  const found = BUILTIN_COMMANDS.find((command) => command.keys.includes(key));
+  if (!found) throw new Error(`no builtin ${key}`);
+  return found;
 }
 
 const GH = cmd(['gh', 'github'], 'https://github.com/', 'github');
@@ -308,29 +320,108 @@ describe('microsoft handlers', () => {
 
 describe('purdue handlers', () => {
   it('brightspace deep-links a numeric org unit only', () => {
-    const bs = cmd(['bs'], 'https://purdue.brightspace.com/d2l/home', 'brightspace');
+    const bs = builtin('bs');
     expect(HANDLERS.brightspace('123456', bs, settings())).toBe('https://purdue.brightspace.com/d2l/home/123456');
     expect(HANDLERS.brightspace('', bs, settings())).toBe('https://purdue.brightspace.com/d2l/home');
   });
 
   it('brightspace sends non-numeric arguments to a purdue.edu search', () => {
-    const bs = cmd(['bs'], 'https://purdue.brightspace.com/d2l/home', 'brightspace');
-    expect(HANDLERS.brightspace('in nursing programs', bs, settings())).toBe(
+    expect(HANDLERS.brightspace('in nursing programs', builtin('bs'), settings())).toBe(
       'https://www.google.com/search?q=site%3Apurdue.edu+in%20nursing%20programs',
     );
   });
 
   it('gradescope deep-links a numeric course only', () => {
-    const gs = cmd(['gs'], 'https://www.gradescope.com/', 'gradescope');
+    const gs = builtin('gs');
     expect(HANDLERS.gradescope('987654', gs, settings())).toBe('https://www.gradescope.com/courses/987654');
     expect(HANDLERS.gradescope('', gs, settings())).toBe('https://www.gradescope.com/');
   });
 
   it('gradescope sends non-numeric arguments to a gradescope.com search', () => {
-    const gs = cmd(['gs'], 'https://www.gradescope.com/', 'gradescope');
-    expect(HANDLERS.gradescope('pay scale 2026', gs, settings())).toBe(
+    expect(HANDLERS.gradescope('pay scale 2026', builtin('gs'), settings())).toBe(
       'https://www.google.com/search?q=site%3Agradescope.com+pay%20scale%202026',
     );
+  });
+
+  // Brightspace and Gradescope are multi-tenant, so nothing about the school is
+  // allowed to live in the handler: a user who repoints the row at their own
+  // institution must keep both the deep link and the degrade.
+  it('brightspace follows an edited url to another institution', () => {
+    const bs: Command = { ...builtin('bs'), url: 'https://iu.brightspace.com/d2l/home', searchUrl: undefined };
+    expect(HANDLERS.brightspace('4242', bs, settings())).toBe('https://iu.brightspace.com/d2l/home/4242');
+    expect(HANDLERS.brightspace('cs251', bs, settings())).toBe(
+      'https://www.google.com/search?q=site%3Abrightspace.com+cs251',
+    );
+  });
+
+  it('gradescope follows an edited url to another institution', () => {
+    const gs: Command = { ...builtin('gs'), url: 'https://gradescope.example.edu/', searchUrl: undefined };
+    expect(HANDLERS.gradescope('7', gs, settings())).toBe('https://gradescope.example.edu/courses/7');
+    expect(HANDLERS.gradescope('rubric', gs, settings())).toBe(
+      'https://www.google.com/search?q=site%3Aexample.edu+rubric',
+    );
+  });
+
+  it('sends the words to an edited searchUrl rather than a site: search', () => {
+    const gs: Command = { ...builtin('gs'), searchUrl: 'https://example.test/find?q={q}' };
+    expect(HANDLERS.gradescope('pay scale', gs, settings())).toBe('https://example.test/find?q=pay%20scale');
+  });
+
+  it('builds a clean deep link from a url carrying a query or fragment', () => {
+    const bs: Command = { ...builtin('bs'), url: 'https://x.test/d2l/home?a=1#z' };
+    expect(HANDLERS.brightspace('9', bs, settings())).toBe('https://x.test/d2l/home/9');
+  });
+
+  // The deep link hangs off the tenant's ORIGIN, not off whatever path the row
+  // happens to carry: a bare origin is the most natural thing to paste, and a
+  // row left pointing at a login or dashboard path must not turn the product's
+  // own path into `/d2l/login/12345`.
+  it('deep-links off the origin whatever path the edited url carries', () => {
+    const bare: Command = { ...builtin('bs'), url: 'https://school.brightspace.com' };
+    expect(HANDLERS.brightspace('12345', bare, settings())).toBe(
+      'https://school.brightspace.com/d2l/home/12345',
+    );
+    const login: Command = { ...builtin('bs'), url: 'https://school.brightspace.com/d2l/login' };
+    expect(HANDLERS.brightspace('12345', login, settings())).toBe(
+      'https://school.brightspace.com/d2l/home/12345',
+    );
+    const account: Command = { ...builtin('gs'), url: 'https://www.gradescope.com/account' };
+    expect(HANDLERS.gradescope('7', account, settings())).toBe('https://www.gradescope.com/courses/7');
+    const courses: Command = { ...builtin('gs'), url: 'https://www.gradescope.com/courses' };
+    expect(HANDLERS.gradescope('7', courses, settings())).toBe('https://www.gradescope.com/courses/7');
+  });
+
+  // `validateUrlTemplate` parses with `new URL`, which accepts a special
+  // scheme's single slash, and stores the string verbatim — so a url that made
+  // it past import has to deep-link, not degrade to the landing page.
+  it('deep-links from a url whose scheme carries one slash, as stored', () => {
+    const bs: Command = { ...builtin('bs'), url: 'https:/school.brightspace.com/d2l/home' };
+    expect(HANDLERS.brightspace('12345', bs, settings())).toBe(
+      'https://school.brightspace.com/d2l/home/12345',
+    );
+    // The degrade reads the same field, so it has to read it the same way: a
+    // host matched out of this string is `https:`.
+    expect(HANDLERS.brightspace('cs251', { ...bs, searchUrl: undefined }, settings())).toBe(
+      'https://www.google.com/search?q=site%3Abrightspace.com+cs251',
+    );
+  });
+
+  // A port is part of the authority but not part of the site, and `site:` takes
+  // a host: a tenant on a non-default port must not degrade to `site:x.test:8443`.
+  it('degrades to the host of a url carrying a port, without the port', () => {
+    const gs: Command = { ...builtin('gs'), url: 'https://gradescope.test:8443/', searchUrl: undefined };
+    expect(HANDLERS.gradescope('7', gs, settings())).toBe('https://gradescope.test:8443/courses/7');
+    expect(HANDLERS.gradescope('rubric', gs, settings())).toBe(
+      'https://www.google.com/search?q=site%3Agradescope.test+rubric',
+    );
+  });
+
+  // `expandTemplate` treats a placeholder-less template as a bare destination
+  // and appends `?q=`, and `validateUrlTemplate` lets one through, so these
+  // handlers must not be the one place that throws the user's endpoint away.
+  it('sends the words to a searchUrl that carries no placeholder', () => {
+    const bs: Command = { ...builtin('bs'), searchUrl: 'https://x.test/find' };
+    expect(HANDLERS.brightspace('foo bar', bs, settings())).toBe('https://x.test/find?q=foo%20bar');
   });
 });
 

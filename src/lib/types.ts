@@ -49,7 +49,11 @@ export const CATEGORY_LABELS: Record<Category, string> = {
 
 /**
  * Identifies a "smart" argument handler in `handlers.ts`. A command with a
- * handler ignores `searchUrl` and calls the handler with its raw arguments.
+ * handler bypasses plain `{q}` substitution: `resolve()` hands the handler the
+ * raw arguments, and the handler decides whether `searchUrl` is consulted. Most
+ * ignore it; the multi-tenant handlers (brightspace, gradescope) and the
+ * slot-shaped ones degrade their words through it, so it is a live, editable
+ * field on those rows rather than dead weight.
  */
 export type HandlerId =
   | 'github'

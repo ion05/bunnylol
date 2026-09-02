@@ -157,7 +157,10 @@ describe('validateUrlTemplate', () => {
       // `toNavigableUrl` expands. They ship with the extension and never pass
       // through storage, which is exactly why a scheme-less string reaching
       // this boundary from a file is a bug rather than a feature.
-      if (cmd.category === 'meta') {
+      //
+      // Selected by handler, not by category: a shortcut can be moved into any
+      // section, but `handler` is never user-editable.
+      if (cmd.handler === 'meta') {
         expect(url(cmd.url), cmd.keys[0]).toBeNull();
         continue;
       }

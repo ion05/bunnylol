@@ -297,13 +297,74 @@ function initiatorDomains(engine: SearchEngine): string[] {
   return naked === host ? [host] : [host, naked];
 }
 
+/** The rebuild currently in flight, or `null` when nothing is running. */
+let chain: Promise<RuleStatus> | null = null;
+
 /**
- * Rebuilds the dynamic rule set from stored state. Never throws: a failed sync
- * is reported through `RuleStatus.error` and mere partial coverage through
+ * The one follow-up rebuild shared by every caller that arrived mid-flight.
+ * Non-null from the moment it is scheduled until the moment it starts.
+ */
+let trailing: Promise<RuleStatus> | null = null;
+
+/**
+ * Rebuilds the dynamic rule set from stored state, serialized. Never rejects: a
+ * failed rebuild is reported through `RuleStatus.error` and mere partial
+ * coverage through `RuleStatus.warning`, because an exception here would take
+ * down the service worker and with it the omnibox.
+ *
+ * Serialized because rule ids are renumbered densely from the current keyword
+ * count, so two rebuilds that overlap fight over one id space: the older run
+ * removes the ids it read before the newer run added them, `updateDynamicRules`
+ * rejects the duplicate, and `failClosed` then tears the whole dynamic table
+ * down. A burst of saves — which is exactly what onboarding produces, one
+ * `onStateChanged` each — is that pattern.
+ *
+ * One trailing slot, not a queue of N: every caller that arrives while a
+ * rebuild is in flight shares a single follow-up run, so N concurrent calls
+ * cost at most two rule writes. Every caller still resolves with the status of
+ * a run that STARTED AFTER its own call, so nobody is handed a status that
+ * predates the state they just saved.
+ */
+export function syncRules(): Promise<RuleStatus> {
+  // `trailing` is checked FIRST and on its own: `chain` is cleared when a
+  // rebuild settles, which is a microtask or two before the follow-up it
+  // scheduled actually starts. A caller landing in that gap sees no rebuild in
+  // flight, and if it only consulted `chain` it would open a second one
+  // alongside the follow-up that is about to run — the very overlap this
+  // serialization exists to prevent. A scheduled-but-unstarted follow-up still
+  // starts after this call, so sharing it keeps the freshness guarantee.
+  const scheduled = trailing;
+  if (scheduled) return scheduled;
+  if (!chain) return start();
+  // `runSync` reports failure through `RuleStatus.error` rather than rejecting,
+  // but a rejection must not be able to strand the queue, so the follow-up is
+  // scheduled from both settlement paths.
+  trailing = chain.then(startTrailing, startTrailing);
+  return trailing;
+}
+
+function startTrailing(): Promise<RuleStatus> {
+  trailing = null;
+  return start();
+}
+
+function start(): Promise<RuleStatus> {
+  const run: Promise<RuleStatus> = runSync().finally(() => {
+    if (chain === run) chain = null;
+  });
+  chain = run;
+  return run;
+}
+
+/**
+ * One rebuild of the dynamic rule set from stored state. Never throws: a failed
+ * sync is reported through `RuleStatus.error` and mere partial coverage through
  * `RuleStatus.warning`, because an exception here would take down the service
  * worker and with it the omnibox.
+ *
+ * Reached only through `syncRules`, which serializes the rebuilds.
  */
-export async function syncRules(): Promise<RuleStatus> {
+async function runSync(): Promise<RuleStatus> {
   const extensionId = chrome.runtime.id;
   let eligible = 0;
   let suppressed = 0;

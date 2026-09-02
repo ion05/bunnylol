@@ -21,6 +21,7 @@ import {
   DEFAULT_STOP_LIST,
   FORCE_SEARCH_PREFIXES,
   PASSTHROUGH_PARAM,
+  STORAGE_KEY,
 } from '../src/lib/types';
 import type { ChromeStub, StubOptions } from './helpers/rules';
 import {
@@ -521,5 +522,187 @@ describe('the force-search escape hatch', () => {
     const { rules } = await sync({ state: state({}, synthetic(3000)) });
     const url = resultsUrl(SEARCH_ENGINES[0], '%5Cgh+foo');
     expect(claim(rules, url)).toBe('redirect');
+  });
+});
+
+/** Yields `count` times, so a caller can be made to arrive at a chosen
+ *  microtask of a rebuild that is already running. */
+async function ticks(count: number): Promise<void> {
+  for (let i = 0; i < count; i += 1) await Promise.resolve();
+}
+
+/**
+ * How many microtasks a lone rebuild takes to settle against the stub. The
+ * sweep below has to cover the whole of a run, and a hard-coded bound would
+ * quietly stop reaching the end of one as the registry grows.
+ */
+async function ticksToSettle(): Promise<number> {
+  stub?.restore();
+  stub = installChromeStub({ strictIds: true, state: state() });
+  let done = false;
+  void syncRules().then(() => {
+    done = true;
+  });
+  let count = 0;
+  // Bounded so a rebuild that ever waits on a macrotask fails the test instead
+  // of spinning forever.
+  while (!done && count < 5000) {
+    await Promise.resolve();
+    count += 1;
+  }
+  expect(done).toBe(true);
+  return count;
+}
+
+/**
+ * A save is one `syncRules()` call, and onboarding writes several in a row.
+ *
+ * Rule ids are renumbered densely from the keyword count, so two overlapping
+ * rebuilds read the same `existing` ids, both try to add the same ids, Chrome
+ * refuses the second — and `failClosed` answers a refusal by tearing the whole
+ * dynamic table down. `strictIds` is what makes the stub refuse the way Chrome
+ * does; without it the collision is invisible and these tests pass vacuously.
+ */
+describe('concurrent syncs', () => {
+  it('coalesces a burst of saves into at most two rule writes', async () => {
+    stub = installChromeStub({ strictIds: true, state: state() });
+    const results = await Promise.all([syncRules(), syncRules(), syncRules(), syncRules()]);
+
+    expect(stub.updates).toBeLessThanOrEqual(2);
+    for (const status of results) expect(status.error).toBeNull();
+    // The three late callers share one trailing rebuild rather than queueing
+    // three of their own.
+    expect(results[2]).toBe(results[1]);
+    expect(results[3]).toBe(results[1]);
+    expect(results[0]).not.toBe(results[1]);
+  });
+
+  it('ends with the rule set a single sync would have produced', async () => {
+    stub = installChromeStub({ strictIds: true, state: state() });
+    await Promise.all([syncRules(), syncRules(), syncRules(), syncRules()]);
+    const afterBurst = stub.rules();
+
+    stub.restore();
+    stub = installChromeStub({ strictIds: true, state: state() });
+    const lone = await syncRules();
+    expect(lone.error).toBeNull();
+    expect(afterBurst).toEqual(stub.rules());
+  });
+
+  it('gives a caller that arrives mid-flight a run that saw its save', async () => {
+    stub = installChromeStub({ strictIds: true, state: state() });
+    let settled = false;
+    const first = syncRules().then((status) => {
+      settled = true;
+      return status;
+    });
+
+    await chrome.storage.local.set({ [STORAGE_KEY]: state({}, synthetic(1)) });
+    // The point of the test: the second caller really does arrive while the
+    // first rebuild is still running, so it must not be handed that rebuild's
+    // status — which was computed from state that predates this save.
+    expect(settled).toBe(false);
+    const second = await syncRules();
+
+    expect((await first).error).toBeNull();
+    expect(second.error).toBeNull();
+    expect(second.keywords).toBe((await first).keywords + 1);
+  });
+
+  it('does not refuse the ordinary remove-then-add a lone sync performs', async () => {
+    stub = installChromeStub({ strictIds: true, state: state() });
+    expect((await syncRules()).error).toBeNull();
+    expect((await syncRules()).error).toBeNull();
+    expect(stub.updates).toBe(2);
+  });
+
+  it('refuses an add whose id survives the removal, without changing the table', async () => {
+    stub = installChromeStub({ strictIds: true, state: state() });
+    await syncRules();
+    const live = stub.rules().map((rule) => ({ ...rule }));
+
+    await expect(
+      chrome.declarativeNetRequest.updateDynamicRules({ addRules: [{ ...live[0] }] }),
+    ).rejects.toThrow(/already exists/);
+    expect(stub.rules()).toEqual(live);
+  });
+
+  /**
+   * The gap between "the in-flight rebuild settled" and "the follow-up it
+   * scheduled actually started" is a couple of microtasks wide. A caller
+   * landing inside it sees nothing in flight, and if the fast path only
+   * consulted the in-flight slot it would start a rebuild of its own alongside
+   * the follow-up — two runs reading one id space, Chrome refusing the second
+   * add, `failClosed` removing every rule. Today's callers all run in
+   * macrotasks and so cannot land there, which is exactly why this is swept
+   * across every arrival tick rather than left to a caller to discover.
+   */
+  it('never starts a second rebuild while a coalesced follow-up is pending', async () => {
+    // Derived, not hard-coded: the window sits at the end of a rebuild, so a
+    // rebuild that grows longer must not push it past the end of the sweep.
+    const span = await ticksToSettle();
+    expect(span).toBeGreaterThan(8);
+
+    for (let tick = 0; tick <= span + 8; tick += 1) {
+      stub?.restore();
+      stub = installChromeStub({ strictIds: true, state: state() });
+      const burst = [syncRules(), syncRules()];
+      const late = ticks(tick).then(async () => {
+        // A save between the burst and the late caller: the two runs then plan
+        // different id counts, which is what turns an overlap into a refusal.
+        await chrome.storage.local.set({ [STORAGE_KEY]: state({}, synthetic(3)) });
+        return syncRules();
+      });
+
+      for (const status of await Promise.all([...burst, late])) {
+        expect(status.error, `arrival tick ${tick}`).toBeNull();
+      }
+      expect(stub.rules().length, `arrival tick ${tick}`).toBeGreaterThan(0);
+    }
+  });
+
+  it('still reports a refused write instead of swallowing it in the queue', async () => {
+    const { status } = await sync({
+      state: state(),
+      rejectUpdate: (call) => (call === 1 ? 'Rule with id 1 already exists.' : null),
+    });
+
+    expect(status.error).toMatch(/already exists/);
+    expect(status.keywords).toBe(0);
+  });
+
+  /**
+   * The refusal above is one the stub was TOLD to throw. This one is Chrome's
+   * own duplicate-id check firing from inside a real `syncRules()` run, so the
+   * `strictIds` the concurrency tests rely on is proven to reach the production
+   * path — and proven to come back out as an error rather than being swallowed
+   * by the queue.
+   *
+   * Staged the way the unserialized code produced it: the rebuild reads a
+   * snapshot of the rule table that predates the rules already live, so the ids
+   * it is about to add are missing from its own `removeRuleIds` and are still
+   * there when the add arrives.
+   */
+  it('reports a duplicate-id refusal that genuinely happened', async () => {
+    stub = installChromeStub({ strictIds: true, state: state() });
+    expect((await syncRules()).error).toBeNull();
+    expect(stub.rules().length).toBeGreaterThan(0);
+
+    const dnr = chrome.declarativeNetRequest;
+    const read = dnr.getDynamicRules;
+    let stale = true;
+    dnr.getDynamicRules = async () => {
+      if (!stale) return read();
+      stale = false;
+      return [];
+    };
+
+    const status = await syncRules();
+
+    expect(status.error).toMatch(/already exists/);
+    // And `failClosed` still ran, off a truthful read: nothing is left
+    // intercepting on rules built for state the user has already changed.
+    expect(stub.rules()).toEqual([]);
+    expect(status.keywords).toBe(0);
   });
 });
