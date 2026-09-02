@@ -1,7 +1,7 @@
 /**
  * The `#welcome` route: the first-run pack picker.
  *
- * It asks exactly one question — which packs of shipped shortcuts do you want —
+ * It asks exactly one question, which packs of shipped shortcuts do you want,
  * and answers it with exactly one write. The ticks live in a `Set` local to
  * this render and touch storage only when Continue is pressed, so a user who
  * closes the tab half-way through keeps whatever the install already wrote
@@ -39,8 +39,8 @@ export function renderWelcome(): Node[] {
     el('p', {
       text:
         'Type a keyword in the address bar and BunnyLol takes you straight there.' +
-        ' Turn on the packs you want. None of it is final — every shortcut can be' +
-        ' renamed, moved, switched off or deleted afterwards, and you can come back' +
+        ' Turn on the packs you want. None of it is final. You can rename, move,' +
+        ' switch off or delete every shortcut afterwards, and you can come back' +
         ' to this screen from Settings.',
     }),
     el('div', {
@@ -77,8 +77,8 @@ export function renderWelcome(): Node[] {
   nodes.push(
     el('p', {
       text:
-        'Continue turns on every shipped shortcut in the packs you tick — including' +
-        ' any you had switched off by hand — and turns off the ones in the packs you' +
+        'Continue turns on every shipped shortcut in the packs you tick, including' +
+        ' any you had switched off by hand. It turns off the ones in the packs you' +
         ' leave unticked. Shortcuts you made yourself are never touched.',
     }),
   );
@@ -181,13 +181,13 @@ function pickCard(row: PickRow, picked: Set<string>): HTMLElement {
 /**
  * The escape hatch, stated on the one screen everybody sees. The first word of
  * a query is always a command when it matches one, which is only liveable
- * because of this — so the characters are read off `FORCE_SEARCH_PREFIXES`
+ * because of this, so the characters are read off `FORCE_SEARCH_PREFIXES`
  * rather than typed out here, and the sentence cannot drift from the parser.
  */
 function escapeNote(): HTMLElement {
   const prefixes = FORCE_SEARCH_PREFIXES;
   const parts: (Node | string)[] = [
-    'The first word you type is a shortcut whenever it matches one — ',
+    'The first word you type is a shortcut whenever it matches one: ',
     el('code', { text: 'gh facebook/react' }),
     ' opens the repository rather than searching for it. Put ',
   ];
@@ -224,11 +224,11 @@ async function save(
     await commitState(pickToState(picked, before));
   } catch (err) {
     // `commitState` applies the pick optimistically, so a rejected write would
-    // otherwise leave the page — and every view rendered after it — showing a
+    // otherwise leave the page, and every view rendered after it, showing a
     // pick that is not in storage.
     applyState(before);
     reportFailure(err);
-    error.textContent = 'Could not save your pick — try Continue again.';
+    error.textContent = 'Could not save your pick. Try Continue again.';
     error.hidden = false;
     proceed.disabled = false;
     skip.disabled = false;

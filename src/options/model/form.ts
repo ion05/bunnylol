@@ -60,7 +60,7 @@ export function validateDraft(draft: Draft, ctx: FormContext): Problem[] {
     problems.push({
       level: 'error',
       field: 'keys',
-      text: 'Add at least one keyword — that is what you type in the address bar.',
+      text: 'Add at least one keyword. That is what you type in the address bar.',
     });
   }
   for (const key of keys) {
@@ -68,7 +68,7 @@ export function validateDraft(draft: Draft, ctx: FormContext): Problem[] {
       problems.push({
         level: 'warn',
         field: 'keys',
-        text: `“${key}” is not intercepted in the address bar — typing it there runs a normal search. It still works from the toolbar popup and from bl + Tab.`,
+        text: `“${key}” is not intercepted in the address bar. Typing it there runs a normal search. It still works from the toolbar popup and from bl + Tab.`,
       });
     }
   }
@@ -93,7 +93,7 @@ export function validateDraft(draft: Draft, ctx: FormContext): Problem[] {
     problems.push({
       level: 'error',
       field: 'url',
-      text: 'Destination URL is required — a bare keyword has to go somewhere.',
+      text: 'Destination URL is required. A bare keyword has to go somewhere.',
     });
   } else {
     const problem = urlProblem(withScheme(draft.url), 'Destination URL', 'url');
@@ -178,7 +178,7 @@ export function urlProblem(value: string, label: string, field: FormField): Prob
 /**
  * Stricter than `urlProblem`, because this one field swallows every unmatched
  * search on all three surfaces: `gogle/search?q={q}` parses as a URL with the
- * host `gogle`, and no scheme is added for the user here — silently rewriting
+ * host `gogle`, and no scheme is added for the user here: silently rewriting
  * what they typed is how a typo becomes the live default engine.
  */
 export function engineProblem(value: string): Problem | null {
@@ -246,13 +246,13 @@ export function previewOverrides(
 }
 
 /**
- * The command list the live preview resolves against — the real merge, so the
+ * The command list the live preview resolves against: the real merge, so the
  * preview is the real resolver and not a second opinion.
  *
  * A shipped target is substituted AT ITS OWN INDEX in the registry rather than
  * appended to `custom`. `buildKeyMap` is first-writer-wins and `mergeCommands`
  * puts custom commands first (invariant 10), so splicing the draft into
- * `custom` would hand it every alias it claims — including one an earlier
+ * `custom` would hand it every alias it claims, including one an earlier
  * builtin owns, which the save then does not give it. Editing `set` to claim
  * `c` previewed as Settings and resolved to Claude.
  *
@@ -281,7 +281,7 @@ export function previewCommands(
 
 /**
  * The form's `buildCommand`: `../../lib/draft`'s, with the category narrowed
- * first. There is one builder, not two — a second one is how the preview and
+ * first. There is one builder, not two: a second one is how the preview and
  * the save start disagreeing about what the form says.
  */
 export function buildCommand(

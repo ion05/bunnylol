@@ -6,9 +6,9 @@
  * `environment: 'node'`, which is only true if it touches neither `document`
  * nor `chrome.*` at module scope.
  *
- * The three questions here are the three the page answers — which boxes open
- * ticked, what the closing sentence promises, and what Continue writes — and
- * the last one is asserted against `applyCategoryPick` itself, because a
+ * The three questions here are the three the page answers: which boxes open
+ * ticked, what the closing sentence promises, and what Continue writes. The
+ * last one is asserted against `applyCategoryPick` itself, because a
  * picker that renders the ticks and then writes something else is the failure
  * mode with no visible symptom.
  */
@@ -72,7 +72,7 @@ describe('which boxes open ticked', () => {
 
   it('ticks nothing when the user turned every pack off', () => {
     // Unticking everything writes `[]`, which `effectiveCategories` records as
-    // the always-on pack alone — not as "never answered".
+    // the always-on pack alone, not as "never answered".
     expect([...initialPicks(overridesWith({ enabledCategories: stored([]) }))]).toEqual([]);
   });
 

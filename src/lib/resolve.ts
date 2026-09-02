@@ -1,7 +1,7 @@
 /**
  * The brain: query string in, destination URL out.
  *
- * Pure and synchronous — no `chrome.*`, no DOM, no I/O — so the dispatch page,
+ * Pure and synchronous: no `chrome.*`, no DOM, no I/O. So the dispatch page,
  * the omnibox, the popup, the options live preview and the unit tests all run
  * the exact same code path.
  */
@@ -46,7 +46,7 @@ const INTERCEPTED_HOSTS = new Set(SEARCH_ENGINES.map((engine) => bareHost(engine
  * Alias -> command, every alias lowercased.
  *
  * ORDERING CONTRACT: the FIRST command to claim an alias keeps it. This is only
- * correct because `mergeCommands` puts custom commands ahead of builtins — a
+ * correct because `mergeCommands` puts custom commands ahead of builtins: a
  * user who rebinds `gh` shadows the builtin. If the last writer won instead,
  * their custom command would be silently swallowed by the builtin behind it.
  */
@@ -104,8 +104,8 @@ export function mergeCommands(builtins: Command[], overrides: Overrides): Comman
  * Resolves a raw address-bar query. Never throws: every failure path degrades to
  * a real URL, because the caller has already committed to navigating somewhere.
  *
- * - A leading `FORCE_SEARCH_PREFIXES` character — `\<query>` or `=<query>`, with
- *   or without a following space — forces a plain default-engine search of the
+ * - A leading `FORCE_SEARCH_PREFIXES` character, `\<query>` or `=<query>`, with
+ *   or without a following space, forces a plain default-engine search of the
  *   remainder. Under true bunnylol semantics a registered first word is ALWAYS a
  *   command, so this is the only way to search for one, and the prefix itself
  *   must never survive into the search terms.
@@ -158,8 +158,8 @@ export function suggest(query: string, commands: Command[], limit = 8): Command[
  * so an alternation prefers `github` over `gh` when both would match.
  *
  * `stopList` is the user's EXEMPTION list and suppresses aliases from
- * ADDRESS-BAR INTERCEPTION ONLY. It is empty by default — every registered
- * keyword is intercepted — and `resolve()` deliberately ignores it, so an
+ * ADDRESS-BAR INTERCEPTION ONLY. It is empty by default, every registered
+ * keyword is intercepted, and `resolve()` deliberately ignores it, so an
  * exempted alias keeps working through the `bl` omnibox and the popup, where
  * the user has already said they mean a shortcut.
  */
@@ -216,7 +216,7 @@ export function stripPassthrough(query: string): string {
 }
 
 /**
- * True only for a whole url carrying our marker — the one shape whose marker is
+ * True only for a whole url carrying our marker: the one shape whose marker is
  * ours to remove. Arbitrary query text is never a candidate: a user who types
  * `gh foo&blpass=1` means those words, and stripping the marker out of them
  * would silently search for `gh foo` instead.
@@ -235,7 +235,7 @@ export function isBouncedUrl(value: string): boolean {
  * A command destination can itself be a search on an engine we intercept:
  * `weather` IS a google search, and so are `g`, `gimg`, `gem` and the `gsite`
  * handler. Navigating there unmarked re-enters our own redirect rule, which
- * hands the url back to go.html — `weather` loops forever, `g npm install`
+ * hands the url back to go.html: `weather` loops forever, `g npm install`
  * lands on the npm package page. Marking every destination in one place covers
  * `cmd.url`, `searchUrl` expansion and every handler return value alike.
  */
@@ -312,7 +312,7 @@ function engineHome(engine: string): string {
     const { origin } = new URL(engine);
     if (origin.startsWith('http')) return `${origin}/`;
   } catch {
-    // Not a parseable absolute URL — fall through to the template itself.
+    // Not a parseable absolute URL: fall through to the template itself.
   }
   return expandTemplate(engine, '');
 }
@@ -371,7 +371,7 @@ function isSubsequence(needle: string, haystack: string): boolean {
 }
 
 /**
- * The alias `suggest()` breaks ties on — deliberately NOT `shortcutId`. A tie
+ * The alias `suggest()` breaks ties on: deliberately NOT `shortcutId`. A tie
  * is settled alphabetically on what the user types; keying it off the id would
  * clump every custom shortcut together under its `u:` prefix instead of
  * ordering them by the alias the user actually typed.

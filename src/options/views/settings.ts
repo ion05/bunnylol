@@ -189,7 +189,7 @@ export function renderDefaults(): HTMLElement {
         field(
           'Google account index',
           accountInput,
-          'The N in /u/N/ — 0 is the account you signed in with first.',
+          'The N in /u/N/. Account 0 is the one you signed in with first.',
         ),
         engineField.node,
       ],
@@ -203,14 +203,14 @@ export function renderDefaults(): HTMLElement {
  * them: renaming a shipped group (which stores a section entry whose id IS the
  * shipped category id), renaming or deleting one the user made, and adding one.
  *
- * They are one card because to the user they are one list — the same groups in
+ * They are one card because to the user they are one list: the same groups in
  * the same order the browse page shows them, with the ones that ship marked so
  * it is clear why they cannot be deleted.
  */
 export function renderSections(): HTMLElement {
   const card = panelCard(
     'Sections',
-    `Group your shortcuts however you like. Renaming a shipped section only changes what it is called here — nothing moves. Deleting one of your own moves everything in it to ${fallbackLabel()}, so nothing is lost.`,
+    `Group your shortcuts however you like. Renaming a shipped section only changes what it is called here, and nothing moves. Deleting one of your own moves everything in it to ${fallbackLabel()}, so nothing is lost.`,
   );
 
   const rows = el('div', { class: 'rows' });
@@ -254,7 +254,7 @@ export function renderSections(): HTMLElement {
 
     /** The one write both Rename and Restore-default-name go through, so the
      *  clash check and the cap refusal cannot be applied to one and not the
-     *  other — which is exactly how two sections both ended up called
+     *  other, which is exactly how two sections both ended up called
      *  "Developer". */
     const applyRename = (wanted: string): void => {
       const overrides = getState().overrides;
@@ -343,8 +343,8 @@ export function renderSections(): HTMLElement {
         confirmButton(
           members === 0 ? 'Delete' : `Delete · ${countShortcuts(members)}`,
           members === 0
-            ? 'Click again — the section is empty'
-            : `Click again — ${moves} to ${fallbackLabel()}`,
+            ? 'Click again: the section is empty'
+            : `Click again: ${moves} to ${fallbackLabel()}`,
           // Ghost, like every other row action: the red belongs to the armed
           // state `confirmButton` adds, not to a button that has not been
           // asked to do anything yet.
@@ -435,7 +435,7 @@ export function renderSections(): HTMLElement {
             el('div', { class: 'row-name', text: 'Shortcut packs' }),
             el('div', {
               class: 'row-desc',
-              text: 'Turn whole groups of shipped shortcuts on or off at once. Continue on that screen re-enables every shortcut in the packs you pick, including ones you had switched off by hand.',
+              text: 'Turn whole groups of shipped shortcuts on or off at once. Continue on that screen turns on every shortcut in the packs you pick, including ones you had switched off by hand.',
             }),
           ],
         }),
@@ -458,8 +458,8 @@ function fallbackLabel(): string {
 
 /**
  * Deleting a shipped shortcut is undoable, so there has to be somewhere the
- * undo lives. The card renders even when there is nothing in it — the same way
- * the stop-list card does — because a restore path that only appears once you
+ * undo lives. The card renders even when there is nothing in it, the same way
+ * the stop-list card does, because a restore path that only appears once you
  * have already lost something is a path nobody finds when they need it.
  */
 export function renderRestore(): HTMLElement {
@@ -553,7 +553,7 @@ export function renderRestore(): HTMLElement {
 export function renderInterception(): HTMLElement {
   const card = panelCard(
     'Search interception',
-    'BunnyLol watches searches on the engines below and, when one starts with a keyword you own, redirects the tab before the request leaves your machine. Uncheck an engine to leave its searches alone.',
+    'BunnyLol watches searches on the engines below. When one starts with a keyword you own, it redirects the tab before the request leaves your machine. Uncheck an engine to leave its searches alone.',
   );
 
   const checks = el('div', { class: 'checks' });
@@ -587,7 +587,7 @@ export function renderInterception(): HTMLElement {
     checks,
     el('p', {
       class: 'field-hint',
-      text: 'You can also type bl followed by a shortcut in the address bar — that path always works, whatever is checked above.',
+      text: 'You can also type bl followed by a shortcut in the address bar. That path always works, whatever is checked above.',
     }),
     el('div', {
       class: 'code-block',
@@ -602,7 +602,7 @@ export function renderInterception(): HTMLElement {
     }),
     el('p', {
       class: 'field-hint',
-      text: 'Shows which shortcut fired, with a link to search for what you typed instead — but it holds the page for about 1.2 seconds every time, so it is off by default. Turn it on while you are learning the keywords.',
+      text: 'Shows which shortcut fired, with a link to search for what you typed instead. It holds the page for about 1.2 seconds every time, so it is off by default. Turn it on while you are learning the keywords.',
     }),
   );
   return card.section;
@@ -616,7 +616,7 @@ export function renderInterception(): HTMLElement {
 export function renderStopList(): HTMLElement {
   const card = panelCard(
     'Address-bar interception',
-    'Every keyword you own is intercepted in the address bar — if the first word of what you type is a shortcut, it runs, always. To search for those words instead, start the query with \\ or = (“=map of france”). Add a keyword here to exempt it permanently: an exempted keyword is skipped in the address bar but still works from bl + Tab and the toolbar popup.',
+    'Every keyword you own is intercepted in the address bar. If the first word of what you type is a shortcut, it runs, always. To search for those words instead, start the query with \\ or = (“=map of france”). Add a keyword here to exempt it permanently. An exempted keyword is skipped in the address bar, but it still works from bl + Tab and the toolbar popup.',
   );
 
   const chips = el('div', { class: 'chip-row' });
@@ -648,7 +648,7 @@ export function renderStopList(): HTMLElement {
       chips.append(
         el('p', {
           class: 'field-hint',
-          text: 'Nothing is exempt — every keyword is intercepted in the address bar.',
+          text: 'Nothing is exempt. Every keyword is intercepted in the address bar.',
         }),
       );
       return;
@@ -666,7 +666,7 @@ export function renderStopList(): HTMLElement {
     if (!key) return;
     if (/\s/.test(key)) {
       addField.setProblems([
-        { level: 'error', text: 'One keyword at a time — a keyword cannot contain a space.' },
+        { level: 'error', text: 'One keyword at a time. A keyword cannot contain a space.' },
       ]);
       return;
     }
@@ -714,7 +714,7 @@ export function renderStopList(): HTMLElement {
 export function renderAiTemplates(): HTMLElement {
   const card = panelCard(
     'AI prompt templates',
-    'These prefill parameters are undocumented and providers change them. If one stops carrying your prompt, fix it here — no rebuild, no waiting.',
+    'These prefill parameters are undocumented and providers change them. If one stops carrying your prompt, fix it here. No rebuild, no waiting.',
   );
 
   const list = el('div', { class: 'templates' });

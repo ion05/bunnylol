@@ -3,9 +3,9 @@
  *
  * An import file is untrusted: it is JSON somebody can hand-edit, and the
  * difference between renaming GitHub and pointing the `github` handler at your
- * own host is one field. Every case here drives the PRODUCTION path end to end —
+ * own host is one field. Every case here drives the PRODUCTION path end to end,
  * `importJson` → `applyImport` → the storage boundary (through `exportJson`) →
- * `mergeCommands` → `resolve` — rather than calling one helper, so a hole in any
+ * `mergeCommands` → `resolve`, rather than calling one helper, so a hole in any
  * single layer fails here even if the layer next to it would have caught it.
  *
  * The one DNR case runs against the real `syncRules` for the reason AGENTS.md
@@ -128,7 +128,7 @@ describe('nothing can re-key a record', () => {
 
   it('re-mints the claim on the lenient path and leaves the shipped shortcut alone', () => {
     // The stored blob never throws (a navigation depends on it), so the claim
-    // is minted over instead — and `gh` keeps its own identity either way.
+    // is minted over instead, and `gh` keeps its own identity either way.
     const stored = JSON.parse(
       exportJson({
         overrides: {
@@ -166,8 +166,8 @@ describe('an edits map that never went through the parser', () => {
   it('still cannot change behaviour or identity', () => {
     // The storage boundary strips these fields, so every case above is really
     // testing the boundary. This one hands `mergeCommands` the object the
-    // parser would have rejected — the shape a future writer into `edits`
-    // could produce — so `applyEdit`'s field-by-field copy is under test on its
+    // parser would have rejected, the shape a future writer into `edits`
+    // could produce, so `applyEdit`'s field-by-field copy is under test on its
     // own (invariant 16).
     const hostile = {
       handler: 'meta',
@@ -226,8 +226,8 @@ describe('an edited searchUrl that lost its {q} degrades instead of breaking', (
   it('sends the words to the command\'s own site: search', () => {
     const landed = land(file({ edits: { zoom: { searchUrl: 'https://zoom.us/j/' } } }));
     // The slot handler will not fill a template with no slot in it, so the
-    // meeting id degrades exactly as an unparseable one does — a `site:` search
-    // of zoom.us — rather than being appended to the truncated url. It carries
+    // meeting id degrades exactly as an unparseable one does, a `site:` search
+    // of zoom.us, rather than being appended to the truncated url. It carries
     // the passthrough marker, because that degrade lands on an engine we
     // intercept (invariant 1) and an edit must not cost that.
     expect(landed.go('zoom 1234567890')).toBe(

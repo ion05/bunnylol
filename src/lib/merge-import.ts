@@ -5,7 +5,7 @@
  * the tests can inspect: an import that changes something the dialog did not
  * name is the failure this module exists to prevent. Every reported field is
  * computed from the merge itself rather than from the incoming file, so the
- * dialog cannot name a change the merge then throws away — or stay quiet about
+ * dialog cannot name a change the merge then throws away, or stay quiet about
  * one it makes.
  *
  * OURS WIN on every collision. An import is somebody's backup being folded into
@@ -38,8 +38,8 @@ export interface MergePlan {
   deletes: string[];
   /** Shipped shortcuts the file rebinds that carry no rebinding of yours. */
   rebinds: string[];
-  /** Shipped shortcuts the file changes some other way — a repointed url, a
-   *  rename — in a field we do not already edit ourselves. */
+  /** Shipped shortcuts the file changes some other way, in a field we do not
+   *  already edit ourselves: a repointed url, a rename. */
   edits: string[];
   /** The sections the merge adds, including any it had to rename. Labels are
    *  carried alongside the ids because the id is an internal slug and the
@@ -97,7 +97,7 @@ export function mergeOverrides(current: Overrides, incoming: Overrides): MergePl
     // ...ours}` kept from theirs.
     const carried = Object.keys(theirs ?? {}).filter((field) => !(field in (ours ?? {})));
     if (carried.includes('keys')) rebinds.push(id);
-    // Rebinds get their own sentence, so this one counts the rest — otherwise a
+    // Rebinds get their own sentence, so this one counts the rest: otherwise a
     // single incoming edit is announced twice.
     if (carried.some((field) => field !== 'keys')) edited.push(id);
   }
@@ -125,7 +125,7 @@ export function mergeOverrides(current: Overrides, incoming: Overrides): MergePl
     if (twin && signatureOf(twin) === signatureOf(cmd)) {
       duplicates.push(firstKey(cmd));
       // Their entry IS ours now, so anything the file says about it has to
-      // reach the shortcut that survived — which is not necessarily the one
+      // reach the shortcut that survived, which is not necessarily the one
       // their id happens to name here.
       land(shortcutId(cmd), shortcutId(twin));
       continue;
@@ -211,7 +211,7 @@ interface SectionMerge {
  *
  * An incoming id that already names a DIFFERENT group here is the one case
  * where adding it would silently merge two people's sections into one heading.
- * It is renamed to `<id>-2` instead, and the caller refiles its members — a
+ * It is renamed to `<id>-2` instead, and the caller refiles its members: a
  * group called "Client work" arriving into a profile that already calls `work`
  * something else is two groups, not one.
  *

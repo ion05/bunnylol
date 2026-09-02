@@ -1,5 +1,5 @@
 /**
- * What the browse list shows. No DOM, no `chrome.*` — every function here
+ * What the browse list shows. No DOM, no `chrome.*`: every function here
  * takes the state it needs as a parameter, so the browse view's grouping and
  * filtering logic is testable under node.
  */
@@ -26,7 +26,7 @@ export interface Entry {
    *  three actions either way; this only decides where Delete and Save write. */
   shipped: boolean;
   disabled: boolean;
-  /** Whether the shortcut now reads differently from how it shipped — what the
+  /** Whether the shortcut now reads differently from how it shipped: what the
    *  "modified" badge reports, and the only thing on the row that says so. A
    *  stored edit that changes nothing is not a difference. */
   modified: boolean;
@@ -34,7 +34,7 @@ export interface Entry {
 
 /**
  * What the browse list shows, in the same order and with the same overrides
- * applied as `mergeCommands` — a row that claims a keyword the resolver does
+ * applied as `mergeCommands`: a row that claims a keyword the resolver does
  * not answer to is worse than no row.
  */
 export function browseEntries(builtins: Command[], overrides: Overrides): Entry[] {

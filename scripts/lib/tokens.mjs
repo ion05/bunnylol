@@ -3,7 +3,7 @@
  *
  * Split out of gen-icons.mjs so the parse can be exercised directly: the icon
  * generator only ever runs against the real token file, where the two failure
- * modes this guards — a renamed token and one that became a light-dark() pair —
+ * modes this guards, a renamed token and one that became a light-dark() pair,
  * cannot be reproduced without editing the palette. Pure by construction, with
  * no node imports, so a test can import it too.
  */

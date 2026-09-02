@@ -1,8 +1,8 @@
 /**
  * The install and update branch, driven end to end.
  *
- * `background.ts` cannot be imported — it calls `chrome.omnibox` at module
- * scope — so `lib/install.ts` holds the work and this suite runs it against
+ * `background.ts` cannot be imported, it calls `chrome.omnibox` at module
+ * scope, so `lib/install.ts` holds the work and this suite runs it against
  * the same `chrome` stub the rule suites use. That makes the question these
  * tests actually care about answerable: not "what did it write" but "what
  * would Chrome do with the address bar afterwards". The pick is written before
@@ -137,7 +137,7 @@ describe('a fresh install', () => {
     // `runSync` reads `chrome.runtime.id` outside its own try, so a worker
     // whose context is gone rejects the promise rather than returning a
     // status. This runs from a fire-and-forget listener, where that is an
-    // unhandled rejection — and it would take the picker down with it.
+    // unhandled rejection, and it would take the picker down with it.
     Object.defineProperty(globalThis.chrome.runtime, 'id', {
       configurable: true,
       get(): string {
@@ -164,7 +164,7 @@ describe('a fresh install', () => {
 
     // The rules and the picker are what make the extension usable at all, and
     // a profile whose pick could not be written has still never answered the
-    // picker — so it opens, and the user redoes the pick from it.
+    // picker, so it opens, and the user redoes the pick from it.
     expect(stub.rules().length).toBeGreaterThan(0);
     expect(stub.opened).toHaveLength(1);
   });

@@ -57,7 +57,7 @@ interface GroupRef {
   node: HTMLElement;
   /** The disclosure button inside the heading; it owns `aria-expanded`. */
   toggle: HTMLElement;
-  /** The element `toggle` controls — the only thing collapsing hides. */
+  /** The element `toggle` controls: the only thing collapsing hides. */
   rowsHost: HTMLElement;
   count: HTMLElement;
   rows: RowRef[];
@@ -140,7 +140,7 @@ export function renderBrowse(): Node[] {
     const countNode = el('span', { class: 'group-count', text: String(inGroup.length) });
     const rows = el('div', { class: 'rows', id: nextId('rows') });
     // The contract's shape: `.group-head` is the heading that carries the
-    // layout — the groups are this page's outline — and `.group-toggle` is the
+    // layout, the groups are this page's outline, and `.group-toggle` is the
     // button inside it. An h3, because the panel's own h2 is its parent in the
     // outline. The whole heading strip folds the group rather than a chevron
     // beside it: a 12px triangle is not a target, and the label is what the
@@ -199,7 +199,7 @@ export function renderBrowse(): Node[] {
   }
 
   // A section id is minted from its label, so deleting `Client work` and making
-  // another one by the same name mints `sec-client-work` again — and the fold
+  // another one by the same name mints `sec-client-work` again, and the fold
   // the first one left behind would land on the second as a group the user
   // never folded. Pruning to what was actually drawn, before anything reads the
   // state, is what stops a fold outliving the group it was about.
@@ -391,7 +391,7 @@ function renderRow(
   if (!entry.disabled && !entry.cmd.keys.some((key) => intercepted.has(key))) {
     const marker = el('span', { class: 'badge badge-quiet', text: 'omnibox only' });
     marker.title =
-      'Not intercepted in the address bar. Type bl, press Tab, then the keyword — or use the popup.';
+      'Not intercepted in the address bar. Type bl, press Tab, then the keyword, or use the popup.';
     name.append(marker);
   }
 
@@ -460,7 +460,7 @@ function renderRow(
 
 /** Null-prototype throughout: an id is a key off untrusted storage, and
  *  `edits['__proto__']` on a plain object is swallowed by the inherited
- *  setter. `edits` never holds a `u:` id today — `normalizeEdits` drops them —
+ *  setter. `edits` never holds a `u:` id today, `normalizeEdits` drops them,
  *  but a hand-edited import is exactly the file that would put one there. */
 function withoutEdit(
   edits: Record<string, ShortcutEdit>,

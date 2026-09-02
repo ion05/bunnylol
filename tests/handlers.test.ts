@@ -393,7 +393,7 @@ describe('purdue handlers', () => {
   });
 
   // `validateUrlTemplate` parses with `new URL`, which accepts a special
-  // scheme's single slash, and stores the string verbatim — so a url that made
+  // scheme's single slash, and stores the string verbatim, so a url that made
   // it past import has to deep-link, not degrade to the landing page.
   it('deep-links from a url whose scheme carries one slash, as stored', () => {
     const bs: Command = { ...builtin('bs'), url: 'https:/school.brightspace.com/d2l/home' };
@@ -728,7 +728,7 @@ describe('github repo sub-commands', () => {
   });
 
   it('opens a numbered item, using the path segment that item actually has', () => {
-    // GitHub lists at /pulls but addresses one at /pull/123 — the mapping
+    // GitHub lists at /pulls but addresses one at /pull/123: the mapping
     // cannot just append the number to the tab.
     expect(gh('facebook/react pr 123')).toBe('https://github.com/facebook/react/pull/123');
     expect(gh('facebook/react i 456')).toBe('https://github.com/facebook/react/issues/456');

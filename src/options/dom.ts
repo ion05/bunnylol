@@ -1,6 +1,6 @@
 /**
  * Small stateless widgets the options views assemble panels from. Pure DOM
- * builders — no `chrome.*`, no store access. Each one used to live inline in
+ * builders: no `chrome.*`, no store access. Each one used to live inline in
  * `options.ts`; moved here verbatim so every view can share them without
  * pulling in the page's routing or persistence.
  */
@@ -60,7 +60,7 @@ export function iconButton(
 
 /**
  * Two-step destructive action. A modal `confirm()` inside an extension page is
- * a worse interruption than arming the button in place — but arming must not
+ * a worse interruption than arming the button in place, but arming must not
  * turn a double-click into a single destructive gesture, so the confirming
  * click has to arrive as its own deliberate click, after the label has had time
  * to be read.
@@ -88,7 +88,7 @@ export function confirmButton(
   });
   // A glyph button still carries the words, in a visually-hidden span rather
   // than an `aria-label`: `aria-live` announces a change to the region's TEXT,
-  // and an attribute rewritten in place is silent — which would lose the one
+  // and an attribute rewritten in place is silent, which would lose the one
   // state change worth announcing here. Same span the switch labels use.
   const name = glyph ? el('span', { class: 'visually-hidden' }) : node;
   if (glyph) node.append(icon(glyph), name);

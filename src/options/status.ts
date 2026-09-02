@@ -2,8 +2,8 @@
  * The rule-status pill's state, as a pure function of the last sync result.
  *
  * It lives outside `options.ts` because that module touches `document` at import
- * time, so the three-way mapping — failed, partial, healthy — is only testable
- * once it is separated from the node that renders it.
+ * time, so the three-way mapping of failed, partial and healthy is only
+ * testable once it is separated from the node that renders it.
  */
 
 import type { RuleStatus } from '../lib/types';
@@ -53,7 +53,7 @@ export function pillView({ status, busy, engineCount }: PillInput): PillView {
 
     // No keyword count in the headline: the number is not something anybody
     // acts on, and it moved every time a shortcut was toggled. The counts that
-    // matter — what was exempted, what Chrome refused — stay in the detail.
+    // matter, what was exempted, what Chrome refused, stay in the detail.
     const partial = Boolean(warning) || dropped > 0;
     return {
       tone: partial ? 'warn' : 'ok',
@@ -67,7 +67,7 @@ export function pillView({ status, busy, engineCount }: PillInput): PillView {
 }
 
 /** The one tone -> appearance seam. The capsule is gone: what the page renders
- *  is the `.status` component from design/components.css — a 6px dot and a line
+ *  is the `.status` component from design/components.css: a 6px dot and a line
  *  of text, with the neutral tone carrying no modifier at all. */
 export const PILL_CLASS: Record<PillTone, string> = {
   busy: 'status',
@@ -77,8 +77,8 @@ export const PILL_CLASS: Record<PillTone, string> = {
 };
 
 /**
- * Fields are read defensively because the options page outlives a worker update
- * — Chrome keeps this tab open across a reload of the extension — so a reply in
+ * Fields are read defensively because the options page outlives a worker update,
+ * Chrome keeps this tab open across a reload of the extension, so a reply in
  * an older shape, one with no `warning` at all, has to render as "nothing to
  * report" rather than as "undefined keywords".
  */

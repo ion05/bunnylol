@@ -22,7 +22,7 @@ import { loadState, saveOverrides } from './storage';
 
 /**
  * The picker, as a page the worker can open. `chrome.runtime.openOptionsPage()`
- * cannot carry a hash — it opens whatever `options_page` names — so the tab is
+ * cannot carry a hash, it opens whatever `options_page` names, so the tab is
  * opened by URL and that call is only the fallback.
  */
 export const WELCOME_PATH = 'options.html#welcome';
@@ -38,11 +38,11 @@ export const WELCOME_PATH = 'options.html#welcome';
  * A setup failure must not cost the profile its redirect rules, so the write is
  * the only thing inside the try: every reason still syncs afterwards. The
  * extension id changes on every load-unpacked, which would otherwise leave the
- * redirects pointing at a dead origin — that is why this listener exists at all.
+ * redirects pointing at a dead origin: that is why this listener exists at all.
  *
  * The picker opens only for a profile that has never answered it. `install`
  * also fires when the extension is removed and added back over storage that
- * survived, and an existing user is never shown the picker unasked — Settings
+ * survived, and an existing user is never shown the picker unasked: Settings
  * has a link to it for when they want it.
  */
 export async function onInstalled(details: chrome.runtime.InstalledDetails): Promise<void> {
@@ -57,8 +57,8 @@ export async function onInstalled(details: chrome.runtime.InstalledDetails): Pro
     unonboarded = details.reason === 'install';
   }
 
-  // `syncRules` can reject before its own try — it reads `chrome.runtime.id`
-  // first — and this runs from a fire-and-forget listener, where a rejection
+  // `syncRules` can reject before its own try, it reads `chrome.runtime.id`
+  // first, and this runs from a fire-and-forget listener, where a rejection
   // is an unhandled one and skips the picker below.
   await syncRules().catch((err) => console.error('[bunnylol] install-time sync failed', err));
 
@@ -69,7 +69,7 @@ export async function onInstalled(details: chrome.runtime.InstalledDetails): Pro
  * Turns the starter packs on for a profile that has never answered the picker.
  *
  * Guarded by `hasOnboarded`, because `reason === 'install'` also fires when the
- * extension is removed and added back over storage that survived — resetting a
+ * extension is removed and added back over storage that survived: resetting a
  * configured profile to the starter set is the one thing this must never do.
  * Answers whether it wrote, so the caller (and the tests) can tell the two
  * cases apart.

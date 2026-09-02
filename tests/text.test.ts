@@ -1,10 +1,10 @@
 /**
  * `src/lib/text.ts` is what the popup, the omnibox, the dispatch page, the
  * options page and the DNR sync now share instead of their private copies.
- * Those copies had already drifted in the small ways copies do — background.ts
+ * Those copies had already drifted in the small ways copies do: background.ts
  * and popup.ts carried different comments on the same `prettyUrl` body,
- * options.ts spelled `errorText` as an if/return where popup.ts used a ternary
- * — and five copies of the error stringifier is five places a fix has to land.
+ * options.ts spelled `errorText` as an if/return where popup.ts used a ternary,
+ * and five copies of the error stringifier is five places a fix has to land.
  * These tests pin the single definition each surface now inherits.
  *
  * Importing the module at all is half the test: it must load under vitest's

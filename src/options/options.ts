@@ -82,7 +82,7 @@ async function boot(): Promise<void> {
   void refreshStatus();
 }
 
-/** What `router.ts`'s hashchange listener runs after it updates the route —
+/** What `router.ts`'s hashchange listener runs after it updates the route:
  *  the `browseFilter` sync and the re-render used to live directly inside
  *  `boot()`'s `hashchange` handler. `go()`'s same-hash path deliberately gets
  *  `render` instead of this, exactly as the monolith did. */

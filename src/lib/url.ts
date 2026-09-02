@@ -3,7 +3,7 @@
  *
  * `resolve()` is chrome-free, so meta commands come back as extension-relative
  * paths like `options.html#help`. The omnibox and the dispatch page both have
- * to expand them, and they must agree — hence a shared module rather than a
+ * to expand them, and they must agree: hence a shared module rather than a
  * copy in each. (go.ts cannot import this from `background.ts`: that module is
  * the service worker entry point and registering its listeners as a side effect
  * of opening a tab would be wrong.)

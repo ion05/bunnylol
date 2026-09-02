@@ -1,7 +1,7 @@
 /**
  * BunnyLol must never intercept its own output.
  *
- * Several commands resolve to a search on an engine we intercept — `weather` IS
+ * Several commands resolve to a search on an engine we intercept: `weather` IS
  * a google search, and so are `g`, `gimg`, `gvid`, `gbooks`, `ddg`, `bing`, the
  * `gsite` handler and the Gemini AI template. Navigating there unmarked re-enters
  * our own redirect rule, which hands the url straight back to go.html: `weather`
@@ -178,7 +178,7 @@ describe.each(RULE_SETS)('the rules %s produces', (_label, RULES) => {
       (query) => {
         const { url } = resolve(query, COMMANDS, SETTINGS);
         expect(claim(url)).not.toBe('redirect');
-        // The unmarked url is what the redirect rules were built to catch — that
+        // The unmarked url is what the redirect rules were built to catch: that
         // is precisely why the resolver marks it.
         expect(claim(stripPassthrough(url))).toBe('redirect');
       },
@@ -188,7 +188,7 @@ describe.each(RULE_SETS)('the rules %s produces', (_label, RULES) => {
   /**
    * The worst case is a command whose destination is itself a search on an
    * engine we intercept, because an unmarked one is redirected to go.html,
-   * resolved to the same url and redirected again — a navigation loop the user
+   * resolved to the same url and redirected again: a navigation loop the user
    * cannot escape without closing the tab. `weather` used to be exactly that
    * (its `q` value literally started with its own keyword); it has since been
    * removed, so this derives the cases from the registry instead of naming one,

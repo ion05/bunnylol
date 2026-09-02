@@ -10,7 +10,7 @@
  * Everything coming out of storage or off disk is treated as hostile: a
  * half-finished write, a hand-edited export or a blob from a future build must
  * degrade to defaults rather than throw on a navigation path. `importJson` is
- * the one exception — it throws, because a human is standing in the options
+ * the one exception: it throws, because a human is standing in the options
  * page waiting to read the message.
  */
 
@@ -59,7 +59,7 @@ const EXPORT_VERSION = 2;
  * Ids this build actually ships, used to prune `deleted`: an entry naming a
  * command that no longer exists is a shortcut nobody can restore, and keeping
  * it would let one removed in v1.0 come back as a tombstone forever. `edits`
- * for a vanished id are left alone — they are inert and cost nothing.
+ * for a vanished id are left alone: they are inert and cost nothing.
  */
 const SHIPPED_IDS = new Set(BUILTIN_COMMANDS.map(shortcutId));
 
@@ -117,7 +117,7 @@ export function exportJson(state: StoredState): string {
 
 /**
  * The result of reading an import file. `settings` is null when the file had no
- * "settings" key at all — a shortcuts-only snippet must not be mistaken for
+ * "settings" key at all: a shortcuts-only snippet must not be mistaken for
  * "reset every setting to its default".
  */
 export interface ImportedState {
@@ -145,7 +145,7 @@ export function applyImport(imported: ImportedState, current: StoredState): Stor
  */
 export function importJson(text: string): ImportedState {
   if (typeof text !== 'string' || !text.trim()) {
-    throw new Error('Nothing to import — the file is empty.');
+    throw new Error('Nothing to import. The file is empty.');
   }
 
   let parsed: unknown;
@@ -180,7 +180,7 @@ export function importJson(text: string): ImportedState {
   // page imports without hand-editing it into a full state file.
   const overrides = asRecord(root.overrides) ?? (looksLikeOverrides(root) ? root : null);
   if (!overrides && root.settings === undefined) {
-    throw new Error('That file has no BunnyLol data in it — expected "overrides" or "settings".');
+    throw new Error('That file has no BunnyLol data in it. Expected "overrides" or "settings".');
   }
 
   return {
@@ -197,8 +197,8 @@ export function importJson(text: string): ImportedState {
  * it does not break one shortcut, it breaks every query that matches none,
  * because `toNavigableUrl` reads a scheme-less string as an extension-relative
  * path. Silently swapping it for the default would hide the user's typo, so
- * this is the one place settings refuse instead of degrade. Everything else —
- * an unknown engine id, a negative account index — is still normalized away.
+ * this is the one place settings refuse instead of degrade. Everything else is
+ * still normalized away: an unknown engine id, a negative account index.
  */
 function parseSettings(source: Record<string, unknown>): Settings {
   // Absent or blank means "not configured" and keeps the shipped default; only
@@ -230,7 +230,7 @@ export function onStateChanged(cb: (s: StoredState) => void): void {
     if (area !== 'local') return;
     const change = changes[STORAGE_KEY];
     // `newValue` is undefined when the key was cleared, which normalizes to
-    // defaults — exactly what a listener should render at that point.
+    // defaults: exactly what a listener should render at that point.
     if (change) cb(normalizeState(change.newValue));
   });
 }
@@ -271,7 +271,7 @@ function normalizeSettings(raw: unknown): Settings {
 
 /**
  * The exemption list. Missing means "never configured" and gets the shipped
- * default, which is empty — every registered keyword is intercepted until the
+ * default, which is empty: every registered keyword is intercepted until the
  * user exempts one by name.
  */
 function normalizeStopList(raw: unknown): string[] {
@@ -281,7 +281,7 @@ function normalizeStopList(raw: unknown): string[] {
 
 function normalizeEngines(raw: unknown): SearchEngineId[] {
   // Missing means "never configured" and gets the defaults; an empty array is a
-  // real choice — the user turned interception off entirely.
+  // real choice: the user turned interception off entirely.
   if (!Array.isArray(raw)) return [...DEFAULT_SETTINGS.interceptEngines];
   const ids: SearchEngineId[] = [];
   for (const entry of raw) {
@@ -379,7 +379,7 @@ function normalizeIdList(raw: unknown): string[] {
 
 /**
  * The edit layer, field by field. Never reads `handler`, `provider`, `builtin`
- * or `id` — an edit that names them is not a shortcut definition, it is an
+ * or `id`: an edit that names them is not a shortcut definition, it is an
  * attempt to become one (invariant 16).
  *
  * An entry that ends up with no fields is dropped entirely, so "reset to
@@ -389,7 +389,7 @@ function normalizeIdList(raw: unknown): string[] {
 function normalizeEdits(raw: unknown, known: Set<string>): Record<string, ShortcutEdit> {
   const source = asRecord(raw);
   // Null-prototype: see `parseEdits`. A stored blob is untrusted for the same
-  // reason a file is — it is where an import file ends up.
+  // reason a file is: it is where an import file ends up.
   const out: Record<string, ShortcutEdit> = Object.create(null);
   if (!source) return out;
   for (const [key, value] of Object.entries(source)) {
@@ -434,7 +434,7 @@ function normalizeEdit(source: Record<string, unknown>, known: Set<string>): Sho
 
   // ASYMMETRIC with `normalizeCommand` on purpose: an unknown id is DROPPED
   // here rather than coerced to `FALLBACK_SECTION`. A custom command has no
-  // other category to fall back to, but a shipped one does — its own — and
+  // other category to fall back to, but a shipped one does, its own, and
   // relocating it to "My shortcuts" because a section vanished would move a
   // shortcut the user never touched.
   const category = trimmed(source.category).toLowerCase();
@@ -514,7 +514,7 @@ interface CustomEntry {
  *
  * Every claim is reserved before anything is minted. Minting in one forward
  * pass would let an id-less entry take the id a later entry claims and push the
- * claim's owner onto a different one — the same silent adoption of another
+ * claim's owner onto a different one: the same silent adoption of another
  * shortcut's override entries as a claimed shipped id, arriving from a sibling
  * instead of from the registry, and turning on nothing but the order of the
  * file. Between two entries claiming the same id the first still wins; the
@@ -540,7 +540,7 @@ function assignCustomIds(entries: CustomEntry[], strict: boolean): Command[] {
  * The id an entry asks for, or `''` when it asks for nothing usable.
  *
  * A claim is honoured only when it is a USER id. An id without the `u:` prefix
- * names a shipped shortcut — this build's or a later one's — and a command
+ * names a shipped shortcut, this build's or a later one's, and a command
  * wearing it would inherit that shortcut's override entries, which is the same
  * threat as the `builtin: true` claim `normalizeCommand` strips. The lenient
  * path mints a fresh id over it; the import parser refuses the file, because a
@@ -562,7 +562,7 @@ function claimedId({ cmd, raw }: CustomEntry, strict: boolean): string {
     throw new Error(
       written.toLowerCase().startsWith(USER_ID_PREFIX)
         ? `Shortcut "${cmd.keys[0]}" has an "id" BunnyLol cannot use: "${written}" contains whitespace or is longer than ${MAX_ID_LENGTH} characters. Remove its "id" field.`
-        : `Shortcut "${cmd.keys[0]}" claims the id "${written}", which is reserved for shipped shortcuts — your own shortcuts have ids starting with "${USER_ID_PREFIX}". Remove its "id" field.`,
+        : `Shortcut "${cmd.keys[0]}" claims the id "${written}", which is reserved for shipped shortcuts. Your own shortcuts have ids starting with "${USER_ID_PREFIX}". Remove its "id" field.`,
     );
   }
   return '';
@@ -681,7 +681,7 @@ function parseOverrides(source: Record<string, unknown> | null): Overrides {
 
 /**
  * Strict counterpart to `normalizeEdits`. Only the fields whose silence is
- * fatal are refused — a rebinding to `"foo bar"` never matches anything, and a
+ * fatal are refused: a rebinding to `"foo bar"` never matches anything, and a
  * destination that is not a URL cannot be opened. The rest degrade exactly as
  * they do on the stored path, `category` included (see `parseCategory`).
  */
@@ -700,7 +700,7 @@ function parseEdits(raw: unknown, known: Set<string>): Record<string, ShortcutEd
     const id = normalizeId(key);
     if (!id) {
       throw new Error(
-        `"edits" has a shortcut id BunnyLol cannot use ("${key.trim()}") — an id has no spaces and is at most ${MAX_ID_LENGTH} characters.`,
+        `"edits" has a shortcut id BunnyLol cannot use ("${key.trim()}"). An id has no spaces and is at most ${MAX_ID_LENGTH} characters.`,
       );
     }
     // Edits are for shipped shortcuts; a `u:` entry is dropped rather than
@@ -741,7 +741,7 @@ function parseEdits(raw: unknown, known: Set<string>): Record<string, ShortcutEd
  * is not refused for it.
  *
  * Refusing it was tried and is wrong. Every v1.0.0 export whose custom shortcut
- * was filed under `media` — a category this build no longer ships — would be
+ * was filed under `media`, a category this build no longer ships, would be
  * unimportable, and the fix asked of the user is to hand-edit JSON they did not
  * write. A section a file does not declare costs the user a shortcut in the
  * wrong group, which the options page shows them and lets them fix in a click.
@@ -774,7 +774,7 @@ function parseSections(raw: unknown): Section[] {
   // them would land back in "My shortcuts" with no explanation.
   if (raw.length > MAX_SECTIONS) {
     throw new Error(
-      `"sections" has ${raw.length} entries — BunnyLol keeps at most ${MAX_SECTIONS}.`,
+      `"sections" has ${raw.length} entries. BunnyLol keeps at most ${MAX_SECTIONS}.`,
     );
   }
   for (const entry of raw) {
@@ -794,7 +794,7 @@ function parseSections(raw: unknown): Section[] {
  * import and its result is folded into `edits` (see `EXPORT_VERSION`).
  *
  * A rebinding to `"foo bar"` is the same silent death as a custom command with
- * a space in its keyword — the user rebinds `gh`, sees the file import cleanly,
+ * a space in its keyword: the user rebinds `gh`, sees the file import cleanly,
  * and their keyword answers to nothing.
  */
 function parseKeyOverrides(raw: unknown): Record<string, string[]> {
@@ -846,7 +846,7 @@ function parseCustomCommand(raw: unknown, index: number, known: Set<string>): Co
 
   const keys = parseAliasList(Array.isArray(source.keys) ? source.keys : [], label);
   if (keys.length === 0) {
-    throw new Error(`${label} has no keyword — every shortcut needs a "keys" list of strings.`);
+    throw new Error(`${label} has no keyword. Every shortcut needs a "keys" list of strings.`);
   }
   if (!trimmed(source.url)) {
     throw new Error(`Shortcut "${keys[0]}" is missing its "url".`);
@@ -872,8 +872,8 @@ function parseCustomCommand(raw: unknown, index: number, known: Set<string>): Co
   parseCategory(source.category, `The "category" of shortcut "${keys[0]}"`);
 
   const cmd = normalizeCommand(source, known);
-  // Unreachable while the checks above mirror `normalizeCommand`'s two bail-outs
-  // — kept so the strict and lenient paths cannot silently drift apart into an
+  // Unreachable while the checks above mirror `normalizeCommand`'s two bail-outs,
+  // kept so the strict and lenient paths cannot silently drift apart into an
   // import that returns nothing and says nothing.
   if (!cmd) throw new Error(`Shortcut "${keys[0]}" points at a URL BunnyLol will not open.`);
   return cmd;

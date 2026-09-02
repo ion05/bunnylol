@@ -1,7 +1,7 @@
 /**
  * The validation boundary, tested against the contracts it exists to keep: the
  * resolver's "a keyword is one word", the dispatch page's "a destination is a
- * URL we can navigate to", and — for sections — "an id is one canonical token"
+ * URL we can navigate to", and, for sections, "an id is one canonical token"
  * and "a label is display text a human can actually see". The first two used to
  * be enforced by an emptiness check plus a five-scheme blocklist, which let
  * through an alias that can never match and a `defaultEngine` that is not a URL
@@ -88,7 +88,7 @@ describe('validateAlias', () => {
 
   /**
    * THE POINT OF THIS FUNCTION. `resolve()` splits the query at the first
-   * whitespace, so an alias containing one is not merely awkward — it cannot be
+   * whitespace, so an alias containing one is not merely awkward: it cannot be
    * typed on any surface, and storing it hides a dead entry in the user's list.
    */
   it.each(['foo bar', 'foo\tbar', 'foo\nbar', 'a b c'])('rejects %j, which can never match', (raw) => {
@@ -142,7 +142,7 @@ describe('validateUrlTemplate', () => {
   /**
    * The failure the blocklist could not see. `toNavigableUrl` treats anything
    * without a scheme as an extension-relative path, so an unparseable
-   * `defaultEngine` does not break one shortcut — it sends every unmatched
+   * `defaultEngine` does not break one shortcut: it sends every unmatched
    * query to a missing extension resource.
    */
   it('rejects prose, which used to be accepted as a search engine', () => {
@@ -215,8 +215,8 @@ describe('validateSectionId', () => {
    * The permissive half of the contract, and the one that is easy to "fix" into
    * a bug: a section whose id IS a builtin category id is not a collision, it
    * is how a shipped category gets renamed. Derived from the registry, not from
-   * one name, so a new category that is not a valid section id — and therefore
-   * permanently un-renamable — fails here instead of shipping.
+   * one name, so a new category that is not a valid section id, and therefore
+   * permanently un-renamable, fails here instead of shipping.
    */
   it.each(CATEGORIES)(
     'accepts the shipped category id %s, because that is how a section is renamed',
@@ -336,8 +336,8 @@ describe('validateSectionLabel', () => {
 
   /**
    * The half `\p{Cc}` misses. U+2028/U+2029 are Zl/Zp and render as a forced
-   * break inside the heading — the very "contains a line break" case the reason
-   * string claims — and `trim()` only strips them at the edges. The zero-width
+   * break inside the heading, the very "contains a line break" case the reason
+   * string claims, and `trim()` only strips them at the edges. The zero-width
    * spaces, the BOM and the bidi overrides are Cf and are never trimmed at all.
    */
   it.each([
@@ -353,7 +353,7 @@ describe('validateSectionLabel', () => {
 
   /**
    * A label the user cannot see is a section they cannot find or rename. The
-   * joiners are the case `trim()` cannot catch — they are not whitespace, and
+   * joiners are the case `trim()` cannot catch: they are not whitespace, and
    * they are the invisibles `UNPRINTABLE` deliberately keeps. The braille
    * blank, the Hangul fillers and the lone combining mark are not Cf at all, so
    * the unprintable class never sees them either. The no-break space and the
@@ -384,7 +384,7 @@ describe('validateSectionLabel', () => {
 
   /**
    * The other exempt joiner, and the reason the exemption is a pair rather than
-   * one character: U+200C is not decoration, it is required orthography — this
+   * one character: U+200C is not decoration, it is required orthography: this
    * is Persian for "goes", which is misspelt without it.
    */
   it('accepts a zero-width non-joiner inside a word', () => {

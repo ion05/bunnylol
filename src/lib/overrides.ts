@@ -2,7 +2,7 @@
  * Shortcut identity and the edit algebra: the one answer to "which shortcut is
  * this?", and the one place that says what an override may change about it.
  *
- * Pure — it imports the contract and the validation boundary and nothing else,
+ * Pure: it imports the contract and the validation boundary and nothing else,
  * so `resolve.ts`, `storage.ts` and the options page can all depend on it
  * without a cycle.
  *
@@ -10,7 +10,7 @@
  * kind of thing, and both need a name the override maps can be keyed by. Aliases
  * cannot be that name, because rebinding `gh` to `hub` would otherwise orphan
  * every entry that referred to it. So a shipped command is identified by its
- * SHIPPED `keys[0]` — the registry is code, so that string never moves — and a
+ * SHIPPED `keys[0]`. The registry is code, so that string never moves. A
  * user-created one gets a generated `u:`-prefixed id that survives key edits.
  *
  * On top of that identity sits the algebra: `applyEdit` folds a stored
@@ -39,7 +39,7 @@ import {
 /**
  * Marks an id as belonging to a user-created shortcut, and is what makes
  * minting collision-free: only minting can put a shortcut in this namespace.
- * `shortcutId` enforces that — an alias may legally contain a `:`
+ * `shortcutId` enforces that: an alias may legally contain a `:`
  * (`validateAlias` does not reject one), so the keys fallback refuses to adopt
  * a `u:`-looking keyword as an id. The only way past it is a builtin that
  * authors `id` itself, which `commands.ts` never does and the registry sweep in
@@ -56,7 +56,7 @@ export const MAX_ID_LENGTH = MAX_KEYWORD_LENGTH;
 
 /**
  * Everything a minted slug may keep; anything else collapses to `-`. Narrower
- * than `SAFE_KEYWORD` on purpose — dashes only, so a minted id is also a
+ * than `SAFE_KEYWORD` on purpose: dashes only, so a minted id is also a
  * `validateSectionId`-shaped slug once the prefix is dropped, and every
  * generated identity in the extension is written one way.
  */
@@ -71,7 +71,7 @@ const FALLBACK_SLUG = 'shortcut';
 
 /**
  * Reads an id off untrusted data: trimmed and lowercased, or `''` when the
- * value could not be an id at all — a non-string, one with whitespace in it,
+ * value could not be an id at all: a non-string, one with whitespace in it,
  * one past the length cap. A hand-edited file cannot key an override map with
  * something the resolver could never look up again.
  *
@@ -89,14 +89,14 @@ export function normalizeId(raw: unknown): string {
 
 /**
  * The one answer to "which shortcut is this?". Falls back to the canonical
- * alias so a command that predates ids — every builtin, and every custom
- * command in a v1 blob — still has an identity without a migration.
+ * alias, so a command that predates ids still has an identity without a
+ * migration. That covers every builtin, and every custom command in a v1 blob.
  */
 export function shortcutId(cmd: Command): string {
   const id = normalizeId(cmd?.id);
   if (id) return id;
   // A keyword may contain a `:`, so a command keyed `u:tix` would otherwise
-  // fall back into the namespace only minting is allowed to fill — and share an
+  // fall back into the namespace only minting is allowed to fill, and share an
   // id with whatever storage did mint for it. It has no identity until storage
   // gives it one, and saying so is better than inventing a colliding answer.
   const key = normalizeId(cmd?.keys?.[0]);
@@ -171,7 +171,7 @@ const EDITABLE_FIELDS = [
  * Folds a stored edit onto a shipped command, without mutating either.
  *
  * SECURITY: `handler`, `provider`, `builtin` and `id` are never read from
- * `edit` — the fields are copied one at a time instead of spreading, so an
+ * `edit`: the fields are copied one at a time instead of spreading, so an
  * import file that invents them changes nothing (invariant 16). Do not add
  * `next.handler = cmd.handler` "for clarity": it would put an
  * `undefined`-valued key on every merged command.
@@ -192,7 +192,7 @@ export function applyEdit(
   const next: Command = { ...cmd };
 
   const keys = aliasList(edit.keys);
-  // An empty list means "no override", not "no aliases" — otherwise a
+  // An empty list means "no override", not "no aliases": otherwise a
   // half-finished rebind in the options page, or a file whose replacements are
   // all unusable, orphans the command entirely.
   if (keys.length > 0) next.keys = keys;
@@ -236,9 +236,9 @@ export function applyEdit(
  * produce `next`. `null` when nothing differs, so "reset to shipped" is
  * representable as the absence of an entry rather than as an empty object.
  *
- * A change `applyEdit` could not carry back — a blanked name, a url that is not
- * a URL — is reported as no change, because storing it would produce a diff
- * that does not round trip.
+ * A change `applyEdit` could not carry back, such as a blanked name or a url
+ * that is not a URL, is reported as no change, because storing it would produce
+ * a diff that does not round trip.
  */
 export function diffEdit(
   shipped: Command,
@@ -261,7 +261,7 @@ export function diffEdit(
 
   // `null` and "absent" are different instructions: absent inherits the shipped
   // searchUrl, null says the user removed it. So the two ways a field can end
-  // up unset are NOT the same answer here — a blank one is a removal, while one
+  // up unset are NOT the same answer here: a blank one is a removal, while one
   // `applyEdit` would refuse to apply is no change at all, and recording it as
   // `null` would delete a searchUrl the user never touched.
   const searchUrl = text(next?.searchUrl);
@@ -316,7 +316,7 @@ export function editedFields(
  * one place and be read from the other.
  *
  * Exported from here rather than hidden in storage so the lenient path and the
- * strict import parser fold identically — a v1 export file and a v1 stored blob
+ * strict import parser fold identically: a v1 export file and a v1 stored blob
  * are the same migration.
  */
 export function foldLegacyKeyOverrides(
@@ -329,7 +329,7 @@ export function foldLegacyKeyOverrides(
   for (const [key, list] of Object.entries(legacy ?? {})) {
     const id = normalizeId(key);
     const keys = aliasList(list);
-    // The legacy map predates user ids, so a `u:` key in one is a hand edit —
+    // The legacy map predates user ids, so a `u:` key in one is a hand edit,
     // and edits are for shipped shortcuts (a custom command is edited in
     // place). Folding it would reintroduce exactly the entry `normalizeEdits`
     // drops.
@@ -342,7 +342,7 @@ export function foldLegacyKeyOverrides(
   return out;
 }
 
-/** The shipped commands the user deleted, in registry order — what "Restore
+/** The shipped commands the user deleted, in registry order: what "Restore
  *  shipped shortcuts" offers. */
 export function restorableShipped(builtins: Command[], overrides: Overrides): Command[] {
   const deleted = new Set(
@@ -384,8 +384,8 @@ export function knownCategoryIds(sections: Section[] | undefined): Set<string> {
 }
 
 /**
- * What a section id is called on screen. A `sections` entry wins — that is how
- * a shipped group gets renamed — then the shipped label, then the id itself, so
+ * What a section id is called on screen. A `sections` entry wins, that is how
+ * a shipped group gets renamed, then the shipped label, then the id itself, so
  * a group whose section entry vanished still has a heading instead of an empty
  * one.
  */
@@ -416,7 +416,7 @@ export function isShippedSection(id: string): boolean {
  * The user's own shortcuts lead: they are the reason this page exists, and they
  * are the ones that need editing. Then the shipped groups in registry order,
  * then the user's own sections in the order they created them, and last the
- * strays — an id some command still names that no section declares, which would
+ * strays: an id some command still names that no section declares, which would
  * otherwise be a group of shortcuts with nowhere to be drawn.
  */
 export function sectionOrder(sections: Section[] | undefined, commands: Command[]): string[] {
@@ -460,7 +460,7 @@ export function sectionOptions(sections: Section[] | undefined, commands: Comman
 }
 
 /**
- * The ids of the shortcuts filed under a section right now — what "delete this
+ * The ids of the shortcuts filed under a section right now: what "delete this
  * section" has to warn about.
  *
  * Edits applied, because a shipped command the user moved is in the section
@@ -489,7 +489,7 @@ export function sectionMembers(id: string, builtins: Command[], overrides: Overr
 }
 
 /**
- * A section id minted from its label, deterministically — same label and same
+ * A section id minted from its label, deterministically: same label and same
  * `taken` set, same id. `sec-`-prefixed so it can never land on a builtin
  * category id: an entry whose id is `dev` means "the shipped Developer group,
  * renamed", and a user's new section called "Dev" must not become that.
@@ -508,7 +508,7 @@ export function newSectionId(label: string, taken: Set<string>): string {
  * thing stays inside `MAX_SECTION_ID_LENGTH`.
  *
  * Exported because the import merge suffixes ids too, and an id that overshoots
- * the cap is one `validateSectionId` rejects and the next save silently drops —
+ * the cap is one `validateSectionId` rejects and the next save silently drops:
  * taking every shortcut filed under it back to "My shortcuts".
  */
 export function fitSectionId(base: string, suffix = '', prefix = ''): string {
@@ -520,7 +520,7 @@ export function fitSectionId(base: string, suffix = '', prefix = ''): string {
 }
 
 /**
- * Whether a section already goes by this name, case-insensitively — two groups
+ * Whether a section already goes by this name, case-insensitively, two groups
  * with one heading between them is a list the user cannot navigate.
  *
  * Asked of the labels in EFFECT, not of `CATEGORY_LABELS` as shipped: a user
@@ -530,7 +530,7 @@ export function fitSectionId(base: string, suffix = '', prefix = ''): string {
  * `selfId` names the section being renamed, and turns the question into the one
  * a rename actually has to ask: does the list this rename WOULD PRODUCE show
  * one label twice? That is the only formulation that answers all three acts
- * with one rule — a section may keep its own name, and restoring a shipped
+ * with one rule: a section may keep its own name, and restoring a shipped
  * group's default name drops its entry so the id falls back to the shipped
  * label, which is free unless some other section has since taken it. Asking
  * instead "is this label in use, ignoring me" gets the restore case wrong in
@@ -569,14 +569,14 @@ export function sectionLabelTaken(
 /**
  * Adds a user section and says what it was called, so the caller can file the
  * shortcut it was creating it for. `id` is `''` when the label was unusable or
- * the profile is at `MAX_SECTIONS` — refused rather than added and silently
+ * the profile is at `MAX_SECTIONS`: refused rather than added and silently
  * dropped by the storage boundary on the next save.
  */
 export function addSection(overrides: Overrides, label: string): { overrides: Overrides; id: string } {
   const check = validateSectionLabel(label);
   const sections = overrides?.sections ?? [];
   if (!check.ok || sections.length >= MAX_SECTIONS) return { overrides, id: '' };
-  // Seeded with the builtin ids too, so a mint can never produce one — belt and
+  // Seeded with the builtin ids too, so a mint can never produce one: belt and
   // braces behind `SECTION_ID_PREFIX`.
   const id = newSectionId(check.label, knownCategoryIds(sections));
   return {
@@ -595,7 +595,7 @@ export function addSection(overrides: Overrides, label: string): { overrides: Ov
  * Refuses past `MAX_SECTIONS` by returning its input UNCHANGED, for the same
  * reason `addSection` does: renaming a shipped group that has no entry yet
  * APPENDS one, and an appended entry over the cap is one the storage boundary
- * drops on the next save — leaving the heading back under its shipped name with
+ * drops on the next save: leaving the heading back under its shipped name with
  * nothing on screen to say why.
  */
 export function renameSection(overrides: Overrides, id: string, label: string): Overrides {
@@ -615,7 +615,7 @@ export function renameSection(overrides: Overrides, id: string, label: string): 
 }
 
 /**
- * The section list a rename produces, without the surrounding `Overrides` —
+ * The section list a rename produces, without the surrounding `Overrides`:
  * shared with `sectionLabelTaken` so the clash check is asked of exactly the
  * list the save would write, and cannot drift from it.
  */
@@ -666,12 +666,12 @@ export function deleteSection(overrides: Overrides, id: string): Overrides {
 }
 
 /**
- * Reads a section id off untrusted data. Shape only — `validateSectionId` is
+ * Reads a section id off untrusted data. Shape only: `validateSectionId` is
  * the boundary that decides what may be STORED; this is how what is already
  * stored gets compared.
  *
- * Exported because the options page keys things by section id too — the folded
- * groups in `options/model/collapse.ts`, the rows in the Sections card — and a
+ * Exported because the options page keys things by section id too, the folded
+ * groups in `options/model/collapse.ts`, the rows in the Sections card, and a
  * private copy in each was already three spellings of one rule.
  */
 export function sectionKey(raw: unknown): string {

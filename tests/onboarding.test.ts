@@ -26,7 +26,7 @@ import { shortcutId } from '../src/lib/overrides';
 import { CATEGORIES, DEFAULT_OVERRIDES } from '../src/lib/types';
 import type { BuiltinCommand, Overrides } from '../src/lib/types';
 
-/** The ids the registry ships in a category — the answer a pick has to match. */
+/** The ids the registry ships in a category: the answer a pick has to match. */
 function idsIn(category: string): string[] {
   return BUILTIN_COMMANDS.filter((cmd) => cmd.category === category).map(shortcutId);
 }
@@ -122,8 +122,8 @@ describe('applyCategoryPick', () => {
 
   it('re-pick re-enables a hand-disabled shortcut in a picked pack', () => {
     // Documented and accepted: the welcome page says "these are the packs I
-    // want", and it has to mean something. The alternative — remembering a
-    // hand-toggle through a re-pick — makes the picker a no-op for anyone who
+    // want", and it has to mean something. The alternative, remembering a
+    // hand-toggle through a re-pick, makes the picker a no-op for anyone who
     // has ever touched a switch.
     const handOff: Overrides = { ...DEFAULT_OVERRIDES, disabled: ['gh'] };
     const next = applyCategoryPick(BUILTIN_COMMANDS, ['dev'], handOff);

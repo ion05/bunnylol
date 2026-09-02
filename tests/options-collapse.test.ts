@@ -3,7 +3,7 @@
  *
  * Importing the module at all is half the test: it must load under vitest's
  * `environment: 'node'`, which is only true if nothing touches `localStorage`
- * or `document` at module scope — the store is injected, and `safeLocalStorage`
+ * or `document` at module scope: the store is injected, and `safeLocalStorage`
  * is a function the page calls rather than a value the module computes.
  */
 
@@ -160,7 +160,7 @@ describe('createCollapseState', () => {
 
   it('prune forgets a fold whose group is no longer drawn', () => {
     // The bug: a section id is minted from its label, so deleting `Client work`
-    // and making another one by the same name mints `sec-client-work` again —
+    // and making another one by the same name mints `sec-client-work` again,
     // and the first one's fold lands on the second as a group the user never
     // folded.
     const store = fakeStore('["sec-client-work","dev"]');

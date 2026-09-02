@@ -35,7 +35,7 @@ export function ruleBodies(css: string): string[] {
 /**
  * Every rule as a selector list plus its body. `[^{}]` never crosses a brace, so
  * a capture is exactly the text between the previous rule's `}` and this rule's
- * `{` — which is the selector, whether or not it sits inside an `@media` block.
+ * `{`, which is the selector, whether or not it sits inside an `@media` block.
  */
 export function rules(css: string): { selector: string; body: string }[] {
   return [...stripComments(css).matchAll(/([^{}]*)\{([^{}]*)\}/g)].map((m) => ({

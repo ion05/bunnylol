@@ -34,7 +34,7 @@ jobs:
       # produces are a silent drift no other step can see.
       - run: git diff --exit-code -- public/icons store
 
-      # The packer has no test — it writes a binary nothing else reads — so the
+      # The packer has no test, it writes a binary nothing else reads, so the
       # only cheap guard is that it still runs over a real build. `release/` is
       # gitignored, so this cannot dirty the diff above. Called directly rather
       # than through `pnpm package`, which would rebuild `dist/` a second time.

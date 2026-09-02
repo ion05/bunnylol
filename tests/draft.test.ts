@@ -63,7 +63,7 @@ describe('parseKeys', () => {
     expect(parseKeys(' GH ,gh')).toEqual({ ok: true, keys: ['gh'] });
   });
 
-  it('accepts an empty list — the form reports "no keyword" itself', () => {
+  it('accepts an empty list: the form reports "no keyword" itself', () => {
     expect(parseKeys('')).toEqual({ ok: true, keys: [] });
     expect(parseKeys('  ,  ')).toEqual({ ok: true, keys: [] });
   });
@@ -280,7 +280,7 @@ describe('buildCommand', () => {
 
   it('never lets a draft set handler, provider, builtin or id (invariant 16)', () => {
     // The form shows none of these, so the only way one reaches a draft is a
-    // hand-written object — exactly what an import is.
+    // hand-written object: exactly what an import is.
     const hostile = {
       ...draftFrom(github),
       handler: 'ai',
@@ -349,7 +349,7 @@ describe('a Save that changes nothing changes nothing', () => {
   );
 
   it('keeps a meta shortcut’s relative destination relative', () => {
-    // `options.html#help` is not scheme-less by accident — `resolve()` stays
+    // `options.html#help` is not scheme-less by accident: `resolve()` stays
     // chrome-free and the dispatch page absolutises it. `https://options.html`
     // is a host that does not exist, and it used to be stored by a Save that
     // touched nothing.

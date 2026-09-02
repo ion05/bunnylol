@@ -2,10 +2,10 @@
  * The "New shortcut" / "Edit" route: ONE form for every shortcut, shipped or
  * user-created, backed by `model/form.ts`'s pure validation and
  * `lib/draft.ts`'s command builder. There is no second editor and no "built in"
- * qualifier anywhere on this page — the whole point is that there is no
+ * qualifier anywhere on this page: the whole point is that there is no
  * difference.
  *
- * The `textContent` rule `views/browse.ts` documents applies here too — this
+ * The `textContent` rule `views/browse.ts` documents applies here too: this
  * view echoes the draft back in the live preview.
  */
 
@@ -57,7 +57,7 @@ import {
 } from '../store';
 
 /** What the form is editing: nothing (`#new`), a shipped shortcut, or one of
- *  the user's own. `base` is the command an edit is an edit OF — the source of
+ *  the user's own. `base` is the command an edit is an edit OF: the source of
  *  `handler`, `provider` and `builtin`, none of which the form shows. */
 export interface FormTarget {
   id: string;
@@ -73,7 +73,7 @@ const NO_TARGET: FormTarget = { id: '', shipped: false, base: null };
  * reads as a keyword otherwise, so both passes run either way.
  *
  * Which pass runs FIRST is not cosmetic. `?key=gh` names whatever `gh` opens
- * now, and a user's own `gh` shadows the builtin (invariant 10) — so the alias
+ * now, and a user's own `gh` shadows the builtin (invariant 10), so the alias
  * pass leads there, and the id pass leads for `?id=`. `normalizeId` is the same
  * reader `mergeCommands` uses, so a hand-typed `?id=U:GH` finds its row.
  */
@@ -100,8 +100,8 @@ export function renderForm(): HTMLElement {
   const route = getRoute();
   const entries = browseEntries(BUILTIN_COMMANDS, getState().overrides);
   const entry = route.name === 'edit' ? findEntry(entries, route.params) : undefined;
-  // An `#edit` link to something that is not here any more — a deleted shipped
-  // shortcut, a stale bookmark — used to render a blank New form, which offers
+  // An `#edit` link to something that is not here any more, a deleted shipped
+  // shortcut, a stale bookmark, used to render a blank New form, which offers
   // to create a shortcut nobody asked for under a heading that says Edit.
   if (route.name === 'edit' && !entry) {
     setNotice({
@@ -156,8 +156,8 @@ export function renderForm(): HTMLElement {
     sections,
     entries.map((candidate) => candidate.cmd),
   ).map((section) => ({ value: section.id, label: section.label }));
-  // A `<select>` cannot be set to a value it does not offer — it silently keeps
-  // the first option — so a category no other shortcut is currently filed under
+  // A `<select>` cannot be set to a value it does not offer: it silently keeps
+  // the first option, so a category no other shortcut is currently filed under
   // is added rather than dropped. Both the current one and the one Reset would
   // put back, because either can be the last member of its group.
   for (const id of [draft.category, baseline?.category ?? '']) {
@@ -226,7 +226,7 @@ export function renderForm(): HTMLElement {
   for (const name of FORM_FIELDS) {
     // `category` is deliberately not in this loop. Its only failure is the
     // name of the section "New section…" reveals, and choosing that option is
-    // not yet an answer to it — the blank-name error belongs to the row below,
+    // not yet an answer to it: the blank-name error belongs to the row below,
     // which marks the field touched as soon as it is typed into.
     if (name === 'category') continue;
     inputs[name].addEventListener('input', () => touched.add(name));
@@ -319,8 +319,8 @@ export function renderForm(): HTMLElement {
             el('p', {
               class: 'panel-sub',
               text: entry
-                ? 'The same form for every shortcut, whether it shipped with BunnyLol or you made it. The preview below is the real resolver — what it shows is exactly where the address bar will land.'
-                : 'Type a keyword and a destination. The preview below is the real resolver — what it shows is exactly where the address bar will land.',
+                ? 'The same form for every shortcut, whether it shipped with BunnyLol or you made it. The preview below is the real resolver, so what it shows is exactly where the address bar will land.'
+                : 'Type a keyword and a destination. The preview below is the real resolver, so what it shows is exactly where the address bar will land.',
             }),
           ],
         }),
@@ -378,7 +378,7 @@ export function renderForm(): HTMLElement {
   }
 
   // `validateDraft` is pure, so it needs to be handed the ownership map, the user's
-  // own shortcuts and the shipped registry explicitly — this is that context,
+  // own shortcuts and the shipped registry explicitly: this is that context,
   // rebuilt from the current store state each time it is needed.
   function currentContext(): FormContext {
     return {
@@ -433,7 +433,7 @@ export function renderForm(): HTMLElement {
           {
             level: 'error',
             field: 'category',
-            text: `That section could not be added — a profile holds at most ${MAX_SECTIONS} sections. Delete one first, or pick an existing section.`,
+            text: `That section could not be added. A profile holds at most ${MAX_SECTIONS} sections. Delete one first, or pick an existing section.`,
           },
         ]);
         sectionInput.focus();
@@ -527,8 +527,8 @@ export function paintPreview(
   rows.textContent = '';
   note.textContent = '';
   note.hidden = true;
-  // Both notes can be true at once — a switched-off shortcut rebound onto a
-  // keyword something else owns — and one silently replacing the other is how
+  // Both notes can be true at once, a switched-off shortcut rebound onto a
+  // keyword something else owns, and one silently replacing the other is how
   // the user reads the wrong explanation for what the rows are showing.
   const notes: string[] = [];
 
@@ -551,8 +551,8 @@ export function paintPreview(
   const cmd = buildCommand(draft, knownCategoryIds(overrides.sections), target.base, target.id);
   // The registry list with the draft substituted at the shortcut's own index,
   // NOT the draft prepended as a custom command: `buildKeyMap` is
-  // first-writer-wins, and prepending handed the draft every alias it claimed
-  // — including ones an earlier builtin owns and keeps after the save.
+  // first-writer-wins, and prepending handed the draft every alias it claimed,
+  // including ones an earlier builtin owns and keeps after the save.
   const commands = previewCommands(BUILTIN_COMMANDS, overrides, cmd, target.id, target.shipped);
   const switchedOff =
     target.id !== '' && overrides.disabled.some((id) => normalizeId(id) === target.id);

@@ -1,7 +1,7 @@
 /**
  * The toolbar popup: a command bar over the same registry the address bar uses.
  *
- * This is the fallback surface — it works when address-bar interception does
+ * This is the fallback surface: it works when address-bar interception does
  * not, because a Chromium fork routes the omnibox itself or a shield blocks the
  * redirect, so it deliberately depends on nothing but storage, the pure
  * resolver and `chrome.tabs`.
@@ -136,7 +136,7 @@ function buildRow(cmd: Command, keyword: string, index: number): HTMLLIElement {
   return item;
 }
 
-/** Where Enter goes right now — shown before it is pressed, truncated by CSS. */
+/** Where Enter goes right now: shown before it is pressed, truncated by CSS. */
 function renderDest(): void {
   dest.classList.remove('is-error');
   destArrow.textContent = '→';
@@ -188,7 +188,7 @@ async function navigate(query: string, newTab: boolean): Promise<void> {
       // No tabId: updates the active tab of the current window.
       await chrome.tabs.update({ url });
     } catch {
-      // No active tab to reuse — a new tab beats dropping the navigation.
+      // No active tab to reuse: a new tab beats dropping the navigation.
       await chrome.tabs.create({ url });
     }
   }

@@ -3,8 +3,8 @@
  * distance fields sampled at 4x4 per pixel, and the PNGs are encoded by hand
  * (IHDR + IDAT + IEND, one zlib stream, filter byte 0 per scanline).
  *
- * Both colours are read out of design/tokens.css — the sand tile is --accent
- * and the glyph is --accent-fg — so the icon cannot drift from the palette.
+ * Both colours are read out of design/tokens.css, the sand tile is --accent
+ * and the glyph is --accent-fg, so the icon cannot drift from the palette.
  * Those two tokens are declared as flat hexes rather than light-dark() pairs
  * precisely because a PNG has one colour, not one per scheme.
  *

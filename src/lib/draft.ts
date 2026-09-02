@@ -55,7 +55,7 @@ export function emptyDraft(category: string = FALLBACK_SECTION): Draft {
   return { ...EMPTY_DRAFT, category };
 }
 
-/** The form's view of a command — the merged one, so editing a shipped
+/** The form's view of a command: the merged one, so editing a shipped
  *  shortcut starts from what it currently does rather than from what it ships
  *  with. */
 export function draftFrom(cmd: Command): Draft {
@@ -94,7 +94,7 @@ export type KeysCheck = { ok: true; keys: string[] } | { ok: false; reason: stri
 /**
  * Splits a comma-separated keyword list through the shared alias validator, so
  * the edit form and the import path reject the same aliases. An alias the
- * resolver cannot read as a keyword — one with a space in it, say — works on no
+ * resolver cannot read as a keyword, one with a space in it, say, works on no
  * surface at all, so it has to fail here rather than save and quietly fall
  * through to a search.
  */
@@ -175,10 +175,10 @@ export function parsePrefill(raw: string): Draft {
 /**
  * A URL field on its way back out of the form. `withScheme` is only applied to
  * a value the user actually changed: the meta shortcuts ship a *relative*
- * `options.html#…` destination (the dispatch page absolutises it — see
+ * `options.html#…` destination (the dispatch page absolutises it: see
  * `commands.ts`), and scheming that unconditionally turned a no-change Save on
  * `bl`, `add` or `set` into a stored `https://options.html#help` that no longer
- * opens anything, permanently — Reset then Save re-mangled it.
+ * opens anything, permanently: Reset then Save re-mangled it.
  */
 function keptUrl(typed: string, shipped: string | undefined): string {
   const value = typed.trim();

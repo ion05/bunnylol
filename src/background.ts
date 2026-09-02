@@ -4,7 +4,7 @@
  * The worker is torn down after ~30s idle and restarted on the next event, so
  * every listener is registered synchronously at module scope. A listener added
  * inside an `await` or a `.then()` would miss the event that woke the worker in
- * the first place — the classic MV3 failure where the omnibox works once and
+ * the first place: the classic MV3 failure where the omnibox works once and
  * then goes dead.
  */
 
@@ -18,7 +18,7 @@ import type { BgMessage, Command, ResolveResult, RuleStatus, Settings } from './
 
 const SUGGESTION_LIMIT = 6;
 
-const IDLE_HINT = 'BunnyLol <dim>— type a shortcut, e.g.</dim> <match>gh facebook/react</match>';
+const IDLE_HINT = 'BunnyLol <dim>· type a shortcut, e.g.</dim> <match>gh facebook/react</match>';
 
 const XML_ESCAPES: Record<string, string> = {
   '&': '&amp;',
@@ -31,7 +31,7 @@ const XML_ESCAPES: Record<string, string> = {
 // ------------------------------------------------------------ listeners ----
 
 // Dynamic rules survive restarts, so there is no need to re-sync on every
-// wake — but the extension id changes on every load-unpacked, which would
+// wake, but the extension id changes on every load-unpacked, which would
 // leave the redirects pointing at a dead origin. onInstalled covers that, and
 // on a real install it also writes the starter pick and opens the picker.
 // The work is in lib/install.ts; this stays a one-line synchronous listener.
@@ -122,7 +122,7 @@ async function navigate(
     // No tabId: updates the active tab of the current window.
     await chrome.tabs.update({ url });
   } catch {
-    // No active tab to reuse — a new tab beats dropping the navigation.
+    // No active tab to reuse: a new tab beats dropping the navigation.
     await chrome.tabs.create({ url, active: true });
   }
 }
@@ -140,8 +140,8 @@ async function readRuleStatus(): Promise<RuleStatus> {
       chrome.declarativeNetRequest.getDynamicRules(),
       lastRuleStatus(),
     ]);
-    // The live rule list wins over the remembered count — another window may
-    // have synced since — but everything else comes from that sync.
+    // The live rule list wins over the remembered count, another window may
+    // have synced since, but everything else comes from that sync.
     if (last) return { ...last, registered: rules.length, extensionId };
 
     const { commands, settings } = await loadResolveContext();
@@ -149,8 +149,8 @@ async function readRuleStatus(): Promise<RuleStatus> {
     const synced = rules.length > 0;
     return {
       registered: rules.length,
-      // Without a remembered sync there is no honest coverage number — the
-      // regexes would have to be parsed back apart — so eligible-or-nothing is
+      // Without a remembered sync there is no honest coverage number, the
+      // regexes would have to be parsed back apart, so eligible-or-nothing is
       // the closest true statement.
       keywords: synced ? keywords : 0,
       suppressed: activeKeywords(commands).length - keywords,
@@ -187,9 +187,9 @@ function describeDefault(text: string, result: ResolveResult): string {
 
   const target = `<url>${escapeXml(prettyUrl(result.url))}</url>`;
   if (!result.command) {
-    return `<match>${escapeXml(typed)}</match> <dim>— search</dim> ${target}`;
+    return `<match>${escapeXml(typed)}</match> <dim>· search</dim> ${target}`;
   }
-  return `<match>${escapeXml(typed)}</match> <dim>— ${escapeXml(result.command.name)}</dim> ${target}`;
+  return `<match>${escapeXml(typed)}</match> <dim>· ${escapeXml(result.command.name)}</dim> ${target}`;
 }
 
 function describeCommand(
@@ -210,7 +210,7 @@ function describeCommand(
     content,
     description:
       `<match>${escapeXml(content)}</match>` +
-      ` <dim>— ${escapeXml(label)}</dim>` +
+      ` <dim>· ${escapeXml(label)}</dim>` +
       ` <url>${escapeXml(preview)}</url>`,
   };
 }

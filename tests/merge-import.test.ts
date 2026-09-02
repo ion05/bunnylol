@@ -2,9 +2,9 @@
  * The import merge plan.
  *
  * Two properties are worth more than the rest: nothing already here changes
- * value, and nothing in the file is lost. Everything else — the renames, the
- * re-mints, the section suffixes — is machinery in service of holding both at
- * once, and the reported fields exist so the confirmation dialog can only
+ * value, and nothing in the file is lost. Everything else is machinery in
+ * service of holding both at once: the renames, the re-mints, the section
+ * suffixes. The reported fields exist so the confirmation dialog can only
  * promise what the merge actually does.
  */
 
@@ -169,7 +169,7 @@ describe('mergeOverrides disabled and deleted', () => {
 
   it('follows a re-minted shortcut instead of switching ours off in its place', () => {
     // Both profiles minted `u:jira` for their own Jira. Unioned as written, the
-    // file's "u:jira is off" lands on OURS and leaves theirs on — the merge
+    // file's "u:jira is off" lands on OURS and leaves theirs on: the merge
     // silently switching off a shortcut the dialog never named.
     const plan = mergeOverrides(
       overrides({ custom: [cmd({ id: 'u:jira', keys: ['jira'], url: 'https://ours.example/' })] }),
@@ -187,7 +187,7 @@ describe('mergeOverrides disabled and deleted', () => {
   });
 
   it('follows a skipped duplicate onto the twin of ours that survived', () => {
-    // Their `u:jira` is identical to our `u:mine`, so it is not added — but the
+    // Their `u:jira` is identical to our `u:mine`, so it is not added, but the
     // file still has something to say about that shortcut, and `u:jira` here
     // names an unrelated one of ours.
     const plan = mergeOverrides(
@@ -258,7 +258,7 @@ describe('mergeOverrides sections', () => {
 
   it('treats a shipped id with a different label as a collision', () => {
     // We never renamed Developer, so there is no `sections` entry to clash
-    // with — and adding theirs verbatim would rename a shipped group under the
+    // with, and adding theirs verbatim would rename a shipped group under the
     // heading "adds 1 section".
     const plan = mergeOverrides(
       overrides(),
@@ -295,7 +295,7 @@ describe('mergeOverrides sections', () => {
   it('keeps a suffixed id inside the length cap the save enforces', () => {
     // `<id>-2` on a 32-character id is a 34-character one, which
     // `validateSectionId` rejects and `normalizeSections` drops on the next
-    // save — taking every shortcut filed under it back to My shortcuts.
+    // save: taking every shortcut filed under it back to My shortcuts.
     const long = 'a'.repeat(MAX_SECTION_ID_LENGTH);
     const plan = mergeOverrides(
       overrides({ sections: [{ id: long, label: 'Ours' }] }),

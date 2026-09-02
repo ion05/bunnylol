@@ -21,7 +21,7 @@ import {
 } from '../src/options/model/form';
 import type { FormContext } from '../src/options/model/form';
 // The route lookup lives with the view, but it is pure and the module loads
-// under `environment: 'node'` — which is itself worth asserting.
+// under `environment: 'node'`, which is itself worth asserting.
 import { findEntry } from '../src/options/views/form';
 
 const github: BuiltinCommand = {
@@ -58,7 +58,7 @@ describe('validateDraft', () => {
     expect(problems).toContainEqual({
       level: 'error',
       field: 'keys',
-      text: 'Add at least one keyword — that is what you type in the address bar.',
+      text: 'Add at least one keyword. That is what you type in the address bar.',
     });
   });
 
@@ -462,7 +462,7 @@ describe('findEntry', () => {
 
   it('runs the ALIAS pass first for the legacy ?key=', () => {
     // `?key=gh` names whatever `gh` opens NOW, and the user's own `gh` shadows
-    // the builtin (invariant 10). Trying the id first opened the builtin — the
+    // the builtin (invariant 10). Trying the id first opened the builtin: the
     // one the address bar does not go to.
     expect(findEntry(entries, route('key=gh'))?.id).toBe('u:gh');
   });

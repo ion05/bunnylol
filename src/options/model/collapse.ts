@@ -4,7 +4,7 @@
  * This is view state, not configuration: it says nothing about what any
  * shortcut does, it is different on every machine the same profile is synced
  * to, and it changes several times a minute. So it lives in `localStorage` and
- * never in `Settings` — putting it in the state blob would make every fold a
+ * never in `Settings`: putting it in the state blob would make every fold a
  * storage write the background page re-syncs the DNR rules for, and would carry
  * one browser's scroll habits into another's export file.
  *
@@ -32,7 +32,7 @@ export interface CollapseState {
   expandAll(): void;
   /** Forgets every collapsed id that is not in `keep`. */
   prune(keep: string[]): void;
-  /** The collapsed ids, sorted — for tests and for anything that needs to read
+  /** The collapsed ids, sorted: for tests and for anything that needs to read
    *  the whole set without a second source of truth. */
   snapshot(): string[];
 }
@@ -41,7 +41,7 @@ export interface CollapseState {
  * Reads the persisted list. The value is a hand-editable string in a store
  * shared with whatever else the extension ever writes, so ANY shape that is not
  * a plain array of strings is answered with "nothing is collapsed" rather than
- * with a partial reading — a half-understood value would fold groups the user
+ * with a partial reading: a half-understood value would fold groups the user
  * never folded and there would be no control to explain it.
  */
 export function parseCollapsed(raw: string | null): string[] {
@@ -85,7 +85,7 @@ export function createCollapseState(store: CollapseStore | null): CollapseState 
 
   // A profile with storage blocked mid-session, a quota that fills, a private
   // window: every one of them throws from a setter that used to work. Folding a
-  // group must still fold it — the write is the part that degrades, not the UI.
+  // group must still fold it: the write is the part that degrades, not the UI.
   const persist = (): void => {
     if (!store) return;
     try {

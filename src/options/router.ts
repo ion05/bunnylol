@@ -1,7 +1,7 @@
 /**
  * Hash routing for the options page. The hash carries its own query string
- * (`#new?prefill=x`), so routing parses the hash rather than `location.search`
- * — the `meta` handler turns `bl`, `add foo …` and `set` into
+ * (`#new?prefill=x`), so routing parses the hash rather than `location.search`.
+ * The `meta` handler turns `bl`, `add foo …` and `set` into
  * `options.html#help`, `#new?prefill=…` and `#settings`.
  *
  * The current route is state, and module-level mutable state belongs in one
@@ -59,7 +59,7 @@ export function startRouter(onChange: () => void, render: () => void): void {
 /** Navigate. A hash that differs from the current one is assigned to
  *  `location.hash`, so the browser fires `hashchange` and `onChange` runs. An
  *  identical hash fires no event, so this re-parses the route and calls
- *  `render` instead — deliberately not `onChange`, because re-rendering the
+ *  `render` instead: deliberately not `onChange`, because re-rendering the
  *  page the user is already on must not re-read `?q=` over the filter text
  *  they have typed since. */
 export function go(hash: string): void {

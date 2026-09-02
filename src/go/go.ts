@@ -1,6 +1,6 @@
 /**
  * The dispatch page. Every intercepted address-bar query lands here, resolves,
- * and leaves again before it can be seen. Nothing renders on the happy path —
+ * and leaves again before it can be seen. Nothing renders on the happy path,
  * except a placeholder for a storage read slow enough to be noticed.
  */
 
@@ -27,7 +27,7 @@ const STATUS_DELAY_MS = 150;
  *
  * IT REALLY DOES HOLD IT, and that is why the setting ships OFF. The intent was
  * a toast rendered here and then seen on the DESTINATION page, but nothing in
- * this document survives `location.replace` — showing a banner on the page we
+ * this document survives `location.replace`: showing a banner on the page we
  * navigate to would mean a content script on every site the user visits, which
  * is a permission the feature does not justify. So the honest version is an
  * opt-in delay: a user who keeps mistyping into commands can pay 1.2s per
@@ -71,7 +71,7 @@ async function dispatch(query: string): Promise<void> {
 /**
  * "gh → github.com · search instead", for `TOAST_MS`, then resolve so the caller
  * navigates. Resolves early when the user dismisses it, and never resolves once
- * they click through to a search — that anchor's own navigation is the outcome,
+ * they click through to a search: that anchor's own navigation is the outcome,
  * and letting the timer fire too would race it.
  */
 function announce(query: string, target: URL): Promise<void> {
@@ -175,7 +175,7 @@ function safeHref(href: string, fallback: string): string {
   try {
     if (SAFE_PROTOCOLS.has(new URL(href, location.href).protocol)) return href;
   } catch {
-    // Not a parseable URL — no better guess than the fallback.
+    // Not a parseable URL: no better guess than the fallback.
   }
   return fallback;
 }
@@ -223,7 +223,7 @@ if (raw === null) {
 } else {
   // Only a genuinely bounced url gets the marker stripped. Running
   // stripPassthrough over arbitrary text would delete a literal `&blpass=1`
-  // the user actually typed — `gh foo&blpass=1` would search for `gh foo` —
+  // the user actually typed, `gh foo&blpass=1` would search for `gh foo`,
   // and the rule layer already guarantees a marked url is never redirected
   // here: fitPlan refuses to register an engine's redirect rules unless
   // Chrome accepted its allow rule too.

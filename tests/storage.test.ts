@@ -153,7 +153,7 @@ describe('importJson leniency', () => {
   it('prunes deleted to ids this build actually ships', () => {
     // `deleted` hides a shipped command. An id no build ever shipped hides
     // nothing, and a `u:` id names a custom command, which is removed by not
-    // being in the file at all — keeping either would grow a list of ghosts
+    // being in the file at all: keeping either would grow a list of ghosts
     // that "Restore shipped shortcuts" then has to explain.
     expect(
       importJson('{"overrides":{"deleted":["gh","no-such-command","u:tix"]}}').overrides.deleted,
@@ -162,7 +162,7 @@ describe('importJson leniency', () => {
 
   it('drops an edit keyed by a user id instead of refusing the file', () => {
     // Edits are for shipped shortcuts; a custom command is edited in place. So
-    // this entry is inert, and inert is not wrong — but its `keys` would refuse
+    // this entry is inert, and inert is not wrong, but its `keys` would refuse
     // the file on a shipped id, which means it must not be checked at all.
     const state = importJson(
       '{"overrides":{"edits":{"u:tix":{"keys":["foo bar"]},"gh":{"name":"Mine"}}}}',
@@ -251,7 +251,7 @@ describe('importJson leniency', () => {
     // The lenient path, which a stored blob and `applyImport`'s output both go
     // through: an orphaned category costs the user a group, not their data. The
     // import parser refuses the same value instead, because a human is standing
-    // there — see 'importJson rejections'.
+    // there: see 'importJson rejections'.
     const orphan = exportJson({
       overrides: {
         ...DEFAULT_OVERRIDES,
@@ -352,7 +352,7 @@ describe('importJson leniency', () => {
       }),
     );
     // The claim is reserved before anything mints, so the shortcut that owns
-    // `u:tix` — and every override entry keyed by it — keeps it wherever it
+    // `u:tix`, and every override entry keyed by it, keeps it wherever it
     // sits in the file. Minting in list order would hand it to the first entry.
     expect(state.overrides.custom.map((cmd) => cmd.id)).toEqual(['u:tix-2', 'u:tix']);
   });
@@ -551,7 +551,7 @@ describe('an import that could never work', () => {
       `{"overrides":{"sections":${JSON.stringify(
         Array.from({ length: 65 }, (_, i) => ({ id: `s${i}`, label: `S${i}` })),
       )}}}`,
-      /"sections" has 65 entries — BunnyLol keeps at most 64/,
+      /"sections" has 65 entries\. BunnyLol keeps at most 64/,
     ],
     [
       'a section id that is not a slug',
@@ -571,8 +571,8 @@ describe('an import that could never work', () => {
     [
       'a custom command claiming a shipped id',
       '{"overrides":{"custom":[{"keys":["x"],"url":"https://x.test/","id":"gh"}]}}',
-      // Named by its keyword like every other message here — `gh` is the
-      // offence, not the entry — and by the rule it broke, since `gh` is only
+      // Named by its keyword like every other message here, `gh` is the
+      // offence, not the entry, and by the rule it broke, since `gh` is only
       // one of infinitely many ids outside the `u:` namespace.
       /Shortcut "x" claims the id "gh", which is reserved for shipped shortcuts/,
     ],
@@ -586,7 +586,7 @@ describe('an import that could never work', () => {
       '{"overrides":{"custom":[{"keys":["x"],"url":"https://x.test/","id":"u:has space"}]}}',
       // Malformed, so it is not a user id either: re-minting it here would
       // import clean under a different id than the one the user hand-wrote.
-      // Refused for a different reason than a shipped claim, and said so —
+      // Refused for a different reason than a shipped claim, and said so:
       // this id IS in the `u:` namespace.
       /Shortcut "x" has an "id" BunnyLol cannot use: "u:has space"/,
     ],
@@ -672,7 +672,7 @@ describe('an import that could never work', () => {
 
 /**
  * The lenient half of the same boundary. Already-stored state goes through
- * `normalizeState`, which must never throw — a blob written by an older build,
+ * `normalizeState`, which must never throw: a blob written by an older build,
  * or half-written by an interrupted save, has to degrade to something usable or
  * the extension is bricked on every surface at once.
  */
@@ -701,7 +701,7 @@ describe('lenient recovery from a corrupt stored blob', () => {
 
   /**
    * `exportJson` normalizes on the way out, which is the same code path
-   * `loadState` runs on the way in — so this asserts the recovery without
+   * `loadState` runs on the way in, so this asserts the recovery without
    * needing a `chrome.storage` stub.
    */
   const recovered = JSON.parse(exportJson(corrupt as unknown as StoredState));
@@ -718,7 +718,7 @@ describe('lenient recovery from a corrupt stored blob', () => {
   });
 
   it('re-mints a stored custom command that claims a shipped id', () => {
-    // The stored path cannot refuse — refusing here would brick every surface —
+    // The stored path cannot refuse, refusing here would brick every surface,
     // so the claim is overwritten instead. `gh` keeps its own override entries.
     const state = JSON.parse(
       exportJson({
@@ -844,7 +844,7 @@ describe('interceptStopList', () => {
 /**
  * The format-1 reader. `keyOverrides` was the only place a v1 file recorded a
  * rebinding, so losing it would silently un-rebind every keyword the user
- * changed — the failure they would notice last and trust least.
+ * changed: the failure they would notice last and trust least.
  */
 describe('a format 1 file', () => {
   it('is accepted and its keyOverrides arrive as an edit', () => {
@@ -922,7 +922,7 @@ describe('an edit cannot smuggle behaviour through the import', () => {
     // The storage boundary strips these fields, so the two cases above stay
     // green even if `applyEdit` spread the edit onto the command. The merge is
     // the second lock, and this is the only place that turns it: an override
-    // blob handed straight to `mergeCommands` — a stored blob written by an
+    // blob handed straight to `mergeCommands`: a stored blob written by an
     // older build, or the options page's own in-memory state.
     const overrides: Overrides = {
       ...DEFAULT_OVERRIDES,

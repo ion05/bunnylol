@@ -1,4 +1,4 @@
-/* The palette, type scale and metrics live in design/tokens.css — the file the
+/* The palette, type scale and metrics live in design/tokens.css: the file the
  * design system was approved as. Vite inlines this @import at build, so the page
  * still emits one stylesheet. CSS requires @import before any rule. */
 @import '../../design/tokens.css';
@@ -48,7 +48,7 @@ body {
   color: var(--text-faint);
 }
 
-/* :focus-visible, not :focus — and a real outline, not the 3px accent-soft
+/* :focus-visible, not :focus, and a real outline, not the 3px accent-soft
    box-shadow that used to stand in for one. A text input matches
    :focus-visible whenever it is focused, including the programmatic focus the
    popup opens with, so nothing is lost by the narrower selector. */
@@ -141,7 +141,7 @@ body {
 
 /* The one place the accent appears as text in the popup, which is exactly why
    --accent-text exists: 5.59:1 on the selected row's sunken fill, where the raw
-   sand would be 1.82:1. No background — a highlight that fills is a second
+   sand would be 1.82:1. No background: a highlight that fills is a second
    surface inside a 32px row. */
 .row-key mark {
   background: none;

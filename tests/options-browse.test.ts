@@ -108,7 +108,7 @@ describe('browseEntries', () => {
     // Representable, and it survives storage: an import can carry an `edits`
     // entry that restates the shipped values, and an empty object is an edit
     // too. The badge has to mean "different from shipped", because Reset then
-    // Save writes the diff — which is empty — and could never clear it.
+    // Save writes the diff, which is empty, and could never clear it.
     for (const edit of [{}, { name: 'GitHub' }, { keys: ['gh', 'github'] }, { category: 'dev' }]) {
       const entries = browseEntries(builtins, overridesWith({ edits: { gh: edit } }));
       expect(
@@ -157,7 +157,7 @@ describe('browseEntries', () => {
     expect(entries.some((entry) => entry.id === 'r')).toBe(true);
     expect(restorableShipped(builtins, overrides).map(shortcutId)).toEqual(['gh']);
     // A custom command is deleted by removing it from `custom`, so it is never
-    // offered for restore — there would be nothing to restore it from.
+    // offered for restore: there would be nothing to restore it from.
     expect(restorableShipped(builtins, overridesWith({ deleted: ['u:tix'] }))).toEqual([]);
   });
 

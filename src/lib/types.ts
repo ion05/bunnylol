@@ -2,13 +2,13 @@
  * Shared contract for the whole extension.
  *
  * Every other module builds against these types. Nothing in here may import
- * `chrome.*` or touch the DOM — it is imported by the pure resolver, the
+ * `chrome.*` or touch the DOM: it is imported by the pure resolver, the
  * service worker, all three UI surfaces, and the tests.
  */
 
 /**
  * The sections this build ships. A CLOSED list, and the only thing a category
- * pick may name — a user section holds no builtins, so it can never be a pack.
+ * pick may name: a user section holds no builtins, so it can never be a pack.
  * User sections live in `Overrides.sections` and are open strings.
  */
 export type Category =
@@ -184,7 +184,7 @@ export interface SearchEngine {
 
 /**
  * The fields of a shipped shortcut the user is allowed to change, as a diff
- * against the shipped definition rather than a copy of it — so a corrected URL
+ * against the shipped definition rather than a copy of it, so a corrected URL
  * in a later build still reaches someone who only renamed the command.
  *
  * Absent means "inherit"; `null` on the two optional fields means "cleared",
@@ -207,7 +207,7 @@ export interface ShortcutEdit {
 
 /**
  * A group in the browse list. An entry whose `id` names a builtin category is
- * not a collision — it is how a shipped category gets renamed.
+ * not a collision: it is how a shipped category gets renamed.
  */
 export interface Section {
   id: string;
@@ -242,7 +242,7 @@ export interface Overrides {
   /**
    * The builtin categories the user picked during onboarding. `null` means they
    * never saw the picker: every category counts as enabled and a builtin added
-   * later arrives on. No resolution path reads it — the resolver reads
+   * later arrives on. No resolution path reads it: the resolver reads
    * `disabled` and nothing else, so there is exactly one exclusion axis and a
    * pick is projected onto it at write time by `applyCategoryPick`.
    *
@@ -278,8 +278,8 @@ export interface ResolveResult {
  * `keyword` is the alias the user actually typed, which a handler needs when
  * its degrade is a plain search: reproducing the query the alias intercepted
  * ("lh surge meaning") requires the keyword, and `cmd.keys[0]` is the canonical
- * alias rather than the typed one. Optional so a handler called directly — the
- * tests, an imported command — still type-checks.
+ * alias rather than the typed one. Optional so a handler called directly still
+ * type-checks, as in the tests or with an imported command.
  */
 export type HandlerFn = (args: string, cmd: Command, settings: Settings, keyword?: string) => string;
 
@@ -287,7 +287,7 @@ export type HandlerFn = (args: string, cmd: Command, settings: Settings, keyword
  * The user's EXEMPTION list: aliases they have asked BunnyLol to leave out of
  * address-bar interception.
  *
- * Empty on purpose. BunnyLol follows true bunnylol semantics — if the first
+ * Empty on purpose. BunnyLol follows true bunnylol semantics: if the first
  * word of an address-bar query is a registered keyword, it IS a command, every
  * time. `c programming tutorial` opens Claude and `pr firms in new york` opens
  * your pull requests, and that is the contract rather than a bug: a blocklist
@@ -296,7 +296,7 @@ export type HandlerFn = (args: string, cmd: Command, settings: Settings, keyword
  *
  * What makes that liveable is the escape hatch (`FORCE_SEARCH_PREFIXES`), not
  * a curated list. This list stays because one user in ten will keep tripping
- * over one specific keyword — "I search for 'maps of X' constantly" — and the
+ * over one specific keyword, "I search for 'maps of X' constantly", and the
  * options page lets them exempt exactly that alias. An exempted alias loses
  * address-bar interception and nothing else: it still resolves from the `bl`
  * omnibox keyword and the toolbar popup.
@@ -314,7 +314,7 @@ export const DEFAULT_STOP_LIST: string[] = [];
  * the way into a URL; `=` is one unshifted keystroke everywhere and is never
  * the first character of a real search.
  *
- * ORDER MATTERS ONLY FOR DOCS — matching tries each in turn, and no prefix here
+ * ORDER MATTERS ONLY FOR DOCS: matching tries each in turn, and no prefix here
  * may be a prefix of another.
  */
 export const FORCE_SEARCH_PREFIXES: string[] = ['\\', '='];
@@ -360,7 +360,7 @@ export interface RuleStatus {
   keywords: number;
   /** Aliases the user exempted through `settings.interceptStopList`. */
   suppressed: number;
-  /** Eligible aliases that ended up with no rule — `keywords + dropped` is the eligible total. */
+  /** Eligible aliases that ended up with no rule: `keywords + dropped` is the eligible total. */
   dropped: number;
   /**
    * Set only when the sync itself failed and interception is not working.

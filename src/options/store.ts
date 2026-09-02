@@ -1,6 +1,6 @@
 /**
  * The options page's module-level state, behind accessor and mutator
- * functions so a view can never hold a stale copy of it — every read goes
+ * functions so a view can never hold a stale copy of it: every read goes
  * through a getter, so a commit made by one view is visible to the next
  * render no matter which view issued it.
  *
@@ -98,7 +98,7 @@ export function reportFailure(err: unknown): void {
 // ------------------------------------------------------------- persistence ----
 
 // A commit's caller does not know, and should not have to know, what needs to
-// refresh afterwards — that would make every commit site responsible for
+// refresh afterwards: that would make every commit site responsible for
 // wiring the rule status. `setAfterCommit` lets `boot()` supply that hook
 // once, breaking what would otherwise be a store -> rule-status -> store
 // import cycle.

@@ -77,7 +77,7 @@ function capture(url: string, engine: SearchEngine, keywords: string[] = KEYWORD
 
 /**
  * A DNR redirect to an extension page is blocked outright unless the target is
- * web-accessible from the initiating origin, and it fails silently — the rule
+ * web-accessible from the initiating origin, and it fails silently: the rule
  * registers, the navigation just never arrives. So the manifest and
  * `SEARCH_ENGINES` have to be kept in step, and nothing else checks that.
  */
@@ -110,7 +110,7 @@ describe('manifest support for the redirect target', () => {
    * `tabs` gates the sensitive Tab fields (`url`, `title`, `pendingUrl`) and
    * costs a "read your browsing history" install warning. Creating and
    * navigating tabs needs no permission at all, and creating/navigating is the
-   * whole of what BunnyLol does with them — so asking for it bought nothing but
+   * whole of what BunnyLol does with them, so asking for it bought nothing but
    * the warning. `activeTab` is not a substitute: it grants host access on a
    * user gesture, which is a different and equally unneeded thing.
    */
@@ -320,8 +320,8 @@ describe('buildRules', () => {
 
   /**
    * TRUE BUNNYLOL SEMANTICS. The first word wins: `new york times`, `r kelly`
-   * and `help me write a resume` all reach the command, because the alternative
-   * — a blocklist of English-looking aliases — was an endless tail. These
+   * and `help me write a resume` all reach the command, because the alternative,
+   * a blocklist of English-looking aliases, was an endless tail. These
    * assertions are the inverse of the ones they replace, and that inversion is
    * the product decision, not a regression.
    */
@@ -351,7 +351,7 @@ describe('buildRules', () => {
       );
     });
 
-    it('covers every builtin alias — nothing is dropped', () => {
+    it('covers every builtin alias: nothing is dropped', () => {
       const covered = new Set<string>();
       for (const rule of redirectRules(SEARCH_ENGINES, intercepted)) {
         const alternation = /\(\(\?:(.*?)\)\(\?:\(\?:%20/.exec(rule.condition.regexFilter as string);
@@ -428,7 +428,7 @@ describe('buildRules', () => {
 
     it('redirects to go.html with the escape character intact', () => {
       // go.ts hands the value straight to `resolve()`, which is the one place
-      // that knows how to strip a prefix — the rule must not eat it here.
+      // that knows how to strip a prefix: the rule must not eat it here.
       // Against the WHOLE rule set, so this also proves a keyword rule cannot
       // claim the query first: `redirectToOf` applies the highest priority.
       const all = buildRules(real, SEARCH_ENGINES, EXT_ID);

@@ -1,8 +1,8 @@
 /**
  * What the first-run picker decides, without a DOM. No `document` and no
- * `chrome.*`, so the three questions the page actually answers — which boxes
- * open ticked, what closing the tab does, and what Continue writes — are
- * testable under node instead of being read off the render.
+ * `chrome.*`, so the three questions the page actually answers are testable
+ * under node instead of being read off the render: which boxes open ticked,
+ * what closing the tab does, and what Continue writes.
  *
  * `src/lib/onboarding.ts` owns what a pick *means*; this owns what the page
  * shows about the pick already on record.
@@ -36,7 +36,7 @@ export function initialPicks(overrides: Overrides): Set<string> {
 }
 
 /**
- * What closing the tab actually does — keyed on the pick that is live, not on
+ * What closing the tab actually does: keyed on the pick that is live, not on
  * whether the picker has been answered.
  *
  * On a real install those two agree, because the starter pick is written

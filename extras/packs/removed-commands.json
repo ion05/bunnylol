@@ -19,7 +19,7 @@
         "handler": "unindexed",
         "category": "ai",
         "example": "copilot -> copilot.microsoft.com",
-        "_note": "Consumer Copilot has no supported search route: every `?q=` form (including Microsoft's own bing.com/search?showconv=1 entry point) 302s to the bare home page and drops the prompt. Open the app rather than a guessed URL. The app is a chat SPA with nothing indexed, so a site: search would be as empty as dropping the words: they go to a plain search instead."
+        "_note": "Consumer Copilot has no supported search route. Every `?q=` form returns a 302 to the bare home page and drops the prompt, including Microsoft's own bing.com/search?showconv=1 entry point. So this opens the app rather than a guessed URL. The app is a chat SPA with nothing indexed, so a site: search would be just as empty. The words go to a plain search instead."
       },
       {
         "keys": [

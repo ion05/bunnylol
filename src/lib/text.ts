@@ -33,7 +33,7 @@ export function prettyUrl(url: string): string {
 }
 
 /**
- * `a`, `a and b`, `a, b and c` — the last clause joined with "and" so a
+ * `a`, `a and b`, `a, b and c`: the last clause joined with "and" so a
  * sentence built out of clauses still reads as one statement.
  */
 export function joinClauses(clauses: string[]): string {

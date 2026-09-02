@@ -17,7 +17,7 @@ import { commitState, getCommands, getState, setNotice } from '../store';
 export function renderData(): HTMLElement {
   const card = panelCard(
     'Data',
-    'The export holds your shortcuts, your edits, your sections and your settings — not the built-in list, so an old file still works after an update.',
+    'The export holds your shortcuts, your edits, your sections and your settings. It does not hold the built-in list, so an old file still works after an update.',
   );
 
   const error = el('p', { class: 'msg msg-error', attrs: { role: 'alert' } });
@@ -143,7 +143,7 @@ export function renderData(): HTMLElement {
         () =>
           done(
             plan.added.length === 0
-              ? `Nothing new in ${fileName} — your shortcuts already cover it.`
+              ? `Nothing new in ${fileName}. Your shortcuts already cover it.`
               : `Merged ${countShortcuts(plan.added.length)} from ${fileName}.`,
           ),
         fail,
@@ -237,13 +237,13 @@ const SHIPPED_NAMES = new Map(BUILTIN_COMMANDS.map((cmd) => [shortcutId(cmd), cm
 
 /**
  * The names of the shortcuts an id list points at, never the ids themselves.
- * A shipped id is a slug the user has never seen — a dialog that says it is
+ * A shipped id is a slug the user has never seen: a dialog that says it is
  * about to delete `gpulls` is asking them to approve something they cannot
  * recognise, while the row it is about reads "GitHub pull requests".
  *
  * Named as they are HERE: the merged list first, so a shortcut the user renamed
  * is called what their own browse page calls it, then the registry for one that
- * is off, and only then the id — for an export from a later version naming a
+ * is off, and only then the id: for an export from a later version naming a
  * command this build does not have.
  */
 function shortcutNames(ids: string[]): string {

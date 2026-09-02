@@ -8,7 +8,7 @@
  * browser and rewrites it to go.html?q=gh+facebook%2Freact. No request is ever
  * sent to the search engine.
  *
- * `buildRules` is pure — it never touches `chrome.*` — so the regex generation
+ * `buildRules` is pure, it never touches `chrome.*`, so the regex generation
  * is unit-testable in Node. `syncRules` registers the very same patterns, but
  * asks Chrome to validate each one first and splits the ones it rejects, which
  * is inherently async and so lives on the browser side of the line.
@@ -30,8 +30,8 @@ import type { RuleStatus, SearchEngine, SearchEngineId } from './types';
  *
  * `escape` sits between the two so a query beginning with a
  * `FORCE_SEARCH_PREFIXES` character can never be claimed by a keyword rule
- * first. In practice no keyword alternation can match one — the value starts
- * with `\`, `=` or a `%` escape, and no alias may contain those — but the
+ * first. In practice no keyword alternation can match one, the value starts
+ * with `\`, `=` or a `%` escape, and no alias may contain those, but the
  * escape hatch is load-bearing enough that it should not depend on a property
  * of the alias charset that a later change could quietly relax.
  */
@@ -41,7 +41,7 @@ const ALLOW_PRIORITY = 3;
 
 /**
  * Chrome compiles each `regexFilter` with `RE2::Options::set_max_mem(2 * 1024)`,
- * and a pattern that busts that budget is simply reported unsupported — the rule
+ * and a pattern that busts that budget is simply reported unsupported: the rule
  * is dropped and nothing is ever intercepted, which looks exactly like a broken
  * extension.
  *
@@ -73,7 +73,7 @@ const MAX_SPLIT_DEPTH = 6;
 
 /**
  * Rule ids are `shard * STRIDE + engineIndex + 1`, so the common single-shard
- * case yields 1, 2, 3 — one per engine — and shards never collide.
+ * case yields 1, 2, 3, one per engine, and shards never collide.
  */
 const RULE_ID_SHARD_STRIDE = 100;
 
@@ -91,7 +91,7 @@ const STATUS_KEY = 'bunnylol.ruleStatus.v1';
 
 /**
  * `chrome.declarativeNetRequest.MAX_NUMBER_OF_DYNAMIC_RULES` is 5000 (30000 in
- * newer Chrome) and `MAX_NUMBER_OF_REGEX_RULES` is 1000 — every rule we build
+ * newer Chrome) and `MAX_NUMBER_OF_REGEX_RULES` is 1000: every rule we build
  * is a regex rule, so 1000 is the binding one. We stay comfortably under it
  * while leaving enough budget that the builtin registry plus a realistic custom
  * profile is covered with nothing dropped: the builtins alone need 60 rules
@@ -120,7 +120,7 @@ const REGEX_META = /[.*+?^${}()|[\]\\]/g;
  * One redirect rule per (engine, shard), plus an allow rule and a force-search
  * escape rule per engine.
  *
- * The capture group spans the *entire* `q` value — keyword and arguments — so
+ * The capture group spans the *entire* `q` value, keyword and arguments, so
  * `regexSubstitution` can hand go.html the untouched query and let the pure
  * resolver do the real work. The keyword must be followed by an encoded space,
  * a `&`, a `#` or the end of the url, which is what stops `gh` from hijacking a
@@ -163,7 +163,7 @@ interface PlannedRule {
 }
 
 /**
- * Shard-major — every engine's copy of shard 0, then every engine's shard 1 —
+ * Shard-major, every engine's copy of shard 0, then every engine's shard 1,
  * so running out of rule budget costs the same keywords on every engine. Engine
  * order would instead leave google fully covered and bing blind, which is worse
  * and much harder to explain.
@@ -240,7 +240,7 @@ function buildAllowRules(engines: SearchEngine[]): chrome.declarativeNetRequest.
  * `%3D`, but neither is guaranteed: which characters an engine template escapes
  * has changed across Chrome releases, and a query pasted from elsewhere can
  * carry the raw character. Matching both forms is why this rule works on
- * purpose rather than by accident — the old behaviour was that `%5C` matched
+ * purpose rather than by accident: the old behaviour was that `%5C` matched
  * nothing, the navigation left the browser, and Google searched for a literal
  * `\gh foo` with the backslash glued to the terms.
  *
@@ -317,8 +317,8 @@ let trailing: Promise<RuleStatus> | null = null;
  * count, so two rebuilds that overlap fight over one id space: the older run
  * removes the ids it read before the newer run added them, `updateDynamicRules`
  * rejects the duplicate, and `failClosed` then tears the whole dynamic table
- * down. A burst of saves — which is exactly what onboarding produces, one
- * `onStateChanged` each — is that pattern.
+ * down. A burst of saves, which is exactly what onboarding produces, one
+ * `onStateChanged` each, is that pattern.
  *
  * One trailing slot, not a queue of N: every caller that arrives while a
  * rebuild is in flight shares a single follow-up run, so N concurrent calls
@@ -331,7 +331,7 @@ export function syncRules(): Promise<RuleStatus> {
   // rebuild settles, which is a microtask or two before the follow-up it
   // scheduled actually starts. A caller landing in that gap sees no rebuild in
   // flight, and if it only consulted `chain` it would open a second one
-  // alongside the follow-up that is about to run — the very overlap this
+  // alongside the follow-up that is about to run: the very overlap this
   // serialization exists to prevent. A scheduled-but-unstarted follow-up still
   // starts after this call, so sharing it keeps the freshness guarantee.
   const scheduled = trailing;
@@ -414,7 +414,7 @@ async function runSync(): Promise<RuleStatus> {
   } catch (err) {
     // We never reached the replacement, so whatever the last successful sync
     // registered is still live and still intercepting. Reporting zero coverage
-    // here — as this used to — describes a browser state that does not exist.
+    // here, as this used to, describes a browser state that does not exist.
     const live = (await lastRuleStatus())?.keywords ?? 0;
     return await rememberStatus({
       registered: await countDynamicRules(),
@@ -433,8 +433,8 @@ async function runSync(): Promise<RuleStatus> {
  * set live and untouched rather than leaving nothing behind.
  *
  * Those survivors are not a harmless leftover. They were built for the state
- * the user has just changed — an alias they disabled, an engine they unchecked,
- * a reload under a new extension id — and a redirect rule that outlives its
+ * the user has just changed, an alias they disabled, an engine they unchecked,
+ * a reload under a new extension id, and a redirect rule that outlives its
  * matching allow and escape rules is precisely the redirect loop the priority
  * tiers exist to prevent, with the options page meanwhile reporting that
  * interception is off. So the failure path tears the whole dynamic table down,
@@ -464,7 +464,7 @@ async function failClosed(
       keywords: live,
       suppressed,
       dropped: Math.max(eligible - live, 0),
-      error: `Rule sync failed (${reason}) and the rules from the last sync could not be removed either (${errorText(removeErr)}). Address-bar interception is still running on those older rules, so a shortcut you just changed may still go to its old destination — reload the extension.`,
+      error: `Rule sync failed (${reason}) and the rules from the last sync could not be removed either (${errorText(removeErr)}). Address-bar interception is still running on those older rules, so a shortcut you just changed may still go to its old destination. Reload the extension.`,
       warning: null,
       extensionId,
     };
@@ -475,7 +475,7 @@ async function failClosed(
     keywords: 0,
     suppressed,
     dropped: eligible,
-    error: `Rule sync failed: ${reason}. Address-bar interception is off — the rules from the last sync were removed rather than left running against settings they no longer match.`,
+    error: `Rule sync failed: ${reason}. Address-bar interception is off. The rules from the last sync were removed rather than left running against settings they no longer match.`,
     warning: null,
     extensionId,
   };
@@ -568,18 +568,18 @@ function dedupeKeywords(keywords: string[]): string[] {
 }
 
 /**
- * TWO ORDERS, ONE LIST — the subtle part of this file.
+ * TWO ORDERS, ONE LIST: the subtle part of this file.
  *
  * `rankKeywords` decides WHICH keywords survive: the shard cap and the rule
  * budget both truncate the tail of this order, so it must put the keywords a
- * user would miss most at the front — builtins before custom shortcuts, and
+ * user would miss most at the front: builtins before custom shortcuts, and
  * shorter (hotter, and cheaper in the alternation) before longer.
  *
  * `alternationOrder` decides how the survivors are WRITTEN into one rule's
  * regex: longest-first, so the alternation offers `github` before `gh`.
  *
  * Ranking longest-first, as this used to, made the two the same order and cut
- * from the wrong end — `gh`, `g` and `npm` were the first aliases dropped once
+ * from the wrong end: `gh`, `g` and `npm` were the first aliases dropped once
  * a few hundred custom commands pushed past the budget.
  */
 function rankKeywords(keywords: string[]): string[] {
@@ -631,7 +631,7 @@ function escapeRegex(value: string): string {
 
 interface FittedPlan {
   rules: chrome.declarativeNetRequest.Rule[];
-  /** Aliases intercepted on EVERY selected engine — the number worth showing a user. */
+  /** Aliases intercepted on EVERY selected engine: the number worth showing a user. */
   covered: number;
   /** Aliases Chrome refused to compile a pattern for, even on their own. */
   rejected: string[];
@@ -645,7 +645,7 @@ interface FittedPlan {
  * held under `MAX_RULES`.
  *
  * `updateDynamicRules` is all-or-nothing, so shipping one unsupported pattern
- * would leave the user with zero interception — indistinguishable from a broken
+ * would leave the user with zero interception: indistinguishable from a broken
  * extension.
  */
 async function fitPlan(
@@ -658,8 +658,8 @@ async function fitPlan(
 
   // An engine's allow rule is a PRECONDITION for its redirect rules, not an
   // independent nicety. A redirect pattern still matches BunnyLol's own marked
-  // searches — `blpass` sits past the end of the captured `q` value, where the
-  // pattern swallows it as a trailing parameter — so the only thing keeping
+  // searches, `blpass` sits past the end of the captured `q` value, where the
+  // pattern swallows it as a trailing parameter, so the only thing keeping
   // `weather boston` out of an infinite go.html loop, and `\gh foo` out of the
   // command it escapes, is the higher-priority allow rule winning first.
   // Registering redirects for an engine whose allow rule Chrome refused is
@@ -667,7 +667,7 @@ async function fitPlan(
   //
   // The escape rule is a precondition for the same reason. Without it a typed
   // `\gh foo` is not intercepted at all, so the backslash reaches the engine as
-  // a search term and the user's only escape hatch silently stops working —
+  // a search term and the user's only escape hatch silently stops working,
   // and, unlike a missing keyword rule, they get no search either.
   const fixed: chrome.declarativeNetRequest.Rule[] = [];
   const guarded = new Set<SearchEngineId>();

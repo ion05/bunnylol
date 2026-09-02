@@ -1,7 +1,7 @@
 /**
  * Invariants of the shipped registry itself.
  *
- * `buildKeyMap` resolves an alias collision silently — first writer wins — so a
+ * `buildKeyMap` resolves an alias collision silently, first writer wins, so a
  * duplicate alias inside `BUILTIN_COMMANDS` does not fail anywhere, it just
  * makes one command permanently unreachable. Same for a `handler` string that
  * no longer names a function: `resolve` degrades to `cmd.url` and the smart
@@ -61,7 +61,7 @@ describe('BUILTIN_COMMANDS registry', () => {
   it('ships commands in every category except the fallback one', () => {
     // `custom` is the bucket a user's own shortcuts land in and ships empty by
     // design. Any OTHER empty category is either a typo in the registry or a
-    // pack the picker would offer with nothing in it, and both are bugs — a
+    // pack the picker would offer with nothing in it, and both are bugs: a
     // shipped category with no commands is exactly what `media` had become
     // before it was removed in v1.1.0.
     for (const category of CATEGORIES) {
@@ -114,7 +114,7 @@ describe('BUILTIN_COMMANDS registry', () => {
  * FREE TEXT NEVER LANDS IN A SHAPED SLOT.
  *
  * A `{q}` that sits in a path segment, an id or a numeric parameter expects a
- * shape — a meeting id, a tracking number, a package name. Words dropped into
+ * shape: a meeting id, a tracking number, a package name. Words dropped into
  * one of those build a url the site cannot serve: `zoom.us/j/h6%20recorder`,
  * `?trknbr=near%20me%20open%20now`, `localhost/surge%20meaning`. The two tests
  * below run the whole registry, so a command added with an unguarded slot fails
@@ -231,7 +231,7 @@ describe('destinationOf', () => {
   });
 
   // The tenant url is the field a user at another institution has to edit, and
-  // the `site:` template is only what words degrade to — a handler puts a
+  // the `site:` template is only what words degrade to: a handler puts a
   // numeric id on the row's own host instead.
   it('shows the tenant url when a handler owns the arguments and the template is a web search', () => {
     for (const key of ['bs', 'gs']) {

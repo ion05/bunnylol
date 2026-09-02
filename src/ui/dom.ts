@@ -1,5 +1,5 @@
 /**
- * The element builders every surface shares. DOM only — no `chrome.*`, and
+ * The element builders every surface shares. DOM only: no `chrome.*`, and
  * nothing touches `document` until a function is called, so the module imports
  * cleanly wherever it is pulled in.
  */

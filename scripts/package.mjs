@@ -7,7 +7,7 @@
  * reliably:
  *
  * - `manifest.json` is at the zip ROOT. Entry names are relative to `dist/`,
- *   so zipping the folder itself — the classic rejected upload — cannot happen.
+ *   so zipping the folder itself, the classic rejected upload, cannot happen.
  * - No `*.map`, and no `//# sourceMappingURL=` comment pointing at one. The
  *   build ships sourcemaps unconditionally because they help both store review
  *   and local debugging; they are simply left out here rather than turned off
@@ -76,7 +76,7 @@ function readJson(path, what) {
 
 /**
  * Vite ends every emitted chunk with `//# sourceMappingURL=<chunk>.js.map`, and
- * the maps are not in the archive — so without this every packed script makes
+ * the maps are not in the archive, so without this every packed script makes
  * DevTools ask the extension for a file that is not there. Only the trailing
  * comment goes; the code above it is untouched, and the rewrite happens before
  * the CRC and the deflate, so the archive stays a pure function of `dist/`.
@@ -208,7 +208,7 @@ function zip(entries) {
 const pkg = readJson(join(root, 'package.json'), 'package.json');
 const version = pkg.version;
 
-if (!existsSync(DIST)) die('dist/ is missing — run pnpm build first');
+if (!existsSync(DIST)) die('dist/ is missing. Run pnpm build first');
 const files = walk(DIST);
 
 const manifest = readJson(join(DIST, 'manifest.json'), 'dist/manifest.json');
@@ -228,12 +228,12 @@ const entries = files
     bytes: stripSourcemapComment(entry.name, readFileSync(entry.path)),
   }));
 
-// `readJson` above follows symlinks and `walk()` does not — it takes only
-// `isFile()` entries — so a symlinked dist/manifest.json passes the version
+// `readJson` above follows symlinks and `walk()` does not, it takes only
+// `isFile()` entries, so a symlinked dist/manifest.json passes the version
 // check and then never reaches the archive. That is the one way to get this far
 // without it, and an upload missing its manifest is rejected on the far side.
 if (!entries.some((entry) => entry.name === 'manifest.json')) {
-  die('dist/manifest.json did not survive the walk — refusing to write a zip without it');
+  die('dist/manifest.json did not survive the walk. Refusing to write a zip without it');
 }
 
 const archive = zip(entries);

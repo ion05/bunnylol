@@ -1,7 +1,7 @@
 /**
  * First run, as data.
  *
- * The picker asks one question — which packs of shipped shortcuts do you want —
+ * The picker asks one question, which packs of shipped shortcuts do you want,
  * and this module is the whole answer to it. It is pure and has no UI in it, so
  * the welcome page, the service worker's update path and the tests all agree on
  * what a pick means.
@@ -34,7 +34,7 @@ export const ALWAYS_ON_CATEGORIES: Category[] = ['meta'];
  *  own shortcuts, which are not a pack anybody can decline. */
 export const HIDDEN_CATEGORIES: Category[] = ['meta', 'custom'];
 
-/** One row of the picker, derived from the registry rather than restated — a
+/** One row of the picker, derived from the registry rather than restated: a
  *  pack whose count is written down by hand is a pack that goes stale. */
 export interface PickRow {
   id: string;
@@ -89,7 +89,7 @@ export function hasOnboarded(overrides: Overrides | null | undefined): boolean {
  * Writes a pick. AUTHORITATIVE: every shipped shortcut in a picked pack ends up
  * ON and every one outside it ends up OFF, so re-running the picker RE-ENABLES
  * shortcuts the user had turned off by hand inside a pack they pick again. That
- * is the documented behaviour of the welcome page rather than an accident —
+ * is the documented behaviour of the welcome page rather than an accident:
  * "these are the packs I want" has to mean something, and the page says so.
  *
  * `deleted` is untouched: a shortcut the user deleted stays deleted through a
@@ -132,8 +132,8 @@ export function applyCategoryPick(
  * instead of switching them all on regardless of what they chose.
  *
  * Returns its input BY REFERENCE when there is nothing new, so the update path
- * can skip the write — and therefore the `syncRules` round trip it would
- * trigger — with an identity check rather than a deep compare.
+ * can skip the write, and therefore the `syncRules` round trip it would
+ * trigger, with an identity check rather than a deep compare.
  *
  * FAILS OPEN: a profile that never saw the picker (`enabledCategories === null`)
  * has no pick to fold anything into, so nothing is ever disabled here. It only

@@ -3,7 +3,7 @@
  * asked for is not actually being intercepted, so the three states have to stay
  * distinct: red means nothing is intercepted, amber means most of it is, green
  * means all of it is. Reading `error` for partial coverage collapsed amber into
- * red and hid the difference — these tests pin the split.
+ * red and hid the difference: these tests pin the split.
  */
 
 import { describe, expect, it } from 'vitest';

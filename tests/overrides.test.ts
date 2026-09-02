@@ -108,7 +108,7 @@ describe('isUserId', () => {
     expect(isUserId('gh')).toBe(false);
     expect(isUserId('')).toBe(false);
     // No shipped id may land in the user namespace. `validateAlias` does NOT
-    // enforce that — a colon is a legal alias character — so this sweep is the
+    // enforce that, a colon is a legal alias character, so this sweep is the
     // guard on the registry itself, alongside `shortcutId`'s refusal to adopt a
     // `u:` keyword as an id.
     expect(BUILTIN_COMMANDS.some((builtin) => isUserId(shortcutId(builtin)))).toBe(false);
@@ -120,7 +120,7 @@ describe('the registry always has an identity', () => {
     // The adjacent and more damaging failure to the `u:` one above: a first
     // keyword past `MAX_ID_LENGTH` or containing whitespace leaves the command
     // with the id `''`, which the options page then writes overrides under and
-    // storage silently drops — rebinding and disabling appear to work and
+    // storage silently drops: rebinding and disabling appear to work and
     // persist nothing, and two such commands share every override entry.
     expect(BUILTIN_COMMANDS.filter((builtin) => shortcutId(builtin) === '')).toEqual([]);
   });
@@ -362,7 +362,7 @@ describe('diffEdit', () => {
     // Derived from the registry: `null` here means "the user removed it", so
     // this only says anything about a command that ships one, and `gh` does
     // not. Recording garbage as `null` would delete a searchUrl the user never
-    // touched — the one field where "unusable" and "cleared" are different
+    // touched: the one field where "unusable" and "cleared" are different
     // instructions.
     const shipsSearch = BUILTIN_COMMANDS.find((cmd) => cmd.searchUrl);
     if (!shipsSearch) throw new Error('no shipped command carries a searchUrl');
@@ -415,7 +415,7 @@ describe('foldLegacyKeyOverrides', () => {
   });
 
   it('drops a legacy entry keyed by a user id', () => {
-    // The v1 map predates user ids, so such a key is a hand edit — and edits
+    // The v1 map predates user ids, so such a key is a hand edit, and edits
     // are for shipped shortcuts only. Folding it would put back exactly the
     // entry the storage boundary drops.
     expect(foldLegacyKeyOverrides({}, { 'u:tix': ['ticket'] })).toEqual({});
@@ -665,11 +665,11 @@ describe('sectionLabelTaken', () => {
     expect(sectionLabelTaken('Engineering', renamed)).toBe(true);
   });
 
-  it('says nothing about a blank label — that is the validator\'s answer', () => {
+  it('says nothing about a blank label: that is the validator\'s answer', () => {
     expect(sectionLabelTaken('   ', WORK)).toBe(false);
   });
 
-  describe('with a selfId — the rename question, not the add one', () => {
+  describe('with a selfId: the rename question, not the add one', () => {
     it('lets a section keep its own name', () => {
       // Blurring the field without changing it must not refuse the value that
       // is already stored.
@@ -698,7 +698,7 @@ describe('sectionLabelTaken', () => {
     });
 
     it('frees the label the section being renamed used to carry', () => {
-      // `dev` is called "Work" here, so nothing else is — and `sec-work` may
+      // `dev` is called "Work" here, so nothing else is, and `sec-work` may
       // take it the moment `dev` gives it up. Only the would-produce reading
       // gets this right: "is Work in use, ignoring sec-work" says yes.
       const renamed: Section[] = [
@@ -710,7 +710,7 @@ describe('sectionLabelTaken', () => {
 
     it('allows restoring a shipped default name that nothing else answers to', () => {
       const renamed: Section[] = [{ id: 'dev', label: 'Hacking' }];
-      // Restoring drops the entry, so `dev` falls back to "Developer" — and
+      // Restoring drops the entry, so `dev` falls back to "Developer", and
       // that is the only thing on the list called it.
       expect(sectionLabelTaken('Developer', renamed, 'dev')).toBe(false);
     });
@@ -803,7 +803,7 @@ describe('renameSection', () => {
   it('refuses past the cap when the rename would APPEND an entry', () => {
     // Renaming a shipped group the user has not touched adds a section entry,
     // and an entry over the cap is one the storage boundary drops on the next
-    // save — the heading would go back to "Developer" with nothing on the page
+    // save: the heading would go back to "Developer" with nothing on the page
     // to say why. Refused the way `addSection` refuses: the same reference back.
     const full = overridesWith({
       sections: Array.from({ length: MAX_SECTIONS }, (_, n) => ({

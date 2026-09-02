@@ -1,6 +1,6 @@
 /**
  * The rule-status pill in the topbar, and the "exempted by this list" line in
- * Settings — both painted from the same last-known `RuleStatus`, which is this
+ * Settings, both painted from the same last-known `RuleStatus`, which is this
  * module's own state. Nothing else on the page needs to know a sync happened;
  * `store.ts` calls back into `scheduleStatusRefresh` through the `afterCommit`
  * hook rather than this module reaching into the store to schedule itself.

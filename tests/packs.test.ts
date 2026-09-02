@@ -32,7 +32,7 @@ describe('extras/packs/removed-commands.json', () => {
     );
     // Categories are plain strings in the pack's JSON, so removing a member
     // from `CATEGORIES` can't fail typecheck here the way it would for
-    // `BUILTIN_COMMANDS` — normalizeCategory would silently reclassify these
+    // `BUILTIN_COMMANDS`: normalizeCategory would silently reclassify these
     // entries as 'custom'. Assert the round trip so that reclassification is
     // a loud test failure instead.
     expect(imported.overrides.custom.map((cmd) => cmd.category)).toEqual(

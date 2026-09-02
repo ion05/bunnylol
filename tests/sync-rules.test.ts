@@ -6,7 +6,7 @@
  * `chrome.declarativeNetRequest.isRegexSupported`, splits what Chrome refuses,
  * fits the result into the rule budget and reports a `RuleStatus`. Everything
  * below drives that real function through a `chrome` stub and then asks what
- * the REGISTERED rules would do to a navigation — a status that claims coverage
+ * the REGISTERED rules would do to a navigation: a status that claims coverage
  * the rules do not deliver is the failure mode these tests exist to catch.
  */
 
@@ -162,14 +162,14 @@ describe('the status syncRules reports matches the rules it registered', () => {
  * A REJECTED UPDATE LEAVES THE OLD RULES RUNNING.
  *
  * `updateDynamicRules` is atomic, so when it throws the previous dynamic rules
- * are still installed — the failure path used to assume the opposite and report
+ * are still installed: the failure path used to assume the opposite and report
  * `keywords: 0`, while sixty obsolete redirect rules kept intercepting. Those
  * survivors are the redirect-loop condition on their own: they were built for
  * settings the user has since changed, and the options page was meanwhile
  * saying interception was off.
  */
 describe('a Chrome that rejects the rule update', () => {
-  /** Succeeds once, then refuses every later write — including the teardown. */
+  /** Succeeds once, then refuses every later write, including the teardown. */
   const refuseAfterFirst = (call: number) =>
     call === 1 ? null : 'Dynamic rule quota exceeded.';
 
@@ -204,7 +204,7 @@ describe('a Chrome that rejects the rule update', () => {
     const failed = await syncRules();
 
     // Nothing could be torn down, so the truthful report is what the last good
-    // sync left running — not 0, and not the coverage we failed to install.
+    // sync left running, not 0, and not the coverage we failed to install.
     expect(stub.rules().length).toBe(live);
     expect(failed.registered).toBe(live);
     expect(failed.keywords).toBe(first.keywords);
@@ -330,7 +330,7 @@ describe('no engines selected', () => {
 });
 
 /**
- * The budget is chosen by rank — builtins first, shorter first — and only then
+ * The budget is chosen by rank: builtins first, shorter first. Only then is it
  * written longest-first into each alternation. Ranking by length alone truncated
  * from the hot end: 400 imported shortcuts used to cost the user `gh`.
  */
@@ -349,7 +349,7 @@ function synthetic(count: number): Command[] {
 describe('a profile with several hundred custom shortcuts', () => {
   const custom = synthetic(500);
 
-  it('intercepts all of them AND every builtin — the caps have room', async () => {
+  it('intercepts all of them AND every builtin: the caps have room', async () => {
     const stored = state({}, custom);
     const { status, rules } = await sync({ state: stored });
 
@@ -487,8 +487,8 @@ describe('the force-search escape hatch', () => {
       expect(new RegExp(rule.condition.regexFilter as string, 'i').test(searched)).toBe(false);
     }
 
-    // A keyword rule still MATCHES `q=gh%20foo` — `blpass` sits past the end of
-    // the captured value — and is only outranked. When the remainder is not a
+    // A keyword rule still MATCHES `q=gh%20foo`, `blpass` sits past the end of
+    // the captured value, and is only outranked. When the remainder is not a
     // keyword, literally no rule matches, which is the cleaner half of the same
     // guarantee.
     const plain = resolve(`${prefix}how tall is the eiffel tower`, commands, {
@@ -559,7 +559,7 @@ async function ticksToSettle(): Promise<number> {
  *
  * Rule ids are renumbered densely from the keyword count, so two overlapping
  * rebuilds read the same `existing` ids, both try to add the same ids, Chrome
- * refuses the second — and `failClosed` answers a refusal by tearing the whole
+ * refuses the second, and `failClosed` answers a refusal by tearing the whole
  * dynamic table down. `strictIds` is what makes the stub refuse the way Chrome
  * does; without it the collision is invisible and these tests pass vacuously.
  */
@@ -600,7 +600,7 @@ describe('concurrent syncs', () => {
     await chrome.storage.local.set({ [STORAGE_KEY]: state({}, synthetic(1)) });
     // The point of the test: the second caller really does arrive while the
     // first rebuild is still running, so it must not be handed that rebuild's
-    // status — which was computed from state that predates this save.
+    // status, which was computed from state that predates this save.
     expect(settled).toBe(false);
     const second = await syncRules();
 
@@ -632,7 +632,7 @@ describe('concurrent syncs', () => {
    * scheduled actually started" is a couple of microtasks wide. A caller
    * landing inside it sees nothing in flight, and if the fast path only
    * consulted the in-flight slot it would start a rebuild of its own alongside
-   * the follow-up — two runs reading one id space, Chrome refusing the second
+   * the follow-up, two runs reading one id space, Chrome refusing the second
    * add, `failClosed` removing every rule. Today's callers all run in
    * macrotasks and so cannot land there, which is exactly why this is swept
    * across every arrival tick rather than left to a caller to discover.
@@ -675,7 +675,7 @@ describe('concurrent syncs', () => {
    * The refusal above is one the stub was TOLD to throw. This one is Chrome's
    * own duplicate-id check firing from inside a real `syncRules()` run, so the
    * `strictIds` the concurrency tests rely on is proven to reach the production
-   * path — and proven to come back out as an error rather than being swallowed
+   * path, and proven to come back out as an error rather than being swallowed
    * by the queue.
    *
    * Staged the way the unserialized code produced it: the rebuild reads a

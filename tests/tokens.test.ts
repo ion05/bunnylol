@@ -24,8 +24,8 @@ const SHEETS: Array<[string, string]> = [
 
 /**
  * Every `?raw` import above, so the loader itself is under test. Most of the
- * assertions in this file are negative — `not.toMatch` on a string that never
- * arrived passes — and the CSS ones only survive because vitest.config.ts sets
+ * assertions in this file are negative, `not.toMatch` on a string that never
+ * arrived passes, and the CSS ones only survive because vitest.config.ts sets
  * `css: true`. A stub or a moved file has to fail here rather than turn the
  * suite green by emptying it. The smallest of these, public/manifest.json, is
  * ~1.2 KB.
@@ -138,7 +138,7 @@ describe('the stylesheets are wired to the tokens', () => {
     // `accent-color` is deliberately not swept: it paints a checkbox's fill and
     // the browser draws the check glyph in a contrasting colour itself, so
     // design/components.css's `.check input { accent-color: var(--accent) }`
-    // stands. The first regex already skips it — `[^-]` rejects the longhand.
+    // stands. The first regex already skips it: `[^-]` rejects the longhand.
   });
 
   it.each(SHEETS)('%s only edges a shape with the accent when it also fills it', (_name, css) => {
@@ -165,7 +165,7 @@ describe('the stylesheets are wired to the tokens', () => {
 
   it('inlines the palette in exactly one place, the select chevron', () => {
     // A data URI cannot resolve currentColor and light-dark() takes colours
-    // rather than images, so the chevron's stroke is one mid grey — 3.10:1 on
+    // rather than images, so the chevron's stroke is one mid grey: 3.10:1 on
     // the light --bg-sunken, 5.07:1 on the dark one. It is percent-encoded
     // rather than a `#` literal, which is why the check above does not see it.
     expect(stripComments(optionsCss).match(/%23[0-9a-fA-F]{3,8}\b/g)).toEqual(['%238a8a82']);
@@ -173,7 +173,7 @@ describe('the stylesheets are wired to the tokens', () => {
   });
 
   it.each(SHEETS)('%s takes every font weight from the scale', (_name, css) => {
-    // 550 and 650 are steps the scale does not have — a variable font draws
+    // 550 and 650 are steps the scale does not have: a variable font draws
     // them happily, which is exactly why they survived unnoticed between
     // --fw-medium and --fw-semibold.
     expect(stripComments(css)).not.toMatch(/font-weight:(?!\s*var\(--fw-)/);
@@ -298,7 +298,7 @@ describe('the options page implements the approved component contract', () => {
 
   it('has a rule for every class the options TypeScript renders', () => {
     // The classes the page paints itself with are only in the TypeScript, so a
-    // rule deleted from this sheet leaves no trace at all in it — `.panel-head`
+    // rule deleted from this sheet leaves no trace at all in it: `.panel-head`
     // lost its `.panel-head-text` companion that way, and seven panel heads
     // silently stacked their title, sub-line and Saved chip with no gap.
     const CLASS_LITERAL = /(?:\bclass|\bclassName)\s*[:=]\s*'([^']*)'/g;
@@ -358,7 +358,7 @@ describe('the options page implements the approved component contract', () => {
   it('states a message with colour and weight, not with a bar or an icon', () => {
     // `.msg::before` drew a 3px rule down the left of every message. The tone is
     // the colour and the weight, the wording is the meaning, and an invalid
-    // input already carries its own red border — the bar was a second thing to
+    // input already carries its own red border: the bar was a second thing to
     // keep in sync that said nothing the message did not.
     expect(options).not.toMatch(/\.msg::(?:before|after)/);
     const [msg, ...more] = rulesFor(optionsCss, '.msg');
@@ -496,7 +496,7 @@ describe('the dispatch page', () => {
    * go.html cannot `@import` the tokens: its whole job is to redirect before it
    * is seen, so the sheet is inline and the values are copied by hand. Each
    * colour is pinned to the token it was copied from, in both schemes, so
-   * editing tokens.css alone turns this red — which is the only thing standing
+   * editing tokens.css alone turns this red, which is the only thing standing
    * between the two files and silent drift.
    */
   const HAND_COPIED: Array<[string, string]> = [
@@ -509,8 +509,8 @@ describe('the dispatch page', () => {
   ];
 
   /**
-   * The values that are not colours were copied by hand too — the type scale,
-   * the weights, the radius and the spacing steps — and nothing about `24px`
+   * The values that are not colours were copied by hand too, the type scale,
+   * the weights, the radius and the spacing steps, and nothing about `24px`
    * says which token it came from. Each entry names the token, the value
    * tokens.css declares, and the declaration go.html spent it on, built from
    * that same value so the two cannot be edited apart.
@@ -598,7 +598,7 @@ describe('the extension icon', () => {
   /**
    * Reads the pixels of a PNG this repo generated: one IDAT, no interlacing,
    * filter byte 0 on every scanline, straight (un-premultiplied) alpha.
-   * Asserting on the generator's source is not asserting on the icon — these
+   * Asserting on the generator's source is not asserting on the icon: these
    * bytes are what ships, and nothing in `pnpm test` regenerates them.
    *
    * Inflated through DecompressionStream rather than node:zlib because this
@@ -640,7 +640,7 @@ describe('the extension icon', () => {
   it('takes the palette apart the way the icon needs it, and refuses otherwise', () => {
     // The generator's own parser, run rather than read: it only ever meets the
     // real tokens.css, where neither refusal below can be reproduced without
-    // editing the palette. Both are the same answer — a PNG has one colour, not
+    // editing the palette. Both are the same answer: a PNG has one colour, not
     // one per scheme, and no colour at all is not a colour to guess at.
     expect(readFlatHex(tokens, '--accent')).toEqual(rgb(tokenValue(tokens, 'accent', 'light')));
     expect(readFlatHex(':root { --accent: #e1ab76; }', '--accent')).toEqual([0xe1, 0xab, 0x76]);
@@ -671,8 +671,8 @@ describe('the extension icon', () => {
 describe('the manifest floor', () => {
   it('is at least the Chrome that shipped light-dark()', () => {
     // Every colour token is a light-dark() pair, and a var() that resolves to a
-    // colour function the engine cannot parse is invalid at computed-value time
-    // — the property becomes `unset`, so backgrounds go transparent and the
+    // colour function the engine cannot parse is invalid at computed-value time:
+    // the property becomes `unset`, so backgrounds go transparent and the
     // switch's off state disappears. light-dark() shipped in Chrome 123.
     expect(tokens).toContain('light-dark(');
     const floor = Number(JSON.parse(manifestJson).minimum_chrome_version);

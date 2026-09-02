@@ -410,8 +410,8 @@ describe('mergeCommands', () => {
   });
 
   it('degrades rather than throwing on a searchUrl an edit left without {q}', () => {
-    // `validateUrlTemplate` accepts a placeholder-less URL — it is a legal
-    // destination, just one with nowhere to put the arguments — so the edit is
+    // `validateUrlTemplate` accepts a placeholder-less URL, it is a legal
+    // destination, just one with nowhere to put the arguments, so the edit is
     // stored and `expandTemplate` appends `?q=`. Documented rather than
     // special-cased: a custom command written that way behaves identically, and
     // invariant 12 only promises a navigable URL, not a useful one.
@@ -529,7 +529,7 @@ describe('activeKeywords', () => {
     expect(activeKeywords(commands)).toEqual(activeKeywords(commands, []));
   });
 
-  it('exempts nothing by default — every alias is intercepted', () => {
+  it('exempts nothing by default: every alias is intercepted', () => {
     expect(DEFAULT_STOP_LIST).toEqual([]);
     const intercepted = activeKeywords(BUILTIN_COMMANDS, DEFAULT_STOP_LIST);
     expect(intercepted).toEqual(activeKeywords(BUILTIN_COMMANDS));
@@ -622,7 +622,7 @@ describe('handler keyword', () => {
     const id = shortcutId(plainDegrade);
     const rebound = mergeCommands(BUILTIN_COMMANDS, overrides({ edits: { [id]: { keys: ['huddle'] } } }));
     const result = resolve('huddle surge meaning', rebound, settings());
-    // The rebound alias reaches the command — and the shipped one no longer
+    // The rebound alias reaches the command, and the shipped one no longer
     // does, which is what makes the URL below the handler's answer rather than
     // the plain-search fallback's identical one.
     expect(result.command?.id).toBe(id);

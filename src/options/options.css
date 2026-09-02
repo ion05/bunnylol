@@ -1,4 +1,4 @@
-/* The palette, type scale and metrics live in design/tokens.css — the file the
+/* The palette, type scale and metrics live in design/tokens.css: the file the
  * design system was approved as. Vite inlines this @import at build, so the page
  * still emits one stylesheet. CSS requires @import before any rule. */
 @import '../../design/tokens.css';
@@ -108,7 +108,7 @@ a {
 }
 
 /* A flex item's `min-width: auto` floors at its content's minimum, and the
-   detail below is `nowrap` — so without this the message cannot shrink and the
+   detail below is `nowrap`, so without this the message cannot shrink and the
    48ch cap above never applies. */
 .status > span {
   min-width: 0;
@@ -254,7 +254,7 @@ a {
   gap: var(--sp-5);
 }
 
-/* A transient announcement, not a dimmed control — the opacity transition
+/* A transient announcement, not a dimmed control: the opacity transition
    stays. */
 .saved {
   font-size: var(--fs-12);
@@ -331,7 +331,7 @@ a {
 }
 
 /* The armed button is the one under the pointer when the confirming click
-   lands, and a bare `.btn-armed` loses to `.btn-ghost:hover` on specificity —
+   lands, and a bare `.btn-armed` loses to `.btn-ghost:hover` on specificity,
    which would wash the red fill away at exactly the moment it is the message. */
 .btn-armed:hover {
   background: var(--danger);
@@ -357,7 +357,7 @@ a {
   height: 14px;
 }
 
-/* Colour, not opacity — the same discipline the rows use, and the only way a
+/* Colour, not opacity: the same discipline the rows use, and the only way a
    disabled control's edge stays a measurable pair of colours instead of a
    fraction of whatever is behind it. Declared after the family rules rather
    than beside `.btn:hover` where design/components.css puts it: the hovers are
@@ -421,8 +421,8 @@ a {
   flex-direction: column;
 }
 
-/* The layout wrapper, per design/components.css. It is an h3 here — the groups
-   are the document's outline, under the panel's own h2 — so it also has to drop
+/* The layout wrapper, per design/components.css. It is an h3 here, the groups
+   are the document's outline, under the panel's own h2, so it also has to drop
    the UA heading margin and type. */
 .group-head {
   display: flex;
@@ -454,8 +454,8 @@ a {
   color: var(--text);
 }
 
-/* While a filter is live the fold is not writable — `applyFilter` force-expands
-   every group — so the control says so rather than accepting a click that
+/* While a filter is live the fold is not writable, `applyFilter` force-expands
+   every group, so the control says so rather than accepting a click that
    changes nothing visible. */
 .group-toggle[aria-disabled='true'] {
   cursor: default;
@@ -605,7 +605,7 @@ a {
 
 /* `opacity`, never `visibility` or `display`, so the buttons stay in the tab
    order; `:focus-within` reveals them the moment a keyboard reaches them. The
-   switch is excluded — it conveys state and must always be visible. */
+   switch is excluded: it conveys state and must always be visible. */
 .row-actions .btn {
   opacity: 0;
   transition: opacity 90ms ease;
@@ -762,7 +762,7 @@ a {
 }
 
 /* No bar and no icon. The colour and the weight carry the tone, the wording
-   carries the meaning, and an invalid input carries its own red border — the
+   carries the meaning, and an invalid input carries its own red border: the
    3px rule `.msg::before` used to draw was a second thing to keep in sync that
    said nothing the message did not already say. */
 .msg {
@@ -895,7 +895,7 @@ a {
 
 /* Wrapped, where the contract's specimen ellipsises: the whole point of the
    live preview is the query string the handler built, and that is the end of
-   the URL — the half an ellipsis would hide. */
+   the URL: the half an ellipsis would hide. */
 .preview-url {
   color: var(--text-dim);
   overflow-wrap: anywhere;
@@ -913,7 +913,7 @@ a {
   gap: var(--sp-4) var(--sp-7);
 }
 
-/* A checkbox means "include this in a set" — which engines to intercept, which
+/* A checkbox means "include this in a set", which engines to intercept, which
    packs to enable. A switch means "this thing is on or off" (a shortcut). Do
    not swap one for the other. Centred rather than the contract's `flex-start`
    because every label here is one line, so the box lines up with the text
@@ -1189,7 +1189,7 @@ a {
   height: 14px;
   /* Optical: the box lines up with the cap height of the name beside it. */
   margin: 2px 0 0;
-  /* A fill, not a mark — see `.check input`. */
+  /* A fill, not a mark: see `.check input`. */
   accent-color: var(--accent);
   cursor: pointer;
 }

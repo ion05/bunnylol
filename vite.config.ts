@@ -5,7 +5,7 @@ import type { Plugin } from 'vite';
  * Vite marks emitted `<script>` and `<link>` tags `crossorigin` because that is
  * what a web deployment needs. On a `chrome-extension://` page the browser
  * reads that as a cross-world resource mismatch, discards the preload and logs
- * a warning — so the attribute costs us the preload it was meant to enable.
+ * a warning, so the attribute costs us the preload it was meant to enable.
  */
 function stripCrossorigin(): Plugin {
   return {

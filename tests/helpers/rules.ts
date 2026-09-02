@@ -2,8 +2,8 @@
  * Test scaffolding shared by the rule suites.
  *
  * Two things live here. `installChromeStub` is a `chrome` object complete
- * enough to run the REAL `syncRules()` in Node — storage, the dynamic-rule
- * table and `isRegexSupported` — so the production path can be tested instead
+ * enough to run the REAL `syncRules()` in Node, storage, the dynamic-rule
+ * table and `isRegexSupported`, so the production path can be tested instead
  * of the pure `buildRules` mirror of it. It also counts local writes and
  * records `tabs.create` / `openOptionsPage`, which is what lets the install
  * branch be driven end to end here rather than reasoned about.
@@ -26,7 +26,7 @@ export interface ChromeStub {
   probed: string[];
   /** How many times `updateDynamicRules` was called. */
   updates: number;
-  /** How many times `chrome.storage.local.set` was called — "did that path
+  /** How many times `chrome.storage.local.set` was called: "did that path
    *  write" is a question the install branch has to be able to answer. */
   writes: number;
   /** The urls handed to `chrome.tabs.create`, in order. */
@@ -52,7 +52,7 @@ export interface StubOptions {
   rejectUpdate?: (call: number, update: DynamicRuleUpdate) => string | null;
   /**
    * Chrome's own duplicate-id check: an add whose id is still present once
-   * `removeRuleIds` have been applied is refused, and — like every refusal —
+   * `removeRuleIds` have been applied is refused, and, like every refusal,
    * the whole call is refused WITHOUT CHANGING THE TABLE.
    *
    * Off by default, because it only matters for the suites that drive more
@@ -162,7 +162,7 @@ export function priorityOf(rule: chrome.declarativeNetRequest.Rule): number {
  * wins, and `allow` beats `redirect` at equal priority. `null` when no rule
  * matches at all.
  *
- * A redirect rule's regex can still *match* one of our own marked searches —
+ * A redirect rule's regex can still *match* one of our own marked searches:
  * `blpass=1` sits past the end of the captured `q` value, where the pattern
  * happily swallows it as a trailing parameter. What makes the marker work is
  * the higher-priority allow rule claiming the url first, so "no redirect rule
@@ -220,7 +220,7 @@ export function escapeRulesOf(
   return rules.filter(isEscapeRule);
 }
 
-/** Redirect rules built from the keyword alternation — the escape rules excluded. */
+/** Redirect rules built from the keyword alternation: the escape rules excluded. */
 export function keywordRulesOf(
   rules: chrome.declarativeNetRequest.Rule[],
 ): chrome.declarativeNetRequest.Rule[] {

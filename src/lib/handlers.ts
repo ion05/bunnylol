@@ -2,7 +2,7 @@
  * Smart argument handlers: pure, synchronous `(args, cmd, settings) => url`.
  *
  * Nothing in here touches `chrome.*`, the DOM, or async work, and no handler
- * may throw — odd input degrades to a sensible URL so the resolver always has
+ * may throw: odd input degrades to a sensible URL so the resolver always has
  * somewhere to navigate.
  *
  * HOST DERIVATION. A handler whose destination is a MULTI-TENANT product
@@ -10,8 +10,8 @@
  * from `cmd.searchUrl`, because the tenant is the user's and not ours: pointing
  * `bs` at another university's D2L has to keep the deep links working. A
  * handler whose host IS its identity (github*, reddit, npm, youtube, outlook,
- * onedrive, teams) keeps its literal — a `github` handler aimed somewhere other
- * than github.com is not a github handler — and `cmd.url` still governs its
+ * onedrive, teams) keeps its literal, a `github` handler aimed somewhere other
+ * than github.com is not a github handler, and `cmd.url` still governs its
  * bare destination. The Google Workspace handlers (gmail, gdrive, gcal) go one
  * further and ignore `cmd.url` entirely: their destination is keyed by the
  * account index, which lives in settings and not in the command.
@@ -88,7 +88,7 @@ export function encodeQuery(value: string): string {
 }
 
 /**
- * Percent-encodes a run of path segments, but leaves `/` and `@` readable —
+ * Percent-encodes a run of path segments, but leaves `/` and `@` readable,
  * both are legal in a path, and `@scope/pkg` URLs are unreadable without them.
  */
 export function encodePath(value: string): string {
@@ -97,8 +97,8 @@ export function encodePath(value: string): string {
 
 /**
  * Removes `.` and `..` segments. They are legal characters, but a handler that
- * interpolates them builds a URL nobody asked for — `gh ../../etc/passwd` is a
- * request for a repo, not for `github.com/etc/passwd` — so they never reach a
+ * interpolates them builds a URL nobody asked for, `gh ../../etc/passwd` is a
+ * request for a repo, not for `github.com/etc/passwd`, so they never reach a
  * path we construct. Empty segments survive, so a leading or interior `/` is
  * preserved for callers that depend on it.
  */
@@ -123,8 +123,8 @@ function trimSlashes(value: string): string {
  * `{q}` is the canonical placeholder; `%s` is accepted for templates copied out
  * of Chrome's custom-search-engine UI. When the template has neither and there
  * are arguments to place, we treat the template as a bare destination and append
- * them as `q` — `?q=` when the template has no query string yet, `&q=` when it
- * already does — because that is what every engine we ship reads. A template
+ * them as `q`, `?q=` when the template has no query string yet, `&q=` when it
+ * already does, because that is what every engine we ship reads. A template
  * with a fragment should spell out `{q}`: the append lands after the `#`.
  *
  * It lives here rather than in `resolve.ts` because the handlers need it too and
@@ -156,7 +156,7 @@ function googleSite(host: string, query: string): string {
  * downstream parses too: a second, stricter test would accept
  * `https:/school.brightspace.com/d2l/home` into storage and then read a
  * different host out of it than the validator saw. Parsing also normalizes
- * case, separates the port from the host, and drops any userinfo — none of
+ * case, separates the port from the host, and drops any userinfo: none of
  * which a landing page carries.
  */
 function parseHttpUrl(url: string): URL | null {
@@ -173,7 +173,7 @@ function parseHttpUrl(url: string): URL | null {
  * degrades to a search of `usps.com`. Every command that uses this ships a
  * plain two-label domain.
  *
- * The regex is only the fallback for a scheme-less host — a form storage
+ * The regex is only the fallback for a scheme-less host: a form storage
  * rejects, but cheap to keep accepting. Reading the host the way `joinPath`
  * reads it is what keeps a multi-tenant handler's two halves agreeing about one
  * field: on the stored-verbatim `https:/school.brightspace.com/...` the regex
@@ -192,8 +192,8 @@ function commandHost(url: string): string {
 /**
  * Hangs a product's canonical path off the ORIGIN of the command's own url, so
  * a user who repoints a multi-tenant command at their institution keeps working
- * deep links. Only the origin is used: the row's own path is its landing page —
- * `/d2l/home`, `/`, or whatever the user pasted — and not a prefix the
+ * deep links. Only the origin is used: the row's own path is its landing page,
+ * `/d2l/home`, `/`, or whatever the user pasted, and not a prefix the
  * product's deep links live under, and its query and fragment belong to that
  * landing page too.
  */
@@ -206,14 +206,14 @@ function joinPath(base: string, segment: string): string {
 
 /**
  * The words-degrade for a login-walled destination that the command itself
- * defines. The command's own `searchUrl` first — that is where the institution
- * or vendor domain lives now, and it is user-editable — then a `site:` search
+ * defines. The command's own `searchUrl` first, that is where the institution
+ * or vendor domain lives now, and it is user-editable, then a `site:` search
  * of the registrable domain behind `cmd.url`, and `fallbackHost` only when the
  * command carries no usable url at all.
  *
  * A repointed tenant should carry its own `searchUrl`: the `site:` floor reads
  * the REGISTRABLE domain, so `iu.brightspace.com` degrades to the D2L vendor
- * site rather than to IU. The shipped rows do — `bs` searches `purdue.edu` —
+ * site rather than to IU. The shipped rows do, `bs` searches `purdue.edu`,
  * and that field is the one to edit alongside `url`.
  */
 function ownSearch(query: string, cmd: Command, fallbackHost: string): string {
@@ -261,7 +261,7 @@ const GITHUB_HOME = 'https://github.com/';
 
 /**
  * Tabs that also address a single numbered item. GitHub's list path and its
- * item path differ for pull requests — `/pulls` but `/pull/123` — so the
+ * item path differ for pull requests, `/pulls` but `/pull/123`, so the
  * mapping cannot just append the number to the tab.
  */
 const GITHUB_NUMBERED: Record<string, string> = {
@@ -434,7 +434,7 @@ function gdrive(args: string, _cmd: Command, settings: Settings): string {
 
 /**
  * Drive's `type:` filter for each Docs-family editor, keyed by the path segment
- * of the app's own URL — the commands stay plain data and the account index
+ * of the app's own URL: the commands stay plain data and the account index
  * lives in one place.
  */
 const GOOGLE_APP_TYPES: Record<string, string> = {
@@ -576,11 +576,12 @@ function meta(args: string, cmd: Command, _settings: Settings): string {
 /**
  * SHAPE GUARDS
  *
- * A command whose destination interpolates its argument into a NON-query slot —
- * a path segment, a meeting id, a tracking number — cannot take free text: the
- * slot has a shape, and words jammed into it build a url the site cannot serve
- * (an invalid join link, "tracking number not found"). Everything below pairs
- * that shape with a degrade that keeps the words the user typed.
+ * A command whose destination interpolates its argument into a NON-query slot
+ * cannot take free text. That slot is a path segment, a meeting id or a
+ * tracking number: it has a shape, and words jammed into it build a url the
+ * site cannot serve (an invalid join link, "tracking number not found").
+ * Everything below pairs that shape with a degrade that keeps the words the
+ * user typed.
  */
 
 /** Zoom personal and scheduled meeting ids are 9-11 digits. */
@@ -596,12 +597,12 @@ const INSTAGRAM_HANDLE = /^[a-z0-9._]{1,30}$/i;
 
 /**
  * Which carrier a tracking number belongs to, read off its shape. The shapes
- * assume `normalizeTracking` has already run — uppercase, no spaces or dashes.
+ * assume `normalizeTracking` has already run: uppercase, no spaces or dashes.
  *
  * Order decides exactly one case, and it is the only real overlap: a bare
  * 20-digit number is USPS when it starts with a 9 and FedEx otherwise, which
  * is true only because USPS is tested first. The 22-digit pair does NOT
- * overlap — USPS is `92`–`95`, FedEx Ground is `96` — so that one reads like
+ * overlap: USPS is `92` to `95`, FedEx Ground is `96`. So that one reads like
  * an ordering dependency without being one.
  *
  * A number that matches nothing is not routed anywhere: `track` searches for
@@ -621,7 +622,7 @@ export const CARRIERS: { id: string; label: string; shape: RegExp; template: str
   {
     id: 'usps',
     label: 'USPS',
-    // 22 digits starting 92–95, 20 digits starting with 9, 26 digits, or an
+    // 22 digits starting 92 to 95, 20 digits starting with 9, 26 digits, or an
     // international `XX123456789US`.
     shape: /^(?:9[2-5]\d{20}|9\d{19}|\d{26}|[A-Z]{2}\d{9}US)$/,
     template: 'https://tools.usps.com/go/TrackConfirmAction?tLabels={q}',
