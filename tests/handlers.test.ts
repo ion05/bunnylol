@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BUILTIN_COMMANDS } from '../src/lib/commands';
-import { AI_PROVIDERS, HANDLERS, aiUrl } from '../src/lib/handlers';
+import { AI_PROVIDERS, CARRIERS, HANDLERS, aiUrl, detectCarrier } from '../src/lib/handlers';
 import { DEFAULT_SETTINGS } from '../src/lib/types';
 import type { Command, HandlerId, Settings } from '../src/lib/types';
 
@@ -26,6 +26,7 @@ const ALL_HANDLER_IDS: HandlerId[] = [
   'zoom',
   'meet',
   'tracking',
+  'track',
   'instagram',
   'whatsapp',
   'word',
@@ -622,6 +623,64 @@ describe('shape-guarded slots', () => {
     expect(HANDLERS.tracking('hourstodaynearme', USPS, settings())).toBe(
       'https://www.google.com/search?q=site%3Ausps.com+hourstodaynearme',
     );
+  });
+
+  describe('track: one keyword, the carrier read off the number', () => {
+    const TRACK = builtin('track');
+
+    it.each([
+      ['1Z999AA10123456784', 'ups', 'https://www.ups.com/track?tracknum=1Z999AA10123456784'],
+      [
+        '9400111899223197428490',
+        'usps',
+        'https://tools.usps.com/go/TrackConfirmAction?tLabels=9400111899223197428490',
+      ],
+      ['92001903432200000000000000', 'usps', 'https://tools.usps.com/go/TrackConfirmAction?tLabels=92001903432200000000000000'],
+      ['EC123456789US', 'usps', 'https://tools.usps.com/go/TrackConfirmAction?tLabels=EC123456789US'],
+      ['123456789012', 'fedex', 'https://www.fedex.com/wtrk/track/?trknbr=123456789012'],
+      ['123456789012345', 'fedex', 'https://www.fedex.com/wtrk/track/?trknbr=123456789012345'],
+      ['9612019000000000000000', 'fedex', 'https://www.fedex.com/wtrk/track/?trknbr=9612019000000000000000'],
+      ['1234567890', 'dhl', 'https://www.dhl.com/global-en/home/tracking.html?tracking-id=1234567890'],
+      ['JD014600006281011111', 'dhl', 'https://www.dhl.com/global-en/home/tracking.html?tracking-id=JD014600006281011111'],
+    ])('routes %s to %s', (number, carrier, url) => {
+      expect(detectCarrier(number)?.id).toBe(carrier);
+      expect(HANDLERS.track(number, TRACK, settings(), 'track')).toBe(url);
+    });
+
+    it('accepts the spaces and dashes a label prints, and lowercase', () => {
+      expect(HANDLERS.track('1z999aa1 0123 4567-84', TRACK, settings(), 'track')).toBe(
+        'https://www.ups.com/track?tracknum=1Z999AA10123456784',
+      );
+      expect(HANDLERS.track('9400 1118 9922 3197 4284 90', TRACK, settings(), 'track')).toBe(
+        'https://tools.usps.com/go/TrackConfirmAction?tLabels=9400111899223197428490',
+      );
+    });
+
+    it('decides the overlapping 20-digit shape by its first digit', () => {
+      expect(detectCarrier('94001118992231974284')?.id).toBe('usps');
+      expect(detectCarrier('74001118992231974284')?.id).toBe('fedex');
+    });
+
+    it('searches for anything no carrier recognises instead of guessing', () => {
+      expect(HANDLERS.track('where is my parcel', TRACK, settings(), 'track')).toBe(
+        'https://www.google.com/search?q=track%20where%20is%20my%20parcel',
+      );
+      expect(HANDLERS.track('12345', TRACK, settings(), 'track')).toBe(
+        'https://www.google.com/search?q=track%2012345',
+      );
+      expect(detectCarrier('hourstodaynearme')).toBeNull();
+    });
+
+    it('lands on the bare page with no number', () => {
+      expect(HANDLERS.track('', TRACK, settings(), 'track')).toBe(TRACK.url);
+    });
+
+    it('routes through the same templates the carrier shortcuts use', () => {
+      for (const carrier of CARRIERS) {
+        const cmd = BUILTIN_COMMANDS.find((entry) => entry.keys[0] === carrier.id);
+        expect(cmd?.searchUrl, carrier.id).toBe(carrier.template);
+      }
+    });
   });
 
   it('starts a whatsapp chat only for a phone number', () => {

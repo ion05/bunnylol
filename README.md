@@ -158,13 +158,14 @@ A bare keyword goes to the site's home; adding arguments does the smart thing.
 | `td groceries` | Searches your Todoist tasks; `tda groceries` is the one that creates one |
 | `zoom 1234567890` | Joins that meeting; `zoom h6 recorder review` searches instead of building a dead join link |
 | `ups 1Z…` | Tracks that parcel; anything that is not a tracking number searches |
+| `track 9400…` | Reads the carrier off the number (UPS, USPS, FedEx or DHL) and opens its tracking page |
 | `def ineffable` | The dictionary entry |
 | `\gh` *anything* | Escape hatch: a leading `\` (or `=`) forces a plain search instead of a shortcut |
 
-Four of those rows are not in the starter set: `rd` is in the **Social** pack, and `td`, `tda`,
-`zoom` and `ups` are in **Productivity**. Both packs start switched off — tick them on the welcome
-screen, or reopen it later from **Settings → Sections → Shortcut packs**. Everything else in the
-table ships on.
+Five of those rows are not in the starter set: `rd` is in the **Social** pack, and `td`, `tda`,
+`zoom`, `ups` and `track` are in **Productivity**. Both packs start switched off — tick them on
+the welcome screen, or reopen it later from **Settings → Sections → Shortcut packs**. Everything
+else in the table ships on.
 
 The full list — every alias, grouped, with a worked example per row — is in the options page. Use
 the filter box there rather than memorising it.

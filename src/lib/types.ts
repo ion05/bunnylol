@@ -79,6 +79,7 @@ export type HandlerId =
   | 'zoom'
   | 'meet'
   | 'tracking'
+  | 'track'
   | 'instagram'
   | 'whatsapp'
   | 'word';

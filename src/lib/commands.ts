@@ -942,6 +942,29 @@ export const BUILTIN_COMMANDS: BuiltinCommand[] = [
     builtin: true,
     example: 'usps 9400111899223197428490',
   },
+  {
+    keys: ['dhl'],
+    name: 'DHL Tracking',
+    description: 'Track a DHL shipment.',
+    url: 'https://www.dhl.com/global-en/home/tracking.html',
+    searchUrl: 'https://www.dhl.com/global-en/home/tracking.html?tracking-id={q}',
+    handler: 'tracking',
+    category: 'productivity',
+    builtin: true,
+    example: 'dhl 1234567890',
+  },
+  {
+    keys: ['track', 'pkg'],
+    name: 'Track a package',
+    description: 'Paste any tracking number; the carrier (UPS, USPS, FedEx or DHL) is read off its shape.',
+    // A bare `track` has no carrier to go to, so it lands on the one page that
+    // accepts every carrier's number.
+    url: 'https://parcelsapp.com/',
+    handler: 'track',
+    category: 'productivity',
+    builtin: true,
+    example: 'track 1Z999AA10123456784 -> ups.com',
+  },
 
   // -------------------------------------------------------------- meta ----
   {

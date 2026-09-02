@@ -594,6 +594,77 @@ const TRACKING_NUMBER = /^(?=[a-z0-9]*\d)[a-z0-9]{10,}$/i;
 
 const INSTAGRAM_HANDLE = /^[a-z0-9._]{1,30}$/i;
 
+/**
+ * Which carrier a tracking number belongs to, read off its shape. The shapes
+ * assume `normalizeTracking` has already run — uppercase, no spaces or dashes.
+ *
+ * Order decides exactly one case, and it is the only real overlap: a bare
+ * 20-digit number is USPS when it starts with a 9 and FedEx otherwise, which
+ * is true only because USPS is tested first. The 22-digit pair does NOT
+ * overlap — USPS is `92`–`95`, FedEx Ground is `96` — so that one reads like
+ * an ordering dependency without being one.
+ *
+ * A number that matches nothing is not routed anywhere: `track` searches for
+ * what was typed instead, because a shape guard degrades rather than guesses.
+ *
+ * Editable from nowhere on purpose: these are the carriers' public tracking
+ * pages, and a wrong template here breaks one keyword, not a search engine.
+ */
+export const CARRIERS: { id: string; label: string; shape: RegExp; template: string }[] = [
+  {
+    id: 'ups',
+    label: 'UPS',
+    // 1Z + 16 alphanumerics is the universal UPS label.
+    shape: /^1Z[A-Z0-9]{16}$/,
+    template: 'https://www.ups.com/track?tracknum={q}',
+  },
+  {
+    id: 'usps',
+    label: 'USPS',
+    // 22 digits starting 92–95, 20 digits starting with 9, 26 digits, or an
+    // international `XX123456789US`.
+    shape: /^(?:9[2-5]\d{20}|9\d{19}|\d{26}|[A-Z]{2}\d{9}US)$/,
+    template: 'https://tools.usps.com/go/TrackConfirmAction?tLabels={q}',
+  },
+  {
+    id: 'fedex',
+    label: 'FedEx',
+    // Express 12, Ground 15, Ground `96` + 20, and the 20-digit door tag range.
+    shape: /^(?:\d{12}|\d{15}|96\d{20}|\d{20})$/,
+    template: 'https://www.fedex.com/wtrk/track/?trknbr={q}',
+  },
+  {
+    id: 'dhl',
+    label: 'DHL',
+    // Express waybills are 10 digits; eCommerce and Parcel labels are `JD` + 18.
+    shape: /^(?:\d{10}|JD\d{18})$/,
+    template: 'https://www.dhl.com/global-en/home/tracking.html?tracking-id={q}',
+  },
+];
+
+/** The carrier whose shape the number matches, or null. */
+export function detectCarrier(raw: string): (typeof CARRIERS)[number] | null {
+  const value = normalizeTracking(raw);
+  return CARRIERS.find((carrier) => carrier.shape.test(value)) ?? null;
+}
+
+/** Tracking numbers are typed with the spaces and dashes the label prints. */
+function normalizeTracking(raw: string): string {
+  return raw.replace(/[\s-]/g, '').toUpperCase();
+}
+
+/**
+ * `track <number>`: one keyword for every carrier. The number picks the
+ * carrier; a number no carrier recognises is searched for as typed rather
+ * than sent to a page that would answer "not found".
+ */
+function track(args: string, cmd: Command, settings: Settings, keyword = ''): string {
+  const raw = args.trim();
+  if (!raw) return cmd.url;
+  const carrier = detectCarrier(raw);
+  if (!carrier) return plainSearch(keyword, raw, settings);
+  return carrier.template.split('{q}').join(encodePath(normalizeTracking(raw)));
+}
 
 /** Digits only by the time it is checked; `+`, spaces and dashes are stripped. */
 const PHONE_NUMBER = /^\d{7,15}$/;
@@ -663,6 +734,7 @@ export const HANDLERS: Record<HandlerId, HandlerFn> = {
     raw.replace(/^(?:https?:\/\/)?meet\.google\.com\//i, '').replace(/\/+$/, ''),
   ),
   tracking: slot(TRACKING_NUMBER, ownSite),
+  track,
   instagram: slot(INSTAGRAM_HANDLE, site('instagram.com'), stripAt),
   whatsapp: slot(PHONE_NUMBER, site('whatsapp.com'), (raw) => raw.replace(/[\s()+.-]/g, '')),
   word: slot(DICTIONARY_WORD, ownSite),

@@ -100,7 +100,7 @@ that way: no `chrome.*` and no DOM in `resolve.ts`.
 
 Handlers (`HandlerId` in types.ts): github, githubPulls, githubIssues, githubGist, reddit, npm,
 gmail, gdrive, gcal, googleApp, outlook, onedrive, teams, ai, brightspace, gradescope, youtube,
-meta, zoom, meet, tracking, instagram, whatsapp, word.
+meta, zoom, meet, tracking, track, instagram, whatsapp, word.
 
 ## Invariants that were violated during development
 

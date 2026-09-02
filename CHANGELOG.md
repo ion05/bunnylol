@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `track <number>` (also `pkg`): one keyword for any parcel. The carrier — UPS,
+  USPS, FedEx or DHL — is read off the number's shape and the carrier's own
+  tracking page opens; a number nobody recognises is searched for instead. A
+  `dhl` shortcut joins `ups`, `fedex` and `usps`.
 - A first-run picker. Installing now opens a welcome screen that asks which
   packs of shipped shortcuts you want, and each pack unfolds to list the
   shortcuts a tick turns on. Search, Developer and AI are ticked; every other
