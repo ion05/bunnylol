@@ -1,266 +1,301 @@
 # BunnyLol
 
-BunnyLol is a Chrome (Manifest V3) extension that turns your address bar into a command line: type a
-short keyword plus arguments and land on the exact page instead of a search results page. It is a
-personal clone of Meta's internal BunnyLol — `gh facebook/react` goes straight to the repo, and
-anything that isn't a registered keyword falls through to a normal Google search.
+BunnyLol turns the Chrome address bar into a command line. Type a keyword and its arguments and you
+land on the page itself, not on a results page for it:
 
-## Install
+```
+gh facebook/react   →   github.com/facebook/react
+npm zod             →   npmjs.com/package/zod
+c explain monads    →   Claude, with the prompt already in the box
+```
+
+It is an independent, unofficial project inspired by the bunnylol-style command bar used inside
+Meta. **Not affiliated with, endorsed by, or sponsored by Meta Platforms, Inc.**
+
+Manifest V3, no dependencies at runtime, no network requests of its own, and nothing leaves your
+machine — see [PRIVACY.md](PRIVACY.md).
+
+## Install from source
+
+There is no store listing yet. Build it and load it unpacked:
 
 ```bash
 pnpm install
 pnpm build
 ```
 
-Then load the built extension:
-
 1. Open `chrome://extensions`.
 2. Turn on **Developer mode** (top right).
-3. Click **Load unpacked** and select the `dist/` folder in this repo.
+3. Click **Load unpacked** and select this repo's `dist/` folder.
 
-**Chrome 123 or newer.** The UI's colour tokens are declared with CSS `light-dark()`, which
-Chrome added in 123; on anything older every themed colour falls back to `unset` and the pages are
-unreadable. `minimum_chrome_version` in the manifest records the same floor.
+Rebuild with `pnpm build` after pulling, then press the reload arrow on the extension card — editing
+source does not update a loaded extension.
 
-Works the same in **Brave** (`brave://extensions`) and **Dia** — both are Chromium, so the MV3
-manifest, the service worker and the redirect rules behave identically. Rebuild with `pnpm build`
-after pulling changes, then hit the reload arrow on the extension card.
+**Chrome 123 or newer.** The UI's colours are declared with CSS `light-dark()`, which Chrome added
+in 123; on anything older every themed colour falls back to `unset` and the pages are unreadable.
+`minimum_chrome_version` in the manifest records the same floor. Other Chromium browsers work the
+same way — the MV3 manifest, the service worker and the redirect rules behave identically — though
+a fork that routes the omnibox itself may not hand over address-bar navigations, in which case the
+toolbar popup and `bl` + Tab still work.
+
+## First run
+
+The first install opens a **welcome screen** that asks one question: which packs of shipped
+shortcuts do you want? Only three are ticked — **Search**, **Developer** and **AI**. Every other
+pack is offered unticked, and its shortcuts start switched off: **Google**, **Microsoft**,
+**Social**, **Productivity**, and, under *Optional packs*, **Purdue** — one university's tooling,
+dead weight for everyone else. Closing the tab without answering keeps that starter set, because
+the pick is written before the screen opens, so it is already live.
+
+Nothing there is final. Every shortcut can be renamed, moved, switched off or deleted afterwards,
+and **Settings → Sections → Shortcut packs → Choose shortcut packs…** reopens the screen — that
+is how you turn a pack on later. Note what Continue means when you do: it turns *on* every
+shipped shortcut in the packs you tick, including ones you had switched off by hand, and turns
+off the ones in the packs you leave unticked. Shortcuts you made yourself are never touched.
 
 ## How triggering works
 
-**The first word wins.** If the first word of what you type in the address bar is a keyword you have
-registered, it is a command — always, no exceptions, no heuristics. `c programming tutorial` opens
-Claude with that prompt. `pr firms in new york` opens your GitHub pull requests. `maps of the world`
-opens Google Maps. That is not a bug; it is the same contract Meta's internal bunnylol has, and it is
-what makes the address bar predictable: you never have to wonder whether a keyword will fire this
-time.
+**The first word wins.** If the first word of what you type in the address bar is a keyword you
+have, it is a command — always, no heuristics. `c programming tutorial` opens Claude with that
+prompt. `pr firms in new york` opens your GitHub pull requests. `map of france` opens Google Maps.
+That is the contract, and it is what makes the address bar predictable: you never wonder whether a
+keyword will fire this time.
 
-The habit you have to learn is the other half of it — **how to say "no, actually search for that"**.
-There are four ways, and all of them are one keystroke:
+The other half of it is how to say *no, actually search for that*, and it is one keystroke:
 
 | Type this | You get |
 |---|---|
 | `\gh foo` | A plain search for **gh foo**. A leading backslash escapes the whole query. |
 | `=gh foo` | Identical. `=` is the same escape, one unshifted key on every layout. |
-| `g wagon price` | A Google search for **wagon price** — the `g` is the command and is consumed. |
-| `ddg …` / `bing …` | The same, on DuckDuckGo or Bing. |
+| `g wagon price` | A Google search for **wagon price** — `g` is the "search Google" command and its argument is what gets searched. |
+| `ddg …` | The same, on DuckDuckGo. |
 
-Note the difference between the last two rows and the first two. `g wagon price` searches for
-"wagon price", *not* for "g wagon price" — the leading `g` is eaten by design, because `g` is the
-"search Google" command. To search for the literal phrase **g wagon price**, escape it:
-`\g wagon price` or `=g wagon price`. Same for `pr` (`\pr firms in new york`) and anything else.
-
-The escape works everywhere the resolver runs: the address bar, `bl` + Tab, and the popup. The
-escape character is stripped before the search — it never reaches Google as a search term.
+Note the difference between the first two rows and the third. To search for the literal phrase
+**g wagon price**, escape it: `\g wagon price`. Same for `pr` (`\pr firms in new york`) and anything
+else. The escape character is stripped before the search — it never reaches the engine as a search
+term — and it works on every surface, because they all run the same resolver.
 
 ### The three ways in
 
-Google stays your real default search engine — nothing about your browser settings changes.
+Google stays your real default search engine. Nothing about your browser settings changes.
 
 - **Address bar (primary).** A `declarativeNetRequest` rule matches search URLs whose query starts
-  with a keyword you have registered, and redirects them to the extension's local dispatch page
-  before any network request leaves your machine. That page resolves the keyword and replaces itself
-  with the destination:
+  with a keyword you have, and redirects them to the extension's local dispatch page before any
+  request leaves your machine. That page resolves the keyword and replaces itself with the
+  destination:
 
   ```
   google.com/search?q=gh+facebook/react   →   go.html?q=gh facebook/react   →   github.com/facebook/react
   ```
 
   A separate, higher-priority rule matches a query that *starts* with an escape character — in both
-  its raw and percent-encoded forms, because Chrome sends `\` to the engine as `%5C` — so
-  `\gh foo` is intercepted too, and turned into a clean search for "gh foo". Rules are regenerated
-  from your live keyword list every time you change a shortcut, so an ordinary search like
-  `how tall is the eiffel tower` never matches and is not slowed down by a millisecond. Bing and
-  DuckDuckGo are intercepted the same way; you can turn individual engines off in the options page.
+  its raw and percent-encoded forms, because Chrome sends `\` to the engine as `%5C` — so `\gh foo`
+  is intercepted too and turned into a clean search for "gh foo". Rules are rebuilt from your live
+  keyword list whenever you change a shortcut, so an ordinary search like `how tall is the eiffel
+  tower` never matches and is not slowed down. Bing and DuckDuckGo are intercepted the same way, and
+  each engine can be switched off in Settings.
 
 - **Omnibox keyword (fallback).** Type `bl`, press **Tab**, then your command. This path does not
   depend on redirect rules at all, so it is the safety net if interception behaves differently in
   your browser — and it is where an exempted keyword (below) still works.
 
-- **Toolbar popup.** Click the BunnyLol icon for a command bar with fuzzy autocomplete over the same
+- **Toolbar popup.** Click the BunnyLol icon for a command bar with autocomplete over the same
   registry — handy when you are already on a page.
 
-All three routes run the same resolver, so a shortcut behaves identically no matter how you invoke it.
+All three run the same resolver, so a shortcut behaves identically no matter how you invoke it.
 
-### Why escaping, and not a list of "safe" words
+### Why an escape hatch and not a list of "safe" words
 
-BunnyLol used to ship a stop list: about forty keywords (`map`, `news`, `mail`, `so`, `new`, `help`,
-`r`, …) left out of address-bar interception because they were plausible first words of ordinary
-searches. That list is gone, and the default is now empty.
+BunnyLol used to ship a stop list: keywords like `map`, `news`, `mail` and `so` left out of
+address-bar interception because they were plausible first words of ordinary searches. That list is
+gone and the default is empty.
 
-It was an endless tail. Roughly 111 of the 271 keywords that remained eligible could still hijack
-some plausible English query, and blocking those would only have surfaced the next tier — `td`,
-`iss`, `bs`, `gs`. Worse, the list made behaviour unpredictable in the one place predictability
-matters: you could not tell by looking whether a keyword would fire.
+It was an endless tail. A large fraction of the keywords that remained eligible could still hijack
+some plausible English query, and blocking those only surfaced the next tier — `td`, `iss`, `bs`,
+`gs`. Worse, it made behaviour unpredictable in the one place predictability matters: you could not
+tell by looking whether a keyword would fire.
 
-So the trade is explicit now. Every keyword fires, every time, and the escape hatch is the thing that
-has to be flawless rather than the blocklist. Under the hood BunnyLol tags its own searches with a
-`blpass=1` parameter and registers a top-priority `allow` rule for anything carrying it. Without that
-tag the escaped search would land on `google.com/search?q=gh+foo`, which is exactly the URL the
-redirect rule was built to catch, and you would bounce straight back into the shortcut you were
-escaping. The same tag is why commands that *are* searches — `weather`, `g`, `gimg`, `gsite` — reach
-Google once instead of looping through the dispatch page. If you ever see that parameter in an
-address bar, it is BunnyLol's, and it is inert.
+So the trade is explicit. Every keyword fires, every time, and the escape hatch is the thing that
+has to be flawless. Under the hood BunnyLol tags its own searches with a `blpass=1` parameter and
+registers a top-priority `allow` rule for anything carrying it. Without that tag an escaped search
+would land on `google.com/search?q=gh+foo`, which is exactly the URL the redirect rule was built to
+catch, and you would bounce back into the shortcut you were escaping. The same tag is why the
+commands that *are* searches — `g`, `ddg` — reach the engine once instead of looping through the
+dispatch page. If you see that parameter in an address bar, it is BunnyLol's, and it is inert.
 
 ### Exempting a keyword you keep tripping over
 
-If one specific keyword annoys you in practice — "I search for *maps of X* constantly" — exempt it.
-The options page has an **Address-bar interception** card: type the keyword, press Add, and it is
-skipped in the address bar from then on. Remove the chip to get interception back, or use
-**Intercept everything** to clear the list.
+If one keyword annoys you in practice — "I search for *maps of X* constantly" — exempt it. Settings
+has an **Address-bar interception** card: type the keyword, press Add, and it is skipped in the
+address bar from then on. Remove the chip to get interception back.
 
 An exemption costs the keyword nothing but address-bar interception. It keeps resolving through `bl`
-+ Tab and the toolbar popup, where you have already said you mean a command. Nothing ships exempted:
-the list starts empty and stays empty until you put something in it.
++ Tab and the toolbar popup, where you have already said you mean a command. Nothing ships exempted.
 
 ### Seeing which command fired
 
-Off by default, in the same options card: **Confirm before opening a shortcut** shows a small toast
-on the dispatch page — `gh → github.com · search instead` — with a link that runs the escaped search
-instead, and a `×` to go through immediately.
+Off by default, at the foot of the **Search interception** card: **Confirm before opening a
+shortcut** shows a small toast on the dispatch page — `gh → github.com · search instead` — with a
+link that runs the escaped search instead, and a `×` to go through immediately.
 
-It is opt-in because it genuinely delays the navigation by about 1.2 seconds. Nothing rendered on the
-dispatch page survives the redirect, so the only way to show the toast *on the destination* would be
-a content script injected into every site you visit, which is not a permission this feature
-justifies. Turn it on while you are learning the keywords, then turn it off.
+It is opt-in because it genuinely delays the navigation by about 1.2 seconds. Nothing rendered on
+the dispatch page survives the redirect, so showing the toast *on the destination* would need a
+content script injected into every site you visit, which is not a permission this feature justifies.
+Turn it on while you are learning the keywords, then turn it off.
 
-## Commands
+## What ships
 
-Bare keyword goes to the site's home; adding arguments does the smart thing.
+A bare keyword goes to the site's home; adding arguments does the smart thing.
 
 | Type this | You get |
 |---|---|
 | `gh facebook/react` | `github.com/facebook/react` — the repo itself, not a search |
 | `gh` | GitHub home |
 | `c explain monads` | Claude with the prompt already filled in (`gpt` for ChatGPT, `gem` for Gemini) |
-| `? explain monads` | Same prompt, sent to whichever AI you set as the default (popup or `bl` + Tab — `?` is not an address-bar-safe alias) |
+| `? explain monads` | The same prompt, sent to whichever AI you set as the default (popup or `bl` + Tab — `?` is not an address-bar-safe alias) |
 | `rd rust` | `reddit.com/r/rust` |
 | `npm zod` | The `zod` package page, skipping npm's search results |
-| `lh 3000` | `localhost:3000` (`lh surge meaning` is a search — only a port or a path goes to your machine) |
 | `td groceries` | Searches your Todoist tasks; `tda groceries` is the one that creates one |
 | `zoom 1234567890` | Joins that meeting; `zoom h6 recorder review` searches instead of building a dead join link |
-| `gsite react.dev hooks` | A `site:react.dev hooks` search |
-| `gs` | Gradescope |
-| `bs` | Brightspace |
-| `outlook` | Outlook mail |
-| `teams` | Microsoft Teams |
+| `ups 1Z…` | Tracks that parcel; anything that is not a tracking number searches |
+| `def ineffable` | The dictionary entry |
 | `\gh` *anything* | Escape hatch: a leading `\` (or `=`) forces a plain search instead of a shortcut |
 
-The full list — every alias, grouped by category, with a worked example per row — lives in the
-options page; use the filter box there rather than memorizing it.
+Four of those rows are not in the starter set: `rd` is in the **Social** pack, and `td`, `tda`,
+`zoom` and `ups` are in **Productivity**. Both packs start switched off — tick them on the welcome
+screen, or reopen it later from **Settings → Sections → Shortcut packs**. Everything else in the
+table ships on.
+
+The full list — every alias, grouped, with a worked example per row — is in the options page. Use
+the filter box there rather than memorising it.
 
 ## Managing shortcuts
 
-Open the options page from the popup, or right-click the toolbar icon → **Options**.
+Open the options page from the popup, from `set` in the address bar, or by right-clicking the
+toolbar icon → **Options**.
 
-- **Browse** every command by category with a live filter.
-- **Add or edit** a shortcut: aliases, name, URL, an optional search URL containing `{q}`, and a
-  category. A **live preview** shows exactly where a sample query would land as you type, and
-  duplicate keys, malformed URLs and a missing `{q}` are flagged immediately.
-- **Built-ins are never mutated.** Disabling one or rebinding its keys is stored as an overrides
-  layer, so updating the extension can't clobber your edits.
-- **Import / export JSON.** Export writes your whole customization layer plus settings to one file;
-  import reads it back. This is how you move your shortcuts between Chrome, Brave and Dia — each
-  browser has its own extension storage.
+- **Shortcuts** lists everything, grouped, with a live filter (press `/`). Groups collapse; the
+  state is remembered per browser profile, and typing in the filter expands them until you clear
+  it. **Collapse all** / **Expand all** are in the panel head.
+- **Every shortcut is editable, whether it ships with BunnyLol or you made it.** A row's actions are
+  Edit, an on/off switch and Delete, and they mean the same thing on both. The form takes keys,
+  name, description, URL, an optional search URL containing `{q}`, a section and an example, and a
+  live preview shows where a sample query would actually land as you type. Duplicate keys, malformed
+  URLs and a missing `{q}` are flagged before you can save.
+- **Reset**, in the form, refills the inputs: with the shipped definition for a shipped shortcut,
+  with the values you last saved for one of your own. It does not touch the on/off switch or save
+  anything by itself — Save does.
+- **Shipped shortcuts are never mutated.** An edit is stored as a diff against the shipped
+  definition, so a corrected URL in a later build still reaches you if all you did was rename the
+  command. Edited rows carry a *modified* badge.
+- **Deleting a shipped shortcut is reversible.** Settings → **Restore shipped shortcuts** lists
+  everything you deleted; restoring brings back its shipped definition along with anything you had
+  edited.
 
-  Importing asks first, and the dialog spells out what each choice does before anything is written:
+### Sections
 
-  - **Merge** adds the file's shortcuts to the ones you already have. Yours win every collision — an
-    incoming alias that is already taken is renamed (`gh` → `gh2`) rather than overwriting yours, and
-    shortcuts identical to ones you have are skipped. Your settings are left alone.
-  - **Replace everything** deletes your shortcuts and installs only what is in the file. If the file
-    carries settings, yours are replaced too; if it doesn't, yours stay as they are.
+Sections are the groups in the list. Any shortcut can go in any section, including the ones that
+ship — renaming *Developer* renames the heading everywhere.
 
-  The dialog counts it out before you commit — how many shortcuts come in, which keywords get
-  renamed, which built-ins the file turns off or rebinds — and **Cancel** writes nothing.
+Create one from **Settings → Sections**, or from the **New section…** row in the form's section
+menu, which files the shortcut you are editing straight into it. Deleting a section does not delete
+its shortcuts: they move to **My shortcuts**, which is where new ones start.
 
-  Either way a timestamped backup of your current state is downloaded before anything is overwritten,
-  so "undo" is a file in your Downloads folder.
-- **Settings.** GitHub username (used by the GitHub shortcuts), the fallback search engine,
-  which engines to intercept, the default AI, your Google account index for `/u/N/` URLs, the
-  dispatch toast, and the address-bar exemption list.
-- **Rule status.** A pill at the top of the options page reports what the redirect rules are actually
-  doing, read back from Chrome rather than from what BunnyLol asked for:
+### Import, export and packs
 
-  | Pill | Colour | Meaning |
-  |---|---|---|
-  | *Intercepting N keywords* | green | N aliases are intercepted on every engine you selected, with nothing dropped. |
-  | *…N exempted by you* (**suppressed**) | green | Your choice, not a failure — those N still work from `bl` + Tab and the popup. Zero unless you exempted something. |
-  | *Intercepting N keywords* + a detail line | amber | Partial coverage: the rules are live, but some eligible aliases ended up without one because Chrome refused to compile their pattern or the rule budget filled up (**dropped**). The detail says which. They fall through to a normal search in the address bar. |
-  | *Interception off* | amber | You have no engines selected, so nothing is intercepted by design. |
-  | *Rules not registered* | red | The sync itself failed and nothing is intercepted; the detail text carries the error. Click **Re-sync**. |
+**Settings → Data** exports your whole customisation layer plus settings to one JSON file and reads
+it back. That is how you move shortcuts between browsers and profiles — each one has its own
+extension storage, and nothing is synced through an account.
 
-  The two failure colours are two different fields: red is a sync `error`, amber is a `warning` from
-  a sync that worked. `suppressed` is deliberate and leaves the pill green; `dropped` turns it amber,
-  because something you asked for is not happening.
+Importing asks first, and the dialog spells out what each choice does before anything is written:
 
-  With nothing exempted the current registry registers **60 rules**
-  — 54 keyword rules (18 shards × 3 engines), 3 passthrough allow rules and 3 escape rules — and
-  intercepts all 317 aliases with none dropped.
+- **Merge** adds the file's shortcuts to the ones you have. Yours win every collision — an incoming
+  alias that is already taken is renamed (`gh` → `gh2`) rather than overwriting yours, and shortcuts
+  identical to ones you have are skipped. Your settings are left alone.
+- **Replace everything** deletes your shortcuts and installs only what is in the file. If the file
+  carries settings, yours are replaced too; if it does not, yours stay.
+
+The dialog itemises what will happen before you commit — what comes in, which keywords get renamed,
+which shipped shortcuts the file turns off or edits — and **Cancel** writes nothing. Either way a
+timestamped backup of your current state is downloaded first, so "undo" is a file in your Downloads
+folder. Files written by older versions still import.
+
+A **pack** is just an import file someone else prepared. [`extras/packs/`](extras/packs/) holds the
+ones this repo ships — including `removed-commands.json`, the shortcuts that used to ship —
+and [its README](extras/packs/README.md) documents the format if you want to write one.
+
+**Reset to defaults**, in the same card, deletes every shortcut you made, restores every shipped one
+you turned off or deleted, forgets your sections and puts settings back.
+
+### Settings
+
+| Card | What is in it |
+|---|---|
+| **Defaults** | Your GitHub username (used by `gh me`, `pr`, `iss`), where an unmatched query goes (any template with `{q}` — Kagi and Brave Search are one click, or paste your own), which AI the `?` shortcut routes to, and your Google account index for `/u/N/` URLs |
+| **Sections** | Create, rename and delete sections; the link back to the shortcut-packs screen |
+| **Restore shipped shortcuts** | Anything shipped that you deleted |
+| **Search interception** | Which engines are intercepted (unchecking all of them leaves every search alone), the dispatch-page URL to paste in as a custom search engine, and **Confirm before opening a shortcut** |
+| **Address-bar interception** | The exemption list |
+| **AI prompt templates** | The `?q=` prefill URL for each AI provider. These parameters are undocumented and providers change them, so they are editable without a rebuild |
+| **Data** | Export, import, reset |
+
+### Rule status
+
+A pill in the options page header reports what the redirect rules are *actually* doing, read back
+from Chrome rather than from what BunnyLol asked for.
+
+| Pill | Colour | Meaning |
+|---|---|---|
+| *Intercepting N keywords* | green | Every eligible alias is intercepted on every engine you selected, with nothing dropped. |
+| *…N exempted by you* | green | Your choice, not a failure — those still work from `bl` + Tab and the popup. |
+| *Intercepting N keywords* + a detail line | amber | Partial coverage: the rules are live, but some aliases ended up without one because Chrome refused to compile their pattern or the rule budget filled up. The detail says which. They fall through to a normal search in the address bar. |
+| *Interception off* | amber | No engines selected, so nothing is intercepted, by design. |
+| *Rules not registered* | red | The sync itself failed and nothing is intercepted; the detail carries the error. Click **Re-sync**. |
+
+The two failure colours are two different fields: red is a sync error, amber is a warning from a
+sync that worked.
 
 ## Troubleshooting
 
-**A keyword typed in the address bar just searches Google for it.**
-The redirect rules aren't registered. Open the options page and check the **rule status** indicator —
-it reports how many rules are live and any error. Click re-sync. If it still reads zero, confirm the
-extension has host permission for the engine you're searching from, and use `bl` + Tab in the
-meantime. Note that the rules embed the extension's ID: if you loaded `dist/` from a new path, the ID
-changed and a re-sync is required.
-
-**Nothing happens, or the dispatch page shows an error.**
-Go to `chrome://extensions`, find BunnyLol, and click the **service worker** link to open its
-console. Rule-sync failures, storage errors and omnibox activity are all logged there. The dispatch
-page itself prints the reason it could not resolve a query instead of silently hanging.
-
-**An AI shortcut opens the site but doesn't carry my prompt.**
-The `?q=` prefill parameters these providers accept are undocumented and change without notice. You
-do not need a rebuild: open the options page, find the AI provider, and edit its URL template (it
-must contain `{q}`). The override is saved to storage and takes effect on the next query.
-
-**A shortcut collides with something I actually search for.**
-That is the design, not a fault: the first word is always a command. Prefix the query with `\` or
-`=` — `\gs prices` and `=gs prices` both search for "gs prices" instead of opening Gradescope. If it
-happens constantly with one keyword, exempt that keyword in the **Address-bar interception** card,
-or rebind/disable the shortcut; the redirect rules are rebuilt from the new keyword list immediately.
-
-**`g wagon price` searched for "wagon price".**
-Working as intended. `g` is the "search Google" command and its argument is what gets searched. Use
-`\g wagon price` or `=g wagon price` for the literal phrase.
-
-**One specific shortcut only works from the popup or `bl` + Tab.**
-Three things take a keyword out of the address bar, and all three leave it working everywhere else:
-
-- You **exempted** it in the Address-bar interception card. Nothing is exempt out of the box, so this
-  only happens if you put it there; delete the chip to get interception back.
-- Its alias cannot be embedded in a URL pattern: interception needs lowercase ASCII letters, digits,
-  `_` and `-`, starting with a letter, digit or `_`, and 32 characters or fewer. An alias with a `.`,
-  `?`, `+` or a non-ASCII character is skipped. Rename it if you want it in the address bar.
-- The rule status pill reports it as **dropped** — Chrome refused the pattern, or the rule budget is
-  full. Disabling shortcuts you do not use frees budget.
-
-**`outlook <search terms>` lands somewhere odd.**
-Bare `outlook` opens your mailbox and is fine. The search form
-(`outlook.office.com/mail/deeplink/search?query=…`) is the widely documented OWA route but is
-**unverified against a live mailbox** — every unauthenticated request under `/mail/` answers 417, so
-it cannot be probed from outside a signed-in tenant, and Microsoft may have retired it. If it does
-not open your search results, use bare `outlook` and search in OWA, or rebind the shortcut to a plain
-URL in the options page.
-
-**`copilot <prompt>` does not reach Copilot.**
-That is deliberate. Consumer Copilot has no working URL-prompt route: every `?q=` form, including
-Microsoft's own `bing.com/search?showconv=1` entry point, 302s to the bare home page and drops the
-prompt. Rather than guess a URL that silently loses what you typed, bare `copilot` opens the app and
-`copilot <args>` runs a plain web search of what you typed. Use `c`, `gpt` or `?` for a prompt that
-actually arrives prefilled.
+| Symptom | What is going on |
+|---|---|
+| **A keyword typed in the address bar just searches for it.** | The redirect rules are not registered. Check the rule-status pill and click **Re-sync**. The rules embed the extension's ID, so loading `dist/` from a new path changes the ID and needs a re-sync. Use `bl` + Tab meanwhile. |
+| **Nothing happens, or the dispatch page shows an error.** | Open `chrome://extensions`, find BunnyLol and click **service worker** for its console. Rule-sync failures, storage errors and omnibox activity are logged there; the dispatch page prints the reason it could not resolve rather than hanging. |
+| **An AI shortcut opens the site but does not carry my prompt.** | Those prefill parameters change without notice. No rebuild needed: edit the provider's template in **Settings → AI prompt templates** (it must contain `{q}`). |
+| **A shortcut collides with something I actually search for.** | By design — the first word is always a command. Prefix with `\` or `=`. If it happens constantly with one keyword, exempt it in **Address-bar interception**, or rename, switch off or delete the shortcut. |
+| **`g wagon price` searched for "wagon price".** | Working as intended: `g` is the "search Google" command and its argument is what gets searched. Use `\g wagon price` for the literal phrase. |
+| **One shortcut only works from the popup or `bl` + Tab.** | Either you exempted it, or its alias cannot be embedded in a URL pattern (interception needs lowercase ASCII letters, digits, `_` and `-`, starting with a letter, digit or `_`, and at most 32 characters), or the pill reports it as dropped because Chrome refused the pattern or the rule budget is full. All three leave it working everywhere else. |
+| **A shipped shortcut points at the wrong place for me.** | Edit it. The Purdue shortcuts in particular derive their host from the URL on the row, so rebinding one to your own institution works. |
 
 ## Development
 
 ```bash
-pnpm dev        # vite build --watch
-pnpm test       # vitest over the resolver, the handlers and the rule builder
-pnpm typecheck  # tsc --noEmit
-node scripts/gen-icons.mjs   # regenerate public/icons/*.png and store/icon128.png
+pnpm dev         # vite build --watch
+pnpm typecheck   # tsc --noEmit
+pnpm test        # vitest
+pnpm build       # icons + typecheck + vite build -> dist/
+pnpm package     # build, then release/bunnylol-<version>.zip for the Web Store
 ```
 
-The resolver (`src/lib/resolve.ts`) is pure and free of `chrome.*` calls, so the dispatch page, the
+The resolver (`src/lib/resolve.ts`) is pure and free of `chrome.*`, so the dispatch page, the
 omnibox, the popup and the tests all share one code path.
+
+The UI's colours, type scale and spacing come from one token set, [`design/`](design/), which also
+holds the HTML previews the design was approved from. The pages ship the [Inter](docs/fonts.md)
+variable font as a bundled file rather than a webfont request, so rendering the extension's own
+pages needs no network.
+
+[CONTRIBUTING.md](CONTRIBUTING.md) covers the setup, the checks a change has to pass and how to add
+a command. [AGENTS.md](AGENTS.md) is the architecture note — read its invariants before changing
+routing or validation; every one of them is a bug that already shipped once.
+
+## Privacy
+
+No collection, no transmission, no analytics, no telemetry, no remote code, no network requests of
+its own. Everything is one JSON value in `chrome.storage.local` on your device. Full statement:
+[PRIVACY.md](PRIVACY.md).
+
+## License
+
+[MIT](LICENSE). The bundled Inter font is licensed separately under the SIL Open Font License 1.1;
+see [docs/fonts.md](docs/fonts.md).

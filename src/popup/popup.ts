@@ -1,9 +1,10 @@
 /**
  * The toolbar popup: a command bar over the same registry the address bar uses.
  *
- * This is the fallback surface — it works when interception does not (Dia's own
- * omnibox, Brave's shields), so it deliberately depends on nothing but storage,
- * the pure resolver and `chrome.tabs`.
+ * This is the fallback surface — it works when address-bar interception does
+ * not, because a Chromium fork routes the omnibox itself or a shield blocks the
+ * redirect, so it deliberately depends on nothing but storage, the pure
+ * resolver and `chrome.tabs`.
  */
 
 import { resolve, suggest } from '../lib/resolve';

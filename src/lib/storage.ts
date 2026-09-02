@@ -1,9 +1,11 @@
 /**
  * Persistence: one JSON blob under one key in `chrome.storage.local`.
  *
- * Deliberately not `storage.sync` — the same person runs Chrome, Brave and Dia
- * side by side, so each profile keeps its own state and shortcuts travel
- * between them through the export/import file instead.
+ * Deliberately not `storage.sync`: it syncs only between profiles signed into
+ * the same Chrome account, so it would not carry a shortcut to the other
+ * browsers this runs in anyway, and the whole state is one item against an 8 KB
+ * per-item cap. Each profile keeps its own state and shortcuts travel between
+ * them through the export/import file instead.
  *
  * Everything coming out of storage or off disk is treated as hostile: a
  * half-finished write, a hand-edited export or a blob from a future build must

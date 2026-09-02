@@ -13,7 +13,7 @@
 - [ ] If routing/DNR changed: replayed a real Chrome-generated search URL
       through the built rules, not just `buildRules`
 - [ ] Colours/sizes come from `design/tokens.css`, no literal hex or
-      `font-size: Npx` in the UI sheets
+      `font-size: Npx` in the UI sheets, and never `color: var(--accent)`
 
 ## Stacked PRs
 <!-- Base branch, and the PR this one sits on top of, if any. -->

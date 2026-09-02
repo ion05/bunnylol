@@ -6,13 +6,15 @@ Context for AI coding agents working in this repo. Read this before changing any
 
 ## What this is
 
-A Chrome Manifest V3 extension that turns the address bar into a command line — a personal clone
-of Meta's internal BunnyLol. Type `gh facebook/react` and land on the repo, not a search results
-page. Built for one user: a Purdue CS student who lives in GitHub, Claude/ChatGPT, Brightspace,
-Gradescope and the Microsoft 365 suite, and who runs Chrome, Brave and Dia.
+A Chrome Manifest V3 extension that turns the address bar into a command line, in the style of the
+bunnylol command bar used inside Meta. Type `gh facebook/react` and land on the repo, not on a
+search results page. It is not affiliated with Meta, and the README and any listing copy have to
+say so.
 
-91 builtin commands: ai 6, google 10, microsoft 8, purdue 8, dev 15, search 11, social 11,
-productivity 19, meta 3.
+The shipped shortcuts are plain data in `src/lib/commands.ts`, grouped into packs the user picks
+from on first run. Everything a user then does to one — rename, re-key, move, switch off, delete —
+is an override layer on top. The registry is never mutated, so a corrected URL in a later build
+still reaches someone who only renamed the command.
 
 ## The one decision that explains everything
 
@@ -20,8 +22,9 @@ productivity 19, meta 3.
 keyword.** `c programming tutorial` goes to Claude. `pr firms in new york` goes to the user's
 GitHub pull requests. This is deliberate — it is how Meta's bunnylol works — and it was chosen
 explicitly over three alternatives (an opt-in allowlist, a sigil prefix, and a curated blocklist)
-after the blocklist approach failed to converge: a verifier found ~111 of 271 aliases could hijack
-some plausible English search, and blocking those only surfaces the next tier.
+after the blocklist approach failed to converge: a verifier found that roughly two in five of the
+eligible aliases could hijack some plausible English search, and blocking those only surfaces the
+next tier.
 
 The escape hatch is therefore load-bearing, not a nicety. A leading `\` or `=`
 (`FORCE_SEARCH_PREFIXES` in `types.ts`) forces a plain search. If you weaken the escape path, you
@@ -34,22 +37,51 @@ break the entire product.
 
 ```
 src/lib/types.ts        The frozen contract. Everything imports it. No chrome.*, no DOM.
-src/lib/commands.ts     91 builtin commands + SEARCH_ENGINES
+src/lib/commands.ts     The shipped registry + SEARCH_ENGINES
 src/lib/handlers.ts     Smart argument handlers + AI_PROVIDERS
 src/lib/resolve.ts      resolve(query, commands, settings) -> ResolveResult. Pure. The brain.
-src/lib/validate.ts     The single validation boundary for aliases, URLs and section ids
+src/lib/validate.ts     The single validation boundary: aliases, URLs, section ids and labels
 src/lib/overrides.ts    Shortcut identity (`shortcutId`, `u:` ids) + the edit/delete/section algebra
-src/lib/onboarding.ts   The category pick: packs, `applyCategoryPick`, `migrateNewBuiltins`
+src/lib/onboarding.ts   What a pack pick means: `applyCategoryPick`, `migrateNewBuiltins`
 src/lib/merge-import.ts Folding an import onto the state already here (`mergeOverrides`)
-src/lib/storage.ts      chrome.storage.local persistence, JSON import/export
+src/lib/storage.ts      chrome.storage.local persistence, JSON import/export, the v1 readers
 src/lib/dnr.ts          declarativeNetRequest rule generation + syncRules
+src/lib/draft.ts        What the edit form edits, and the pure parsing around it
+src/lib/text.ts         String helpers every surface shares
 src/lib/url.ts          Small URL helpers
-src/background.ts       MV3 service worker: rule sync, omnibox
+src/lib/install.ts      The onInstalled branch: starter pick, rule sync, welcome tab
+src/background.ts       MV3 service worker: listener registration, rule sync, omnibox
 src/go/go.ts            Dispatch page — resolves and navigates
-src/options/            Shortcut manager UI (options.ts, status.ts, options.css)
+src/ui/dom.ts           `el` / `mark` / `nextId`: the element builders every surface shares
+src/options/            Shortcut manager UI (below)
 src/popup/              Toolbar command bar
-extras/packs/           Importable packs, kept verbatim. Data, not code; not compiled.
+design/                 The approved design system. `tokens.css` is shipped; the rest is review.
+scripts/                gen-icons.mjs, package.mjs, and `scripts/lib/` (pure, importable helpers)
+store/                  Web Store listing assets. Outside `public/`, so never packed into dist/.
+docs/                   fonts.md (the bundled Inter), chrome-web-store.md (the submission crib)
+extras/packs/           Importable JSON packs. Data, not code; not compiled.
 ```
+
+The options page is a set of modules with one job each, not a page object:
+
+```
+src/options/options.ts      Boot, the storage-echo guard, render dispatch
+src/options/router.ts       Hash routing: `startRouter(onChange, render)`, `go`
+src/options/store.ts        Page state behind accessors; `commitOverrides`/`commitSettings`/
+                            `commitState` are the only writers. `setAfterCommit` and
+                            `setStatusPainter` are installed BEFORE the first render, because
+                            that render can already commit or navigate.
+src/options/dom.ts          Stateless widgets the views assemble panels from
+src/options/rule-status.ts  The pill in the topbar and the coverage line in Settings
+src/options/status.ts       Pure: a `RuleStatus` in, the words and the tone out
+src/options/model/*.ts      browse, collapse, form, welcome — the decisions, without a DOM
+src/options/views/*.ts      browse, form, settings, data, welcome — the DOM
+```
+
+`install.ts` is separate from `background.ts` because the service worker registers listeners
+synchronously at module scope — `chrome.omnibox.setDefaultSuggestion` runs the moment that file is
+loaded, which makes it unimportable in a test. The listener there hands the event straight to
+`onInstalled`, so the install path is driven end to end against the storage and rule stubs.
 
 A shortcut's `category` is an OPEN section id — a shipped `Category`, or the id of a `Section` in
 `Overrides.sections` — resolved for display by `sectionLabel`. `CATEGORIES` stays the closed
@@ -99,12 +131,14 @@ tests. **If a test in this list fails, do not "fix" the test.**
    longest-first so `github` beats `gh`, but truncating *that* order removes exactly the short hot
    aliases — at ~400 custom shortcuts `gh`, `g` and `npm` silently stopped being intercepted.
 
-6. **All alias and URL validation goes through `src/lib/validate.ts`.** It has two callers: the
-   import parser and the shortcut edit form (which also validates section labels). When the rule
-   lived in whichever module needed it, each had a different hole — whitespace aliases and
-   scheme-less URLs both persisted happily while being unusable. `validateAlias` also rejects an
-   alias starting with an escape prefix, since `resolve()` strips that before the key map is ever
-   consulted.
+6. **All alias, URL and section validation goes through `src/lib/validate.ts`.** Nothing re-derives
+   a rule locally: today's callers are the import parser (`storage.ts`), the override algebra
+   (`overrides.ts`), the one shortcut form (through `draft.ts` and `model/form.ts`), the section
+   editor in Settings, and `resolve.ts` for `isInterceptableAlias`. That list will grow — add a
+   call site rather than a local rule. When the rule lived in whichever module needed it, each had
+   a different hole: whitespace aliases and scheme-less URLs both persisted happily while being
+   unusable. `validateAlias` also rejects an alias starting with an escape prefix, since `resolve()`
+   strips that before the key map is ever consulted.
 
 7. **Free text never goes into a slot expecting a specific shape.** Tracking numbers, Zoom meeting
    ids, phone numbers and dictionary headwords all guard their input and degrade to a search.
@@ -145,8 +179,10 @@ tests. **If a test in this list fails, do not "fix" the test.**
     before the follow-up it scheduled starts, and a caller landing in that gap would otherwise open
     a third rebuild alongside it. Guarded by `tests/sync-rules.test.ts` `describe('concurrent
     syncs')`, which can only see the collision because `StubOptions.strictIds` reproduces Chrome's
-    duplicate-id refusal — a burst against the unserialized path costs 7 writes and an empty rule
-    table, and the naive chain-only ordering fails the sweep at arrival tick 105.
+    duplicate-id refusal: the unserialized path ends a burst with an empty rule table, and the naive
+    chain-only ordering fails somewhere inside that gap. The sweep walks every arrival tick up to a
+    bound derived from `ticksToSettle()` rather than a written-down number, so a rebuild that grows
+    longer cannot push the window past the end of the sweep.
 
 16. **An edit may never change a shortcut's identity or behaviour selector.**
     `Overrides.edits` carries only the seven fields the edit form shows; `applyEdit` copies them
@@ -154,7 +190,8 @@ tests. **If a test in this list fails, do not "fix" the test.**
     `builtin` or `id` — the difference between renaming GitHub and pointing the `github` handler
     at your own host. An edit whose `url` is blank or unparseable inherits the shipped one, because
     `rawDestination` returns `cmd.url` and an empty string is not a destination (invariant 12).
-    Guarded by `tests/overrides.test.ts` and by the whole-path test in `tests/storage.test.ts`
+    Guarded by `tests/overrides.test.ts`, by `tests/overrides-security.test.ts` (which drives the
+    hostile shapes one field at a time) and by the whole-path test in `tests/storage.test.ts`
     `describe('an edit cannot smuggle behaviour through the import')`, which drives the JSON
     through `importJson` → `applyImport` → `mergeCommands` rather than calling `applyEdit`
     directly. Its last case hands `mergeCommands` an override object the parser never saw: the
@@ -177,6 +214,35 @@ tests. **If a test in this list fails, do not "fix" the test.**
     (`extras/packs/removed-commands.json` is the worked example); it just is not made to. Guarded by
     `tests/overrides.test.ts`, `tests/storage.test.ts` and `tests/overrides-security.test.ts`.
 
+## Smaller rules, easy to undo by accident
+
+Not invariants — no bug shipped from these — but each is a decision with a reason, and the obvious
+edit reverses it.
+
+- **`applyFilter` in `views/browse.ts` is the only writer of `row.hidden` and `rowsHost.hidden`.**
+  Collapse hides a group by writing the rows host; the filter hides individual rows and force-shows
+  a collapsed group that matches. Two writers means a row that a cleared filter never brings back.
+- **Collapse state lives in `localStorage` (`bunnylol.collapsed`), never in `Settings`.** It is
+  per-machine view state that changes several times a minute; in the state blob every fold would be
+  a storage write, and every write re-syncs the DNR rules.
+- **The picker performs exactly one write.** Continue calls `commitState` once with the whole pick;
+  a write per ticked box is a burst of `onStateChanged` events, which is the pattern invariant 15
+  exists for.
+- **`DEFAULT_OVERRIDES` is everything-enabled.** The Purdue pack is not off by default in the
+  defaults — the install-time pick is what turns it off (`writeStarterPick` → `applyCategoryPick`).
+  A profile that never onboarded therefore fails open with every shortcut live, which is what
+  `migrateNewBuiltins` relies on when `enabledCategories` is null.
+- **The install-time pick is written BEFORE `syncRules`.** That is what makes closing the welcome
+  tab a real answer: the starter set is already live rather than waiting on a click. `syncRules()`
+  is `.catch`-guarded there because it reads `chrome.runtime.id` before its own try, and a
+  rejection in a fire-and-forget listener would skip the picker.
+- **The picker opens only for a profile that never answered it.** `reason === 'install'` also fires
+  when the extension is removed and added back over storage that survived; resetting a configured
+  profile to the starter set is the one thing that path must never do. Settings → "Choose shortcut
+  packs…" is the way back in.
+- **`edits` entries are for shipped ids only.** A `u:`-prefixed id names a user-created shortcut,
+  which is edited in place; `normalizeEdits` drops an edit keyed by one.
+
 ## Verify by executing, not by reading
 
 The most valuable bugs here were found by *running* code, not inspecting it. The DNR regex looked
@@ -194,11 +260,16 @@ pnpm install
 pnpm test          # vitest
 pnpm typecheck     # tsc --noEmit
 pnpm build         # gen-icons + typecheck + vite build -> dist/
+pnpm package       # build, then release/bunnylol-<version>.zip for the Web Store
 ```
 
-Load `dist/` unpacked at `chrome://extensions` with Developer mode on. Also works in Brave
-(`brave://extensions`) and Dia. Reload the extension after every build — editing source does not
-update a loaded extension.
+Load `dist/` unpacked at `chrome://extensions` with Developer mode on; other Chromium browsers work
+the same way. Reload the extension after every build — editing source does not update a loaded
+extension.
+
+`pnpm build` regenerates the icons from `design/tokens.css` and the PNGs are committed, so CI runs
+`git diff --exit-code -- public/icons store` after it. `pnpm package` writes to `release/`, which is
+gitignored.
 
 ## Conventions
 
@@ -209,7 +280,15 @@ update a loaded extension.
 - **No new dependencies.** The whole thing runs on four devDependencies; inline the functionality.
 - Comment only where the *reason* is non-obvious. Do not restate the code.
 - Vanilla TS and CSS in the UI. No framework.
+- Colours, sizes and spacing in the UI sheets come from `design/tokens.css`; no literal hex, no raw
+  `font-size: Npx`, never `color: var(--accent)` — `tests/tokens.test.ts` enforces it. `--accent` is
+  a fill (2.04:1 on white); `--accent-text` is the readable half-lightness twin for text, links and
+  the focus ring.
+- `src/lib` and `src/options/model` must import cleanly under vitest's `environment: node` — no
+  `document`, no `chrome.*` at module scope. That is what makes the pure decisions testable without
+  a DOM, and a stray import breaks a suite rather than a feature.
 - Do not edit `extras/` expecting it to compile — it is intentionally outside tsconfig.
+- `design/` is the approved design bundle. Change it through a design review, not in passing.
 
 ## Editing the command registry
 
@@ -239,13 +318,14 @@ Commands are plain data in `src/lib/commands.ts`. When adding or removing one:
 
 ## Review workflow
 
-The user wants substantial work delivered as **distinct commits on stacked branches**, each PR
-based on the previous one, sliced by architectural layer so each PR carries one reviewable idea.
-Verify each commit stands alone (typecheck + its own tests pass) before pushing — a test importing
-a module from a later commit silently breaks that property.
+Project convention: substantial work arrives as **distinct commits sliced by architectural layer**,
+so each one carries a single reviewable idea and passes the gate (`pnpm typecheck && pnpm test &&
+pnpm build`) on its own. Verify that standing alone — a test that imports a module from a later
+commit silently breaks the property without failing anything.
 
-Pushes to this remote reject commits authored with a real email address; use the GitHub noreply
-form (`49789627+ion05@users.noreply.github.com`).
+Those commits may be stacked as branches, each PR based on the previous one, or landed as one
+branch. If you stack them, **do not pass `--delete-branch`** when merging: deleting a parent branch
+auto-closes the child PR that targets it. Merge bottom-up without it, or retarget the tip to master
+and merge once.
 
-When merging a stack, **do not pass `--delete-branch`**: deleting a parent branch auto-closes the
-child PR that targets it. Merge bottom-up without it, or retarget the tip to master and merge once.
+`CONTRIBUTING.md` is the same material written for a human contributor; keep the two in step.

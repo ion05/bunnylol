@@ -10,7 +10,9 @@
       "Bash(git diff:*)",
       "Bash(git log:*)",
       "Bash(git show:*)",
-      "Bash(node scripts/gen-icons.mjs)"
+      "Bash(node scripts/gen-icons.mjs)",
+      "Bash(pnpm package:*)",
+      "Bash(node scripts/package.mjs)"
     ]
   }
 }
