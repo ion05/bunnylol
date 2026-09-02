@@ -1,6 +1,12 @@
 /**
- * The "Shortcuts" route: the filterable, grouped list of every builtin plus
- * every custom command, and the inline rebind editor for a builtin's keys.
+ * The "Shortcuts" route: the filterable, grouped list of every shortcut there
+ * is, shipped or user-created.
+ *
+ * `renderRow` is deliberately BRANCHLESS on where the shortcut came from. Every
+ * row offers Edit, an on-off switch and Delete, because a shipped shortcut and
+ * one the user typed in are the same kind of thing; the only thing that differs
+ * is which override map Delete and Save write to, and that is decided inside
+ * the handlers rather than by building two kinds of row.
  *
  * Every string that reaches the DOM goes through `textContent`: a shortcut name
  * is user input, and this view renders it next to the URL it will navigate to
@@ -8,20 +14,13 @@
  */
 
 import { BUILTIN_COMMANDS, destinationOf } from '../../lib/commands';
-import { parseKeys } from '../../lib/draft';
 import { firstKey, sectionLabel, sectionOrder, shortcutId } from '../../lib/overrides';
 import { activeKeywords, suggest } from '../../lib/resolve';
 import { stripScheme } from '../../lib/text';
-import { isInterceptableAlias } from '../../lib/validate';
-import { el, nextId } from '../../ui/dom';
+import type { Overrides, ShortcutEdit } from '../../lib/types';
+import { el } from '../../ui/dom';
 import { button, confirmButton, switchControl } from '../dom';
-import {
-  buildKeyOwner,
-  browseEntries,
-  describeOwner,
-  exampleOf,
-  haystackOf,
-} from '../model/browse';
+import { browseEntries, exampleOf, haystackOf } from '../model/browse';
 import type { Entry } from '../model/browse';
 import { go } from '../router';
 import {
@@ -31,9 +30,14 @@ import {
   getState,
   reportFailure,
   setFilter,
-  stopSet,
   takeNotice,
 } from '../store';
+
+/** The one sentence the master plan fixes for a meta shortcut's Delete button:
+ *  `bl`, `add` and `set` are deletable like everything else, and this says
+ *  where they come back from and what still works while they are gone. */
+const META_DELETE_TITLE =
+  'Restore from Settings → Restore shipped shortcuts; the toolbar popup still opens this page.';
 
 interface RowRef {
   matchKey: string;
@@ -226,16 +230,22 @@ function renderRow(
   onRemoved: (row: HTMLElement) => void,
 ): HTMLElement {
   const row = el('div', { class: entry.disabled ? 'row off' : 'row' });
+  row.dataset.id = entry.id;
 
   const keys = el('div', { class: 'row-keys' });
-  const paintKeys = (list: string[]): void => {
-    keys.textContent = '';
-    for (const key of list) keys.append(el('code', { class: 'chip', text: key }));
-  };
-  paintKeys(entry.cmd.keys);
+  for (const key of entry.cmd.keys) keys.append(el('code', { class: 'chip', text: key }));
 
   const name = el('div', { class: 'row-name', text: entry.cmd.name });
-  if (!entry.cmd.builtin) name.append(el('span', { class: 'badge', text: 'yours' }));
+  if (entry.modified) {
+    name.append(
+      el('span', {
+        class: 'badge badge-quiet badge-mod',
+        text: 'modified',
+        title:
+          'Changed from the shipped definition. Open Edit, press Reset, then Save to put it back.',
+      }),
+    );
+  }
   // The row is dimmed rather than greyed out, so the off state needs a label
   // that does not depend on noticing a colour.
   const offBadge = el('span', { class: 'badge badge-quiet', text: 'off' });
@@ -263,168 +273,53 @@ function renderRow(
   const actions = el('div', { class: 'row-actions' });
   row.append(keys, body, actions);
 
-  if (entry.cmd.builtin) {
-    // Built on demand: pre-rendering a hidden rebind form under every one of
-    // ~170 rows is a lot of DOM for a control most rows never open.
-    let editor: HTMLElement | null = null;
-    actions.append(
-      button('Keys', () => {
-        if (editor) editor.hidden = !editor.hidden;
-        else {
-          editor = renderKeyEditor(entry, row, paintKeys);
-          row.append(editor);
-        }
-        const open: HTMLElement = editor;
-        if (!open.hidden) open.querySelector('input')?.focus();
-      }, 'btn btn-sm btn-ghost'),
-      switchControl(`Enable ${entry.cmd.name}`, !entry.disabled, (on) => {
-        const next = getState().overrides.disabled.filter((key) => key !== entry.id);
-        if (!on) next.push(entry.id);
-        row.classList.toggle('off', !on);
-        offBadge.hidden = on;
-        void commitOverrides({ ...getState().overrides, disabled: next }).catch(reportFailure);
-      }),
-    );
-  } else {
-    actions.append(
-      button('Edit', () => go(`#edit?key=${encodeURIComponent(entry.id)}`), 'btn btn-sm'),
-      confirmButton('Delete', 'Click again to confirm', 'btn btn-sm btn-danger', () => {
-        const custom = getState().overrides.custom.filter((cmd) => shortcutId(cmd) !== entry.id);
-        void commitOverrides({ ...getState().overrides, custom }).catch(reportFailure);
-        row.remove();
-        onRemoved(row);
-      }),
-    );
-  }
+  const remove = confirmButton('Delete', 'Click again to confirm', 'btn btn-sm btn-danger', () => {
+    const overrides = getState().overrides;
+    // A deleted shortcut is gone, not off, so it leaves `disabled` either way.
+    const disabled = overrides.disabled.filter((id) => id !== entry.id);
+    const next: Overrides = entry.shipped
+      ? // `edits[id]` is deliberately KEPT: Restore brings back the shortcut
+        // the user had, not the one the registry ships.
+        { ...overrides, deleted: [...overrides.deleted, entry.id], disabled }
+      : {
+          ...overrides,
+          custom: overrides.custom.filter((cmd) => shortcutId(cmd) !== entry.id),
+          disabled,
+          edits: withoutEdit(overrides.edits, entry.id),
+        };
+    void commitOverrides(next).catch(reportFailure);
+    row.remove();
+    onRemoved(row);
+  });
+  if (entry.cmd.handler === 'meta') remove.title = META_DELETE_TITLE;
+
+  actions.append(
+    button('Edit', () => go(`#edit?id=${encodeURIComponent(entry.id)}`), 'btn btn-sm'),
+    switchControl(`Enable ${entry.cmd.name}`, !entry.disabled, (on) => {
+      const next = getState().overrides.disabled.filter((id) => id !== entry.id);
+      if (!on) next.push(entry.id);
+      // Optimistic, and deliberately before the await: the switch has already
+      // moved under the pointer, and a row that waits for storage to answer
+      // reads as a control that did not take.
+      row.classList.toggle('off', !on);
+      offBadge.hidden = on;
+      void commitOverrides({ ...getState().overrides, disabled: next }).catch(reportFailure);
+    }),
+    remove,
+  );
 
   return row;
 }
 
-/** Rebinding a builtin writes `edits[id].keys`; the builtin itself is never
- *  mutated, so "Reset" is just dropping that one field. */
-function renderKeyEditor(
-  entry: Entry,
-  row: HTMLElement,
-  paintKeys: (keys: string[]) => void,
-): HTMLElement {
-  const input = el('input', {
-    class: 'input mono',
-    attrs: { type: 'text', spellcheck: 'false', autocomplete: 'off' },
-  });
-  input.value = entry.cmd.keys.join(', ');
-  const label = el('label', {
-    class: 'visually-hidden',
-    text: `Keywords for ${entry.cmd.name}`,
-  });
-  label.htmlFor = input.id || (input.id = nextId('keys'));
-
-  const message = el('span', { class: 'msg msg-error' });
-  message.hidden = true;
-  const warning = el('span', { class: 'msg msg-warn' });
-  warning.hidden = true;
-
-  const editor = el('div', { class: 'row-editor' });
-
-  // Cancel and Escape have to agree: leaving the edited text in the box after
-  // Cancel reads as "saved" the next time the editor is opened.
-  const close = (): void => {
-    input.value = entry.cmd.keys.join(', ');
-    editor.hidden = true;
-    message.hidden = true;
-    warning.hidden = true;
-  };
-
-  const fail = (text: string): void => {
-    message.textContent = text;
-    message.hidden = false;
-    // A warning from a previous save reads as the outcome of this one.
-    warning.hidden = true;
-  };
-
-  const save = (): void => {
-    // The same validator the new-shortcut form and the import path use. An
-    // alias it rejects is unreachable from every surface, not merely
-    // un-intercepted, so it must not be saved at all.
-    const parsed = parseKeys(input.value);
-    if (!parsed.ok) return fail(parsed.reason);
-
-    const keys = parsed.keys;
-    if (keys.length === 0) {
-      return fail('Enter at least one keyword, or use Reset to restore the default.');
-    }
-    const entries = browseEntries(BUILTIN_COMMANDS, getState().overrides);
-    const owners = buildKeyOwner(entries);
-    const clash = keys.find((key) => {
-      const owner = owners.get(key);
-      return owner !== undefined && owner !== entry.id;
-    });
-    if (clash) {
-      return fail(
-        `“${clash}” is already taken by ${describeOwner(entries, owners.get(clash) ?? '')}.`,
-      );
-    }
-
-    const edits = {
-      ...getState().overrides.edits,
-      [entry.id]: { ...getState().overrides.edits[entry.id], keys },
-    };
-    entry.cmd = { ...entry.cmd, keys };
-    entry.matchKey = keys[0];
-    paintKeys(keys);
-    reset.hidden = false;
-    void commitOverrides({ ...getState().overrides, edits }).catch(reportFailure);
-
-    // Non-blocking, and the same copy `validate()` uses: the rebind is saved
-    // and the keyword resolves everywhere the resolver runs; it is only the
-    // address-bar redirect that cannot carry it. Leaving the editor open is
-    // what makes the warning visible at all.
-    const blocked = keys.filter((key) => !isInterceptableAlias(key) || stopSet().has(key));
-    if (blocked.length > 0) {
-      warning.textContent = `Saved, but “${blocked.join('”, “')}” ${blocked.length === 1 ? 'is' : 'are'} not intercepted in the address bar — typing ${blocked.length === 1 ? 'it' : 'them'} there runs a normal search. ${blocked.length === 1 ? 'It still works' : 'They still work'} from the toolbar popup and from bl + Tab.`;
-      warning.hidden = false;
-      message.hidden = true;
-      return;
-    }
-    close();
-    row.querySelector<HTMLButtonElement>('.row-actions .btn')?.focus();
-  };
-
-  const reset = button('Reset', () => {
-    const edits = { ...getState().overrides.edits };
-    // Only the keys: this button restores the shipped keywords, and dropping
-    // the whole entry would silently discard edits to the other fields.
-    const { keys: _dropped, ...rest } = edits[entry.id] ?? {};
-    if (Object.keys(rest).length > 0) edits[entry.id] = rest;
-    else delete edits[entry.id];
-    const original = BUILTIN_COMMANDS.find((cmd) => shortcutId(cmd) === entry.id)?.keys ?? entry.cmd.keys;
-    entry.cmd = { ...entry.cmd, keys: original };
-    entry.matchKey = (original[0] ?? entry.id).toLowerCase();
-    input.value = original.join(', ');
-    paintKeys(original);
-    void commitOverrides({ ...getState().overrides, edits }).catch(reportFailure);
-    close();
-  }, 'btn btn-sm');
-  reset.hidden = !getState().overrides.edits[entry.id]?.keys?.length;
-
-  input.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      save();
-    }
-    if (event.key === 'Escape') {
-      event.stopPropagation();
-      close();
-    }
-  });
-
-  editor.append(
-    label,
-    input,
-    button('Save keywords', save, 'btn btn-sm btn-primary'),
-    reset,
-    button('Cancel', close, 'btn btn-sm btn-ghost'),
-    message,
-    warning,
-  );
-  return editor;
+/** Null-prototype throughout: an id is a key off untrusted storage, and
+ *  `edits['__proto__']` on a plain object is swallowed by the inherited
+ *  setter. `edits` never holds a `u:` id today — `normalizeEdits` drops them —
+ *  but a hand-edited import is exactly the file that would put one there. */
+function withoutEdit(
+  edits: Record<string, ShortcutEdit>,
+  id: string,
+): Record<string, ShortcutEdit> {
+  const next: Record<string, ShortcutEdit> = Object.assign(Object.create(null), edits);
+  delete next[id];
+  return next;
 }

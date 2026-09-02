@@ -471,6 +471,14 @@ a {
   border: 1px solid var(--border);
 }
 
+/* A shim against the pre-redesign `.badge`'s uppercase: "modified" is a
+   sentence about this shortcut, not a label. Delete when `design/components.css`
+   lands and the badge vocabulary comes from there (PR 10). */
+.badge-mod {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 .row-url {
   margin-top: 3px;
   font-family: var(--font-mono);
@@ -494,24 +502,6 @@ a {
   align-items: center;
   gap: 6px;
   justify-self: end;
-}
-
-.row-editor {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-2);
-  background: var(--bg-raised);
-}
-
-.row-editor .input {
-  flex: 1;
-  min-width: 220px;
 }
 
 .empty {
@@ -688,6 +678,12 @@ a {
 
 .form-actions .spacer {
   margin-right: auto;
+}
+
+/* The "New section…" row. Full width because it belongs to the select above it
+   rather than to the column it happens to land in. */
+.section-new {
+  grid-column: 1 / -1;
 }
 
 /* ------------------------------------------------------------ preview -- */
@@ -904,6 +900,23 @@ a {
   font-size: var(--fs-13);
   color: var(--text-dim);
   max-width: 52ch;
+}
+
+/* Restore rows reuse the browse row's grid; only the card's own padding has to
+   go, since the panel body already supplies it. */
+.restore-rows .row {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.restore-rows .row:first-child {
+  border-top: 0;
+}
+
+.restore-all {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--sp-5);
 }
 
 @media (max-width: 760px) {

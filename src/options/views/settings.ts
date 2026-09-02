@@ -5,6 +5,12 @@
 
 import { BUILTIN_COMMANDS, SEARCH_ENGINES } from '../../lib/commands';
 import { AI_PROVIDERS } from '../../lib/handlers';
+import {
+  applyEdit,
+  knownCategoryIds,
+  restorableShipped,
+  shortcutId,
+} from '../../lib/overrides';
 import type { SearchEngineId } from '../../lib/types';
 import { DEFAULT_SETTINGS } from '../../lib/types';
 import { el } from '../../ui/dom';
@@ -21,7 +27,14 @@ import {
 import { buildKeyOwner, browseEntries } from '../model/browse';
 import { engineProblem } from '../model/form';
 import { getStatus, runtimeId, setSuppressedHost } from '../rule-status';
-import { commitSettings, getCommands, getState, stopSet } from '../store';
+import {
+  commitOverrides,
+  commitSettings,
+  getCommands,
+  getState,
+  reportFailure,
+  stopSet,
+} from '../store';
 import { renderData } from './data';
 
 const ENGINE_PRESETS: { label: string; template: string }[] = [
@@ -35,6 +48,7 @@ const ENGINE_PRESETS: { label: string; template: string }[] = [
 export function renderSettings(): Node[] {
   return [
     renderDefaults(),
+    renderRestore(),
     renderInterception(),
     renderStopList(),
     renderAiTemplates(),
@@ -166,6 +180,100 @@ export function renderDefaults(): HTMLElement {
       ],
     }),
   );
+  return card.section;
+}
+
+/**
+ * Deleting a shipped shortcut is undoable, so there has to be somewhere the
+ * undo lives. The card renders even when there is nothing in it — the same way
+ * the stop-list card does — because a restore path that only appears once you
+ * have already lost something is a path nobody finds when they need it.
+ */
+export function renderRestore(): HTMLElement {
+  const card = panelCard(
+    'Restore shipped shortcuts',
+    'Shortcuts that ship with BunnyLol and that you deleted. Restoring one brings its shipped definition back, along with anything you had edited.',
+  );
+
+  const rows = el('div', { class: 'restore-rows' });
+
+  const restore = (ids: string[]): void => {
+    const overrides = getState().overrides;
+    const dropped = new Set(ids);
+    // Only `deleted` moves. `edits[id]` is left where it is, which is what
+    // makes the sub above true.
+    void commitOverrides({
+      ...overrides,
+      deleted: overrides.deleted.filter((id) => !dropped.has(id)),
+    })
+      .then(paint)
+      .catch(reportFailure);
+  };
+
+  function paint(): void {
+    rows.textContent = '';
+    const overrides = getState().overrides;
+    const known = knownCategoryIds(overrides.sections);
+    const restorable = restorableShipped(BUILTIN_COMMANDS, overrides);
+    if (restorable.length === 0) {
+      rows.append(
+        el('p', {
+          class: 'field-hint',
+          text: 'You have not deleted any shipped shortcuts.',
+        }),
+      );
+      return;
+    }
+
+    for (const shipped of restorable) {
+      const id = shortcutId(shipped);
+      // Shown as it will come BACK, not as it shipped: the edit survives the
+      // delete, so a renamed shortcut listed under its shipped name would send
+      // the user looking for a row that never appears.
+      const cmd = applyEdit({ ...shipped, id, keys: [...shipped.keys] }, overrides.edits[id], known);
+      const keys = el('div', { class: 'row-keys' });
+      for (const key of cmd.keys) keys.append(el('code', { class: 'chip', text: key }));
+      rows.append(
+        el('div', {
+          class: 'row',
+          children: [
+            keys,
+            el('div', {
+              class: 'row-body',
+              children: [
+                el('div', { class: 'row-name', text: cmd.name }),
+                el('div', { class: 'row-desc', text: cmd.description }),
+              ],
+            }),
+            el('div', {
+              class: 'row-actions',
+              children: [button('Restore', () => restore([id]), 'btn btn-sm')],
+            }),
+          ],
+        }),
+      );
+    }
+
+    // With exactly one row the button would repeat the row's own action under
+    // a longer name.
+    if (restorable.length > 1) {
+      rows.append(
+        el('div', {
+          class: 'restore-all',
+          children: [
+            button(
+              `Restore all ${restorable.length}`,
+              () => restore(restorable.map(shortcutId)),
+              'btn',
+            ),
+          ],
+        }),
+      );
+    }
+  }
+
+  paint();
+  card.body.append(rows);
   return card.section;
 }
 

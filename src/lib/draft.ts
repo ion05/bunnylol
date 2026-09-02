@@ -4,6 +4,9 @@
  * be tested.
  */
 
+import { shortcutId } from './overrides';
+import type { Command } from './types';
+import { FALLBACK_SECTION } from './types';
 import { validateAlias } from './validate';
 
 export interface Draft {
@@ -25,19 +28,75 @@ export const EMPTY_DRAFT: Draft = {
   description: '',
   url: '',
   searchUrl: '',
-  category: 'custom',
+  category: FALLBACK_SECTION,
   example: '',
   newSectionLabel: '',
 };
+
+/**
+ * The fields that describe the shortcut, as opposed to the form's own scratch
+ * space. `newSectionLabel` is deliberately absent: it says what the "New
+ * section…" row is holding, not what the shortcut is, and comparing it would
+ * make a draft differ from its own baseline over text no shortcut ever stores.
+ */
+export const DRAFT_FIELDS = [
+  'keys',
+  'name',
+  'description',
+  'url',
+  'searchUrl',
+  'category',
+  'example',
+] as const;
+
+/** A blank draft filed under `category`. Separate from `EMPTY_DRAFT` because
+ *  that constant is shared and must not be handed out for a caller to mutate. */
+export function emptyDraft(category: string = FALLBACK_SECTION): Draft {
+  return { ...EMPTY_DRAFT, category };
+}
+
+/** The form's view of a command — the merged one, so editing a shipped
+ *  shortcut starts from what it currently does rather than from what it ships
+ *  with. */
+export function draftFrom(cmd: Command): Draft {
+  return {
+    keys: cmd.keys.join(', '),
+    name: cmd.name,
+    description: cmd.description,
+    url: cmd.url,
+    searchUrl: cmd.searchUrl ?? '',
+    category: cmd.category || FALLBACK_SECTION,
+    example: cmd.example ?? '',
+    newSectionLabel: '',
+  };
+}
+
+/**
+ * What Reset puts back for a shipped shortcut: the registry's own definition,
+ * read past the edit layer entirely. `null` when the id names no shipped
+ * command, which is how the form knows it is editing one of the user's own.
+ */
+export function shippedDraftFor(id: string, builtins: Command[]): Draft | null {
+  const wanted = id.trim();
+  if (!wanted) return null;
+  const shipped = builtins.find((cmd) => shortcutId(cmd) === wanted);
+  return shipped ? draftFrom(shipped) : null;
+}
+
+/** Whether two drafts describe the same shortcut, which is what decides
+ *  whether Reset has anything left to put back. */
+export function sameDraft(a: Draft, b: Draft): boolean {
+  return DRAFT_FIELDS.every((name) => a[name] === b[name]);
+}
 
 export type KeysCheck = { ok: true; keys: string[] } | { ok: false; reason: string };
 
 /**
  * Splits a comma-separated keyword list through the shared alias validator, so
- * the new-shortcut form, the builtin key editor and the import path all reject
- * the same aliases. An alias the resolver cannot read as a keyword — one with a
- * space in it, say — works on no surface at all, so it has to fail here rather
- * than save and quietly fall through to a search.
+ * the edit form and the import path reject the same aliases. An alias the
+ * resolver cannot read as a keyword — one with a space in it, say — works on no
+ * surface at all, so it has to fail here rather than save and quietly fall
+ * through to a search.
  */
 export function parseKeys(value: string): KeysCheck {
   const keys: string[] = [];
@@ -111,4 +170,56 @@ export function parsePrefill(raw: string): Draft {
   }
   draft.name = words.join(' ');
   return draft;
+}
+
+/**
+ * A URL field on its way back out of the form. `withScheme` is only applied to
+ * a value the user actually changed: the meta shortcuts ship a *relative*
+ * `options.html#…` destination (the dispatch page absolutises it — see
+ * `commands.ts`), and scheming that unconditionally turned a no-change Save on
+ * `bl`, `add` or `set` into a stored `https://options.html#help` that no longer
+ * opens anything, permanently — Reset then Save re-mangled it.
+ */
+function keptUrl(typed: string, shipped: string | undefined): string {
+  const value = typed.trim();
+  if (shipped !== undefined && value === shipped.trim()) return shipped;
+  return withScheme(value);
+}
+
+/**
+ * A draft plus the shortcut it is an edit OF, turned back into a `Command`.
+ *
+ * `builtin`, `handler` and `provider` come from `base` and never from the
+ * draft: they are the behaviour selector, and the difference between renaming
+ * GitHub and pointing the `github` handler at your own host (AGENTS.md
+ * invariant 16). The form shows none of them, so the only way one could reach
+ * a draft is a bug, and carrying them across explicitly is what makes that
+ * bug impossible rather than merely unlikely.
+ *
+ * `id` is passed rather than derived: a shortcut whose keys changed is still
+ * the same shortcut, and `shortcutId` of the rebuilt command would say
+ * otherwise.
+ */
+export function buildCommand(draft: Draft, base: Command | null, id: string): Command {
+  const parsed = parseKeys(draft.keys);
+  // The live preview builds a command while the form is still being typed into,
+  // so a rejected alias falls back to the raw split rather than blanking the row.
+  const keys = parsed.ok ? parsed.keys : splitKeys(draft.keys);
+  const cmd: Command = {
+    keys,
+    name: draft.name.trim() || keys[0] || 'Untitled',
+    description: draft.description.trim(),
+    url: keptUrl(draft.url, base?.url),
+    category: draft.category,
+    builtin: base?.builtin === true,
+  };
+  const resolvedId = id.trim() || base?.id || '';
+  if (resolvedId) cmd.id = resolvedId;
+  const searchUrl = draft.searchUrl.trim();
+  if (searchUrl) cmd.searchUrl = keptUrl(searchUrl, base?.searchUrl);
+  const example = draft.example.trim();
+  if (example) cmd.example = example;
+  if (base?.handler) cmd.handler = base.handler;
+  if (base?.provider) cmd.provider = base.provider;
+  return cmd;
 }

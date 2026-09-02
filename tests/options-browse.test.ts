@@ -8,15 +8,17 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { BUILTIN_COMMANDS } from '../src/lib/commands';
+import { restorableShipped, shortcutId } from '../src/lib/overrides';
+import { mergeCommands } from '../src/lib/resolve';
+import { DEFAULT_OVERRIDES } from '../src/lib/types';
+import type { BuiltinCommand, Command, Overrides } from '../src/lib/types';
 import {
   browseEntries,
   buildKeyOwner,
-  describeOwner,
   exampleOf,
   haystackOf,
 } from '../src/options/model/browse';
-import { DEFAULT_OVERRIDES } from '../src/lib/types';
-import type { BuiltinCommand, Command, Overrides } from '../src/lib/types';
 
 const github: BuiltinCommand = {
   keys: ['gh', 'github'],
@@ -83,6 +85,117 @@ describe('browseEntries', () => {
     const entry = entries.find((candidate) => candidate.id === 'gh');
     expect(entry?.matchKey).toBe('git');
   });
+
+  it('an edited builtin entry carries the edit and is marked modified', () => {
+    const entries = browseEntries(
+      builtins,
+      overridesWith({ edits: { gh: { name: 'Hub', example: 'gh facebook/react' } } }),
+    );
+    const entry = entries.find((candidate) => candidate.id === 'gh');
+    expect(entry?.cmd.name).toBe('Hub');
+    expect(entry?.cmd.example).toBe('gh facebook/react');
+    expect(entry?.modified).toBe(true);
+    expect(entry?.shipped).toBe(true);
+  });
+
+  it('an unedited builtin entry is not marked modified', () => {
+    const entries = browseEntries(builtins, DEFAULT_OVERRIDES);
+    expect(entries.every((entry) => entry.modified)).toBe(false);
+    expect(entries.find((entry) => entry.id === 'gh')?.modified).toBe(false);
+  });
+
+  it('an edit that changes nothing is not a modification', () => {
+    // Representable, and it survives storage: an import can carry an `edits`
+    // entry that restates the shipped values, and an empty object is an edit
+    // too. The badge has to mean "different from shipped", because Reset then
+    // Save writes the diff — which is empty — and could never clear it.
+    for (const edit of [{}, { name: 'GitHub' }, { keys: ['gh', 'github'] }, { category: 'dev' }]) {
+      const entries = browseEntries(builtins, overridesWith({ edits: { gh: edit } }));
+      expect(
+        entries.find((candidate) => candidate.id === 'gh')?.modified,
+        JSON.stringify(edit),
+      ).toBe(false);
+    }
+  });
+
+  it('a custom entry is shipped: false and never modified', () => {
+    // A custom command is edited in place, so it has nothing to differ FROM;
+    // the badge would be claiming a difference the user cannot go and look at.
+    const entries = browseEntries(builtins, overridesWith({ custom: [ticket] }));
+    const entry = entries.find((candidate) => candidate.id === 'u:tix');
+    expect(entry?.shipped).toBe(false);
+    expect(entry?.modified).toBe(false);
+  });
+
+  it('a disabled custom command is still an entry, marked disabled', () => {
+    const entries = browseEntries(
+      builtins,
+      overridesWith({ custom: [ticket], disabled: ['u:tix'] }),
+    );
+    const entry = entries.find((candidate) => candidate.id === 'u:tix');
+    expect(entry).toBeDefined();
+    expect(entry?.disabled).toBe(true);
+  });
+
+  it('deleting a builtin removes it from disabled but keeps its edit', () => {
+    // What the row's Delete handler writes: a deleted shortcut is gone rather
+    // than off, and Restore has to bring back the version the user had.
+    const overrides = overridesWith({
+      deleted: ['gh'],
+      disabled: [],
+      edits: { gh: { name: 'Hub' } },
+    });
+    expect(browseEntries(builtins, overrides).some((entry) => entry.id === 'gh')).toBe(false);
+    expect(overrides.disabled).not.toContain('gh');
+    expect(overrides.edits.gh).toEqual({ name: 'Hub' });
+  });
+
+  it('deleted shipped shortcuts are absent from browse entries and present in restorableShipped', () => {
+    const overrides = overridesWith({ deleted: ['gh'], custom: [ticket] });
+    const entries = browseEntries(builtins, overrides);
+    expect(entries.some((entry) => entry.id === 'gh')).toBe(false);
+    expect(entries.some((entry) => entry.id === 'r')).toBe(true);
+    expect(restorableShipped(builtins, overrides).map(shortcutId)).toEqual(['gh']);
+    // A custom command is deleted by removing it from `custom`, so it is never
+    // offered for restore — there would be nothing to restore it from.
+    expect(restorableShipped(builtins, overridesWith({ deleted: ['u:tix'] }))).toEqual([]);
+  });
+
+  it('browseEntries and mergeCommands agree on every enabled builtin', () => {
+    // The drift guard between the list and the resolver, run against the real
+    // registry: a row that claims a keyword, name or destination the resolver
+    // does not answer to is worse than no row at all.
+    const overrides = overridesWith({
+      custom: [ticket],
+      disabled: ['r'],
+      deleted: ['gh'],
+      sections: [{ id: 'sec-work', label: 'Client work' }],
+      edits: {
+        c: { name: 'Claude 5', keys: ['cl', 'claude'], category: 'sec-work' },
+        g: { searchUrl: 'https://kagi.com/search?q={q}', description: 'Search Kagi.' },
+      },
+    });
+    const merged = new Map(
+      mergeCommands(BUILTIN_COMMANDS, overrides).map((cmd) => [shortcutId(cmd), cmd] as const),
+    );
+    const listed = browseEntries(BUILTIN_COMMANDS, overrides).filter((entry) => !entry.disabled);
+
+    expect(listed.length).toBe(merged.size);
+    for (const entry of listed) {
+      const cmd = merged.get(entry.id);
+      expect(cmd, `${entry.id} is listed but not merged`).toBeDefined();
+      expect(cmd?.keys).toEqual(entry.cmd.keys);
+      expect(cmd?.name).toBe(entry.cmd.name);
+      expect(cmd?.description).toBe(entry.cmd.description);
+      expect(cmd?.url).toBe(entry.cmd.url);
+      expect(cmd?.searchUrl).toBe(entry.cmd.searchUrl);
+      expect(cmd?.category).toBe(entry.cmd.category);
+      expect(cmd?.example).toBe(entry.cmd.example);
+      // The fields an edit may never move (invariant 16).
+      expect(cmd?.handler).toBe(entry.cmd.handler);
+      expect(cmd?.provider).toBe(entry.cmd.provider);
+    }
+  });
 });
 
 describe('haystackOf', () => {
@@ -127,18 +240,5 @@ describe('buildKeyOwner', () => {
     const entries = browseEntries(builtins, overridesWith({ disabled: ['r'] }));
     const owners = buildKeyOwner(entries);
     expect(owners.has('r')).toBe(false);
-  });
-});
-
-describe('describeOwner', () => {
-  it('names an unknown id in quotes', () => {
-    const entries = browseEntries(builtins, DEFAULT_OVERRIDES);
-    expect(describeOwner(entries, 'ghost')).toBe('“ghost”');
-  });
-
-  it('names a known builtin as "built in" and a custom one as "your shortcut"', () => {
-    const entries = browseEntries(builtins, overridesWith({ custom: [ticket] }));
-    expect(describeOwner(entries, 'gh')).toBe('GitHub (built in)');
-    expect(describeOwner(entries, 'u:tix')).toBe('Tickets (your shortcut)');
   });
 });

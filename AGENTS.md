@@ -99,11 +99,12 @@ tests. **If a test in this list fails, do not "fix" the test.**
    longest-first so `github` beats `gh`, but truncating *that* order removes exactly the short hot
    aliases — at ~400 custom shortcuts `gh`, `g` and `npm` silently stopped being intercepted.
 
-6. **All alias and URL validation goes through `src/lib/validate.ts`.** It has three callers: the
-   import parser, the custom-shortcut form, and the builtin key editor. When the rule lived in
-   whichever module needed it, each had a different hole — whitespace aliases and scheme-less URLs
-   both persisted happily while being unusable. `validateAlias` also rejects an alias starting with
-   an escape prefix, since `resolve()` strips that before the key map is ever consulted.
+6. **All alias and URL validation goes through `src/lib/validate.ts`.** It has two callers: the
+   import parser and the shortcut edit form (which also validates section labels). When the rule
+   lived in whichever module needed it, each had a different hole — whitespace aliases and
+   scheme-less URLs both persisted happily while being unusable. `validateAlias` also rejects an
+   alias starting with an escape prefix, since `resolve()` strips that before the key map is ever
+   consulted.
 
 7. **Free text never goes into a slot expecting a specific shape.** Tracking numbers, Zoom meeting
    ids, phone numbers and dictionary headwords all guard their input and degrade to a search.
