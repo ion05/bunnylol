@@ -330,3 +330,23 @@ describe('shard sizing at 500 keywords', () => {
     expect(real.length).toBeGreaterThan(SEARCH_ENGINES.length);
   });
 });
+
+describe('a user who repoints a builtin at an intercepted engine', () => {
+  it('still gets the passthrough marker', () => {
+    // The sweep above is derived from the SHIPPED registry, so it cannot see
+    // this: the at-risk set is a property of where a command points, and the
+    // edit layer lets the user move one onto a search engine we intercept. If
+    // the marker were applied from a list of command names rather than from the
+    // resolved url, `npm` would loop back into go.html here.
+    const commands = mergeCommands(BUILTIN_COMMANDS, {
+      ...DEFAULT_OVERRIDES,
+      edits: { npm: { url: 'https://www.google.com/search?q=npm' } },
+    });
+    const result = resolve('npm', commands, SETTINGS);
+    expect(result.url).toContain('www.google.com/search');
+    expect(result.url).toContain(`${PASSTHROUGH_PARAM}=1`);
+    for (const [, rules] of RULE_SETS) {
+      expect(claimOf(rules, result.url)).not.toBe('redirect');
+    }
+  });
+});

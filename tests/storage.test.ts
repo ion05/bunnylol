@@ -3,7 +3,12 @@ import { applyImport, exportJson, importJson } from '../src/lib/storage';
 import { BUILTIN_COMMANDS } from '../src/lib/commands';
 import { buildKeyMap, mergeCommands } from '../src/lib/resolve';
 import { restorableShipped } from '../src/lib/overrides';
-import { DEFAULT_OVERRIDES, DEFAULT_SETTINGS, DEFAULT_STOP_LIST } from '../src/lib/types';
+import {
+  DEFAULT_OVERRIDES,
+  DEFAULT_SETTINGS,
+  DEFAULT_STOP_LIST,
+  FALLBACK_SECTION,
+} from '../src/lib/types';
 import type { Overrides, ShortcutEdit, StoredState } from '../src/lib/types';
 
 const STATE: StoredState = {
@@ -25,6 +30,8 @@ const STATE: StoredState = {
         example: 'tix 4821',
       },
     ],
+    enabledCategories: ['search', 'dev', 'ai', 'meta'],
+    seenBuiltins: ['gh', 'npm', 'g'],
   },
   settings: {
     githubUser: 'octocat',
@@ -97,6 +104,18 @@ describe('importJson rejections', () => {
       '{"overrides":{"custom":[{"keys":["x"],"url":"javascript:alert(1)"}]}}',
       /will not open/i,
     ],
+    [
+      'a category that is not a string',
+      '{"overrides":{"custom":[{"keys":["x"],"url":"https://x.test/","category":7}]}}',
+      /The "category" of shortcut "x" must be a string/,
+    ],
+    [
+      "an edit's category that is not a string",
+      '{"overrides":{"edits":{"gh":{"category":["dev"]}}}}',
+      /"edits\.gh\.category" must be a string/,
+    ],
+    ['an onboarding pick that is not a list', '{"overrides":{"enabledCategories":"dev"}}', /enabledCategories/],
+    ['a seenBuiltins that is not a list', '{"overrides":{"seenBuiltins":{}}}', /seenBuiltins/],
   ];
 
   it.each(cases)('rejects %s with a readable message', (_label, input, pattern) => {
@@ -151,6 +170,39 @@ describe('importJson leniency', () => {
     expect(state.overrides.edits).toEqual({ gh: { name: 'Mine' } });
   });
 
+  it('files a v1 export\'s media shortcut under My shortcuts instead of refusing it', () => {
+    // `media` was a shipped category until v1.1.0. Refusing the file would make
+    // every v1.0.0 backup that used it unimportable, and the only fix on offer
+    // would be hand-editing JSON the user did not write.
+    const state = importJson(
+      '{"version":1,"overrides":{"custom":[{"keys":["yt"],"url":"https://youtube.com/","category":"media"}]}}',
+    );
+    expect(state.overrides.custom[0].category).toBe(FALLBACK_SECTION);
+  });
+
+  it('drops an unknown category from an edit instead of refusing the file', () => {
+    // Asymmetric with the custom command above on purpose: a shipped shortcut
+    // has a category of its own, so it stays where the registry files it.
+    const state = importJson('{"overrides":{"edits":{"gh":{"category":"media","name":"Mine"}}}}');
+    expect(state.overrides.edits.gh).toEqual({ name: 'Mine' });
+  });
+
+  it('prunes seenBuiltins to ids this build actually ships, on both paths', () => {
+    // Mirrors `deleted`: an id here says "this profile has already been offered
+    // that shortcut", and one no build ships is a claim about nothing.
+    expect(
+      importJson('{"overrides":{"seenBuiltins":["gh","no-such-command","u:tix"]}}').overrides
+        .seenBuiltins,
+    ).toEqual(['gh']);
+    const stored = JSON.parse(
+      exportJson({
+        overrides: { ...DEFAULT_OVERRIDES, seenBuiltins: ['gh', 'no-such-command', 'u:tix'] },
+        settings: DEFAULT_SETTINGS,
+      }),
+    ) as StoredState;
+    expect(stored.overrides.seenBuiltins).toEqual(['gh']);
+  });
+
   it('accepts a settings-only file', () => {
     const state = importJson('{"settings":{"githubUser":"octocat"}}');
     expect(state.settings?.githubUser).toBe('octocat');
@@ -182,7 +234,7 @@ describe('importJson leniency', () => {
     const state = importJson(
       JSON.stringify({
         overrides: {
-          custom: [{ keys: ['  TiX  ', 'tix', ''], url: '  https://tix.example/  ', category: 'nonsense' }],
+          custom: [{ keys: ['  TiX  ', 'tix', ''], url: '  https://tix.example/  ', category: '  DEV ' }],
         },
       }),
     );
@@ -191,8 +243,32 @@ describe('importJson leniency', () => {
     expect(custom.url).toBe('https://tix.example/');
     expect(custom.name).toBe('tix');
     expect(custom.description).toBe('');
-    expect(custom.category).toBe('custom');
+    expect(custom.category).toBe('dev');
     expect(custom.searchUrl).toBeUndefined();
+  });
+
+  it('files a custom command under "custom" when the STORED blob names no section', () => {
+    // The lenient path, which a stored blob and `applyImport`'s output both go
+    // through: an orphaned category costs the user a group, not their data. The
+    // import parser refuses the same value instead, because a human is standing
+    // there — see 'importJson rejections'.
+    const orphan = exportJson({
+      overrides: {
+        ...DEFAULT_OVERRIDES,
+        custom: [
+          {
+            keys: ['tix'],
+            name: 'Tickets',
+            description: '',
+            url: 'https://tix.example/',
+            category: 'nonsense',
+            builtin: false,
+          },
+        ],
+      },
+      settings: DEFAULT_SETTINGS,
+    });
+    expect(JSON.parse(orphan).overrides.custom[0].category).toBe('custom');
   });
 
   it('discards settings values it does not recognize', () => {
@@ -308,6 +384,91 @@ describe('importJson leniency', () => {
  * an extension-relative path. A file that says something impossible now gets
  * refused with a message naming the field.
  */
+describe('sections and the categories filed against them', () => {
+  it('accepts a category naming a section the same file declares', () => {
+    const state = importJson(
+      '{"overrides":{"sections":[{"id":"sec-work","label":"Work"}],"custom":[{"keys":["w"],"url":"https://w.test/","category":"sec-work"}]}}',
+    );
+    expect(state.overrides.custom[0].category).toBe('sec-work');
+    // And the section travels with it, or the group the shortcut names would
+    // exist only in the file it came from.
+    const saved = JSON.parse(
+      exportJson({ overrides: state.overrides, settings: DEFAULT_SETTINGS }),
+    );
+    expect(saved.overrides.sections).toEqual([{ id: 'sec-work', label: 'Work' }]);
+    expect(saved.overrides.custom[0].category).toBe('sec-work');
+  });
+
+  it('files a shortcut under "custom" when the STORED blob lost the section', () => {
+    const orphaned = exportJson({
+      overrides: {
+        ...DEFAULT_OVERRIDES,
+        custom: [
+          {
+            keys: ['w'],
+            name: 'W',
+            description: '',
+            url: 'https://w.test/',
+            category: 'sec-work',
+            builtin: false,
+          },
+        ],
+      },
+      settings: DEFAULT_SETTINGS,
+    });
+    expect(JSON.parse(orphaned).overrides.custom[0].category).toBe('custom');
+  });
+
+  it('an edit whose category names no section loses the category, not the command', () => {
+    const blob = exportJson({
+      overrides: { ...DEFAULT_OVERRIDES, edits: { gh: { category: 'ghost', name: 'Mine' } } },
+      settings: DEFAULT_SETTINGS,
+    });
+    expect(JSON.parse(blob).overrides.edits).toEqual({ gh: { name: 'Mine' } });
+  });
+
+  it('normalizes and dedupes the section list', () => {
+    const state = importJson(
+      '{"overrides":{"sections":[{"id":"  SEC-WORK ","label":" Work "},{"id":"sec-work","label":"Other"}]}}',
+    );
+    expect(state.overrides.sections).toEqual([{ id: 'sec-work', label: 'Work' }]);
+  });
+});
+
+describe('the onboarding pick', () => {
+  it('reads as "never onboarded" when the profile has no list', () => {
+    expect(importJson('{"overrides":{}}').overrides.enabledCategories).toBeNull();
+    expect(importJson('{"overrides":{"enabledCategories":null}}').overrides.enabledCategories).toBeNull();
+  });
+
+  it('keeps an empty pick, which is a real answer', () => {
+    expect(importJson('{"overrides":{"enabledCategories":[]}}').overrides.enabledCategories).toEqual(
+      [],
+    );
+  });
+
+  it('drops an id that names no shipped category, and dedupes the rest', () => {
+    expect(
+      importJson('{"overrides":{"enabledCategories":["dev","dev","ghost"," AI "]}}').overrides
+        .enabledCategories,
+    ).toEqual(['dev', 'ai']);
+  });
+
+  it('survives an export round trip with seenBuiltins', () => {
+    const state: StoredState = {
+      overrides: { ...DEFAULT_OVERRIDES, enabledCategories: ['dev'], seenBuiltins: ['gh', 'gh'] },
+      settings: DEFAULT_SETTINGS,
+    };
+    const back = importJson(exportJson(state)).overrides;
+    expect(back.enabledCategories).toEqual(['dev']);
+    expect(back.seenBuiltins).toEqual(['gh']);
+  });
+
+  it('is recognized as BunnyLol data in a bare snippet', () => {
+    expect(importJson('{"enabledCategories":["dev"]}').overrides.enabledCategories).toEqual(['dev']);
+  });
+});
+
 describe('an import that could never work', () => {
   const rejected: Array<[string, string, RegExp]> = [
     [

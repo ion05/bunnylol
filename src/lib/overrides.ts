@@ -19,11 +19,22 @@
  * migrates the v1 `keyOverrides` map into it, and `restorableShipped` names the
  * shipped commands a user deleted. A DIFF, not a copy: a corrected URL in a
  * later build still reaches a user who only renamed the command.
+ *
+ * The section algebra sits here for the same reason: a category is now an open
+ * id resolved against `Overrides.sections`, so "which group is this shortcut
+ * in, and what is that group called" is a question storage, the resolver and
+ * the options page all ask, and all three have to get the same answer.
  */
 
-import type { Category, Command, Overrides, ShortcutEdit } from './types';
-import { CATEGORIES } from './types';
-import { MAX_KEYWORD_LENGTH, validateAlias, validateUrlTemplate } from './validate';
+import type { Command, Overrides, Section, ShortcutEdit } from './types';
+import { CATEGORIES, CATEGORY_LABELS, FALLBACK_SECTION } from './types';
+import {
+  MAX_KEYWORD_LENGTH,
+  MAX_SECTION_ID_LENGTH,
+  validateAlias,
+  validateSectionLabel,
+  validateUrlTemplate,
+} from './validate';
 
 /**
  * Marks an id as belonging to a user-created shortcut, and is what makes
@@ -97,6 +108,15 @@ export function isUserId(id: string): boolean {
 }
 
 /**
+ * The alias a command leads with. Deliberately not `shortcutId`: its callers
+ * key maps by what the user types, and a custom shortcut's id is a `u:` slug
+ * that answers to nothing in the address bar.
+ */
+export function firstKey(cmd: Command): string {
+  return (cmd?.keys?.[0] ?? '').trim().toLowerCase();
+}
+
+/**
  * Mints an id for a user-created shortcut, deterministically: same seed and
  * same `taken` set, same id, in any build and on any machine. No randomness and
  * no clock, because two imports of the same file must agree on what they named
@@ -158,8 +178,16 @@ const EDITABLE_FIELDS = [
  *
  * Absent is "inherit" everywhere, so a half-written edit degrades to the
  * shipped definition rather than to a broken command.
+ *
+ * `known` is the set of section ids this profile has (`knownCategoryIds`).
+ * Omitting it means the builtin categories and nothing else, which is what a
+ * caller with no `Overrides` in hand can honestly say.
  */
-export function applyEdit(cmd: Command, edit: ShortcutEdit | undefined): Command {
+export function applyEdit(
+  cmd: Command,
+  edit: ShortcutEdit | undefined,
+  known: ReadonlySet<string> = BUILTIN_CATEGORY_IDS,
+): Command {
   if (!edit) return cmd;
   const next: Command = { ...cmd };
 
@@ -194,11 +222,11 @@ export function applyEdit(cmd: Command, edit: ShortcutEdit | undefined): Command
     if (example) next.example = example;
   }
 
-  // An id nobody ships is dropped, not coerced to `custom`: a shipped command
-  // must not be silently relocated to "My shortcuts" because the file named a
-  // category this build does not have.
+  // An id no section answers to is dropped, not coerced to `custom`: a shipped
+  // command must not be silently relocated to "My shortcuts" because the file
+  // named a section that is not here.
   const category = text(edit.category).toLowerCase();
-  if (isCategory(category)) next.category = category;
+  if (known.has(category)) next.category = category;
 
   return next;
 }
@@ -212,7 +240,11 @@ export function applyEdit(cmd: Command, edit: ShortcutEdit | undefined): Command
  * a URL — is reported as no change, because storing it would produce a diff
  * that does not round trip.
  */
-export function diffEdit(shipped: Command, next: Command): ShortcutEdit | null {
+export function diffEdit(
+  shipped: Command,
+  next: Command,
+  known: ReadonlySet<string> = BUILTIN_CATEGORY_IDS,
+): ShortcutEdit | null {
   const edit: ShortcutEdit = {};
 
   const keys = aliasList(next?.keys);
@@ -241,7 +273,7 @@ export function diffEdit(shipped: Command, next: Command): ShortcutEdit | null {
   }
 
   const category = text(next?.category).toLowerCase();
-  if (isCategory(category) && category !== text(shipped?.category).toLowerCase()) {
+  if (known.has(category) && category !== text(shipped?.category).toLowerCase()) {
     edit.category = category;
   }
 
@@ -267,8 +299,12 @@ export function diffEdit(shipped: Command, next: Command): ShortcutEdit | null {
  * changed nothing, and a row that claims otherwise sends the user looking for a
  * difference that is not there.
  */
-export function editedFields(shipped: Command, edit: ShortcutEdit | undefined): string[] {
-  const diff = diffEdit(shipped, applyEdit(shipped, edit));
+export function editedFields(
+  shipped: Command,
+  edit: ShortcutEdit | undefined,
+  known: ReadonlySet<string> = BUILTIN_CATEGORY_IDS,
+): string[] {
+  const diff = diffEdit(shipped, applyEdit(shipped, edit, known), known);
   if (!diff) return [];
   return EDITABLE_FIELDS.filter((field) => field in diff);
 }
@@ -315,8 +351,294 @@ export function restorableShipped(builtins: Command[], overrides: Overrides): Co
   return (builtins ?? []).filter((cmd) => deleted.has(shortcutId(cmd)));
 }
 
-function isCategory(value: string): value is Category {
-  return (CATEGORIES as string[]).includes(value);
+// --------------------------------------------------------- section algebra ----
+
+/**
+ * The ids that name a shipped group. Precomputed because `applyEdit` runs once
+ * per builtin on every merge, and the default answer must not allocate a set
+ * each time.
+ */
+const BUILTIN_CATEGORY_IDS: ReadonlySet<string> = new Set<string>(CATEGORIES);
+
+/**
+ * An import file may not fill the browse list with junk sections. Lives here
+ * rather than in storage because `addSection` has to refuse at the same number
+ * the storage boundary would silently truncate at.
+ */
+export const MAX_SECTIONS = 64;
+
+/** Prefixed so a minted id can never collide with a builtin category id, which
+ *  is what makes "rename a shipped group" and "create a group" different acts
+ *  on the same list. */
+const SECTION_ID_PREFIX = 'sec-';
+
+/** Every id a command may legally be filed under: the shipped groups, plus the
+ *  sections this profile declares. */
+export function knownCategoryIds(sections: Section[] | undefined): Set<string> {
+  const known = new Set<string>(CATEGORIES);
+  for (const section of sections ?? []) {
+    const id = sectionKey(section?.id);
+    if (id) known.add(id);
+  }
+  return known;
+}
+
+/**
+ * What a section id is called on screen. A `sections` entry wins — that is how
+ * a shipped group gets renamed — then the shipped label, then the id itself, so
+ * a group whose section entry vanished still has a heading instead of an empty
+ * one.
+ */
+export function sectionLabel(id: string, sections: Section[] | undefined): string {
+  const key = sectionKey(id);
+  if (!key) return '';
+  for (const section of sections ?? []) {
+    if (sectionKey(section?.id) === key) {
+      const label = validateSectionLabel(section?.label ?? '');
+      if (label.ok) return label.label;
+    }
+  }
+  // `Object.hasOwn`, not `CATEGORY_LABELS[key]`: `key` is an open id off
+  // untrusted data and `validateSectionId` accepts `constructor`, so a plain
+  // lookup would answer with something off `Object.prototype`.
+  if (Object.hasOwn(CATEGORY_LABELS, key)) return CATEGORY_LABELS[key as keyof typeof CATEGORY_LABELS];
+  return key;
+}
+
+export function isShippedSection(id: string): boolean {
+  return BUILTIN_CATEGORY_IDS.has(sectionKey(id));
+}
+
+/**
+ * The order the browse list shows its groups in. Callers still drop the empty
+ * ones, so this is the full order rather than the visible one.
+ *
+ * The user's own shortcuts lead: they are the reason this page exists, and they
+ * are the ones that need editing. Then the shipped groups in registry order,
+ * then the user's own sections in the order they created them, and last the
+ * strays — an id some command still names that no section declares, which would
+ * otherwise be a group of shortcuts with nowhere to be drawn.
+ */
+export function sectionOrder(sections: Section[] | undefined, commands: Command[]): string[] {
+  const used = new Set<string>();
+  for (const cmd of commands ?? []) {
+    const id = sectionKey(cmd?.category);
+    if (id) used.add(id);
+  }
+
+  const order: string[] = [];
+  if (used.has(FALLBACK_SECTION)) order.push(FALLBACK_SECTION);
+  for (const category of CATEGORIES) {
+    if (category !== FALLBACK_SECTION) order.push(category);
+  }
+  const listed = new Set(order);
+  for (const section of sections ?? []) {
+    const id = sectionKey(section?.id);
+    if (id && !listed.has(id)) {
+      listed.add(id);
+      order.push(id);
+    }
+  }
+  for (const id of used) {
+    if (!listed.has(id)) {
+      listed.add(id);
+      order.push(id);
+    }
+  }
+  return order;
+}
+
+/**
+ * The section picker's options, in browse order. `custom` is always offered
+ * even when it holds nothing: it is where a new shortcut goes and the one group
+ * that cannot be deleted.
+ */
+export function sectionOptions(sections: Section[] | undefined, commands: Command[]): Section[] {
+  const order = sectionOrder(sections, commands);
+  const ids = order.includes(FALLBACK_SECTION) ? order : [FALLBACK_SECTION, ...order];
+  return ids.map((id) => ({ id, label: sectionLabel(id, sections) }));
+}
+
+/**
+ * The ids of the shortcuts filed under a section right now — what "delete this
+ * section" has to warn about.
+ *
+ * Edits applied, because a shipped command the user moved is in the section
+ * they moved it to and not in the one the registry ships it under. A shortcut
+ * the user turned off still counts (it is listed, greyed, in that group); a
+ * deleted shipped one does not, because no surface draws it.
+ */
+export function sectionMembers(id: string, builtins: Command[], overrides: Overrides): string[] {
+  const key = sectionKey(id);
+  if (!key) return [];
+  const known = knownCategoryIds(overrides?.sections);
+  const deleted = new Set((overrides?.deleted ?? []).map(normalizeId).filter(Boolean));
+  const edits = overrides?.edits ?? {};
+  const members: string[] = [];
+
+  for (const cmd of overrides?.custom ?? []) {
+    const cmdId = shortcutId(cmd);
+    if (cmdId && sectionKey(cmd?.category) === key) members.push(cmdId);
+  }
+  for (const cmd of builtins ?? []) {
+    const cmdId = shortcutId(cmd);
+    if (!cmdId || deleted.has(cmdId)) continue;
+    if (sectionKey(applyEdit(cmd, edits[cmdId], known).category) === key) members.push(cmdId);
+  }
+  return members;
+}
+
+/**
+ * A section id minted from its label, deterministically — same label and same
+ * `taken` set, same id. `sec-`-prefixed so it can never land on a builtin
+ * category id: an entry whose id is `dev` means "the shipped Developer group,
+ * renamed", and a user's new section called "Dev" must not become that.
+ */
+export function newSectionId(label: string, taken: Set<string>): string {
+  const slug = slugify(label);
+  let candidate = fitSectionId(slug, '', SECTION_ID_PREFIX);
+  for (let n = 2; taken.has(candidate); n += 1) {
+    candidate = fitSectionId(slug, `-${n}`, SECTION_ID_PREFIX);
+  }
+  return candidate;
+}
+
+/**
+ * `fit` for section ids: `prefix + base + suffix`, with `base` cut so the whole
+ * thing stays inside `MAX_SECTION_ID_LENGTH`.
+ *
+ * Exported because the import merge suffixes ids too, and an id that overshoots
+ * the cap is one `validateSectionId` rejects and the next save silently drops —
+ * taking every shortcut filed under it back to "My shortcuts".
+ */
+export function fitSectionId(base: string, suffix = '', prefix = ''): string {
+  const room = MAX_SECTION_ID_LENGTH - prefix.length - suffix.length;
+  // A truncation that lands mid-word must not leave a trailing `-`, or the id
+  // reads as `sec-client-work--2`.
+  const cut = base.slice(0, room).replace(EDGE_DASH, '');
+  return prefix + (cut || FALLBACK_SLUG.slice(0, room)) + suffix;
+}
+
+/**
+ * Whether a section already goes by this name, case-insensitively — two groups
+ * with one heading between them is a list the user cannot navigate.
+ *
+ * Asked of the labels in EFFECT, not of `CATEGORY_LABELS` as shipped: a user
+ * who renamed "Developer" to "Engineering" has freed the word "Developer", and
+ * refusing it would be refusing a name nothing on the page shows.
+ */
+export function sectionLabelTaken(label: string, sections: Section[] | undefined): boolean {
+  const wanted = foldLabel(label);
+  if (!wanted) return false;
+  const inUse = new Set<string>();
+  for (const category of CATEGORIES) inUse.add(foldLabel(sectionLabel(category, sections)));
+  for (const section of sections ?? []) {
+    const id = sectionKey(section?.id);
+    if (id) inUse.add(foldLabel(sectionLabel(id, sections)));
+  }
+  return inUse.has(wanted);
+}
+
+/**
+ * Adds a user section and says what it was called, so the caller can file the
+ * shortcut it was creating it for. `id` is `''` when the label was unusable or
+ * the profile is at `MAX_SECTIONS` — refused rather than added and silently
+ * dropped by the storage boundary on the next save.
+ */
+export function addSection(overrides: Overrides, label: string): { overrides: Overrides; id: string } {
+  const check = validateSectionLabel(label);
+  const sections = overrides?.sections ?? [];
+  if (!check.ok || sections.length >= MAX_SECTIONS) return { overrides, id: '' };
+  // Seeded with the builtin ids too, so a mint can never produce one — belt and
+  // braces behind `SECTION_ID_PREFIX`.
+  const id = newSectionId(check.label, knownCategoryIds(sections));
+  return {
+    overrides: { ...overrides, sections: [...sections, { id, label: check.label }] },
+    id,
+  };
+}
+
+/**
+ * Renames a section, or creates the entry that renames a shipped one.
+ *
+ * Renaming a shipped group BACK to its shipped label removes the entry instead
+ * of storing a rename that changes nothing, so "undo the rename" leaves the
+ * blob it started from rather than a permanent record of a round trip.
+ */
+export function renameSection(overrides: Overrides, id: string, label: string): Overrides {
+  const key = sectionKey(id);
+  const check = validateSectionLabel(label);
+  if (!key || !check.ok) return overrides;
+  const sections = overrides?.sections ?? [];
+
+  if (isShippedSection(key) && check.label === CATEGORY_LABELS[key as keyof typeof CATEGORY_LABELS]) {
+    const kept = sections.filter((section) => sectionKey(section?.id) !== key);
+    return kept.length === sections.length ? overrides : { ...overrides, sections: kept };
+  }
+
+  const existing = sections.some((section) => sectionKey(section?.id) === key);
+  const next = existing
+    ? sections.map((section) =>
+        sectionKey(section?.id) === key ? { id: key, label: check.label } : section,
+      )
+    : [...sections, { id: key, label: check.label }];
+  return { ...overrides, sections: next };
+}
+
+/**
+ * Deletes a user section and files everything that was in it under
+ * `FALLBACK_SECTION`.
+ *
+ * Refuses a shipped id by returning its input UNCHANGED: a shipped group is
+ * part of the registry and can only be renamed, and deleting it would leave
+ * every command it holds pointing at a category no list draws.
+ *
+ * Members move in BOTH places, because a section can hold a user's own command
+ * (`custom[].category`) and a shipped one they moved into it
+ * (`edits[].category`), and leaving either behind orphans that shortcut.
+ */
+export function deleteSection(overrides: Overrides, id: string): Overrides {
+  const key = sectionKey(id);
+  if (!key || isShippedSection(key)) return overrides;
+  const sections = overrides?.sections ?? [];
+  if (!sections.some((section) => sectionKey(section?.id) === key)) return overrides;
+
+  // Null-prototype: the ids are keys off an import file, and `edits['__proto__']`
+  // on a plain object is swallowed by the setter it inherits.
+  const edits: Record<string, ShortcutEdit> = Object.create(null);
+  for (const [editId, edit] of Object.entries(overrides?.edits ?? {})) {
+    edits[editId] =
+      sectionKey(edit?.category) === key ? { ...edit, category: FALLBACK_SECTION } : edit;
+  }
+
+  return {
+    ...overrides,
+    edits,
+    sections: sections.filter((section) => sectionKey(section?.id) !== key),
+    custom: (overrides?.custom ?? []).map((cmd) =>
+      sectionKey(cmd?.category) === key ? { ...cmd, category: FALLBACK_SECTION } : cmd,
+    ),
+  };
+}
+
+/** Reads a section id off untrusted data. Shape only — `validateSectionId` is
+ *  the boundary that decides what may be STORED; this is how what is already
+ *  stored gets compared. */
+function sectionKey(raw: unknown): string {
+  return typeof raw === 'string' ? raw.trim().toLowerCase() : '';
+}
+
+/**
+ * Labels compare case- and width-insensitively: "Work" and "work" are one
+ * group with two spellings, and NFKC folds the full-width lookalikes that make
+ * two headings render identically.
+ *
+ * Exported because the import merge asks the same question: a section it judges
+ * a collision by a different rule than the section editor uses is a group the
+ * user renamed here and the merge then split in two.
+ */
+export function foldLabel(label: string): string {
+  return (typeof label === 'string' ? label : '').normalize('NFKC').trim().toLowerCase();
 }
 
 function text(value: unknown): string {

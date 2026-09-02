@@ -38,7 +38,9 @@ src/lib/commands.ts     91 builtin commands + SEARCH_ENGINES
 src/lib/handlers.ts     Smart argument handlers + AI_PROVIDERS
 src/lib/resolve.ts      resolve(query, commands, settings) -> ResolveResult. Pure. The brain.
 src/lib/validate.ts     The single validation boundary for aliases, URLs and section ids
-src/lib/overrides.ts    Shortcut identity (`shortcutId`, `u:` ids) + the edit/delete algebra
+src/lib/overrides.ts    Shortcut identity (`shortcutId`, `u:` ids) + the edit/delete/section algebra
+src/lib/onboarding.ts   The category pick: packs, `applyCategoryPick`, `migrateNewBuiltins`
+src/lib/merge-import.ts Folding an import onto the state already here (`mergeOverrides`)
 src/lib/storage.ts      chrome.storage.local persistence, JSON import/export
 src/lib/dnr.ts          declarativeNetRequest rule generation + syncRules
 src/lib/url.ts          Small URL helpers
@@ -46,8 +48,19 @@ src/background.ts       MV3 service worker: rule sync, omnibox
 src/go/go.ts            Dispatch page — resolves and navigates
 src/options/            Shortcut manager UI (options.ts, status.ts, options.css)
 src/popup/              Toolbar command bar
-extras/removed-commands.ts   Pruned commands, kept verbatim. Outside tsconfig; not compiled.
+extras/packs/           Importable packs, kept verbatim. Data, not code; not compiled.
 ```
+
+A shortcut's `category` is an OPEN section id — a shipped `Category`, or the id of a `Section` in
+`Overrides.sections` — resolved for display by `sectionLabel`. `CATEGORIES` stays the closed
+shipped list, and the registry rows are typed `BuiltinCommand`, so a typo'd shipped category is
+still a compile error.
+
+The onboarding pick is not a second exclusion axis. `Overrides.enabledCategories` records what the
+user chose so the picker can be reopened with their answer; the *effect* is projected onto
+`Overrides.disabled` at write time by `applyCategoryPick`. The resolver reads `disabled` and
+nothing else, so DNR, the omnibox and the popup inherit a pick for free and none of them has to
+know what a category is.
 
 `resolve.ts` is pure and shared by every surface — dispatch page, omnibox, popup, options live
 preview, tests. Behaviour cannot drift between surfaces because there is one code path. Keep it
@@ -147,6 +160,22 @@ tests. **If a test in this list fails, do not "fix" the test.**
     storage boundary strips these fields too, so without it the whole block stays green even if
     `applyEdit` went back to spreading.
 
+17. **A category is an open section id, and every lookup keyed by one is hostile input.**
+    `validateSectionId` is deliberately permissive — it accepts a builtin id, because that is how a
+    shipped group gets renamed, and it accepts `constructor` — so `CATEGORY_LABELS[id]` on a
+    user-supplied id answers with something off `Object.prototype`. Go through `sectionLabel`, or
+    guard with `Object.hasOwn`. Two more rules follow from the same openness and are NOT symmetric:
+    an unknown id on a **custom** command falls back to `FALLBACK_SECTION` (it has nowhere else to
+    go), while an unknown id on an **edit** is dropped (a shipped command has its own category, and
+    relocating it to "My shortcuts" because a section vanished would move a shortcut the user never
+    touched). The import parser degrades the same two ways rather than refusing the file: refusing
+    was tried, and it made every v1.0.0 export whose custom shortcut was filed under the
+    since-removed `media` category unimportable, with the only fix being to hand-edit JSON the user
+    did not write. The one category refusal left is structural — a `category` that is not a string
+    names no id to degrade to. A pack SHOULD still declare the sections it files things under
+    (`extras/packs/removed-commands.json` is the worked example); it just is not made to. Guarded by
+    `tests/overrides.test.ts`, `tests/storage.test.ts` and `tests/overrides-security.test.ts`.
+
 ## Verify by executing, not by reading
 
 The most valuable bugs here were found by *running* code, not inspecting it. The DNR regex looked
@@ -161,7 +190,7 @@ drives `buildRules` alone is not testing what ships.
 
 ```bash
 pnpm install
-pnpm test          # vitest, 666 tests across 10 suites
+pnpm test          # vitest
 pnpm typecheck     # tsc --noEmit
 pnpm build         # gen-icons + typecheck + vite build -> dist/
 ```
@@ -191,7 +220,8 @@ Commands are plain data in `src/lib/commands.ts`. When adding or removing one:
   constants it alone used, or `noUnusedLocals` will fail the build.
 - Removing a command can break tests that named it. Prefer rewriting such a test to derive its
   cases from `BUILTIN_COMMANDS` over substituting another command name.
-- Pruned commands go into `extras/removed-commands.ts` verbatim rather than being deleted.
+- Pruned commands go into `extras/packs/removed-commands.json` verbatim rather than being deleted.
+  It is an importable pack, not code; `extras/packs/README.md` documents the format.
 
 ## Known-unverified and deliberately-limited
 

@@ -58,6 +58,19 @@ describe('BUILTIN_COMMANDS registry', () => {
     }
   });
 
+  it('ships commands in every category except the fallback one', () => {
+    // `custom` is the bucket a user's own shortcuts land in and ships empty by
+    // design. Any OTHER empty category is either a typo in the registry or a
+    // pack the picker would offer with nothing in it, and both are bugs — a
+    // shipped category with no commands is exactly what `media` had become
+    // before it was removed in v1.1.0.
+    for (const category of CATEGORIES) {
+      if (category === 'custom') continue;
+      const members = BUILTIN_COMMANDS.filter((cmd) => cmd.category === category);
+      expect(members.length, `no command is filed under "${category}"`).toBeGreaterThan(0);
+    }
+  });
+
   it('points every url and searchUrl at a scheme go.html will open', () => {
     // `meta` commands are the one exception: they carry an extension-relative
     // path that `toNavigableUrl` expands.

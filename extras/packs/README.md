@@ -4,10 +4,22 @@ A pack is a JSON file in the same shape the options page's Import accepts:
 `{ "overrides": { "custom": [ ... ] } }`. Each object in `custom` is a
 shortcut, in the same shape as `Command` in `src/lib/types.ts`.
 
+A pack may also carry `"sections": [{ "id": …, "label": … }]`. A `category`
+names either a section BunnyLol ships or one the same file declares. A pack
+that groups its entries under a name of its own should bring that group with
+it: an id that names neither is not an error, but its shortcuts land in **My
+shortcuts** instead of the group the author chose.
+
 ## `removed-commands.json`
 
 Commands that used to ship as builtins and were pruned from the default
 registry — kept here, verbatim field-for-field, so they can be restored.
+
+It declares one section, `media`: that was a shipped category until v1.1.0,
+when categories became open section ids and the shipped one — by then empty —
+was removed. Declaring it is what keeps these entries in a group called Media
+instead of in My shortcuts; nothing forces a pack to, and a v1.0.0 export that
+names `media` and declares nothing still imports.
 
 To use one: open the options page, go to the **Data** card, choose
 **Import**, pick this file, and import as a **Merge**. They come in as your

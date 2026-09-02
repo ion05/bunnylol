@@ -1,21 +1,34 @@
 import { describe, expect, it } from 'vitest';
 import {
   MAX_ID_LENGTH,
+  MAX_SECTIONS,
   USER_ID_PREFIX,
+  addSection,
   applyEdit,
+  deleteSection,
   diffEdit,
   editedFields,
+  fitSectionId,
   foldLegacyKeyOverrides,
+  isShippedSection,
   isUserId,
+  knownCategoryIds,
   mintUserId,
+  newSectionId,
   normalizeId,
+  renameSection,
   restorableShipped,
+  sectionLabel,
+  sectionLabelTaken,
+  sectionMembers,
+  sectionOptions,
+  sectionOrder,
   shortcutId,
 } from '../src/lib/overrides';
 import { BUILTIN_COMMANDS } from '../src/lib/commands';
-import { MAX_KEYWORD_LENGTH } from '../src/lib/validate';
-import { DEFAULT_OVERRIDES } from '../src/lib/types';
-import type { Command, Overrides, ShortcutEdit } from '../src/lib/types';
+import { MAX_KEYWORD_LENGTH, MAX_SECTION_ID_LENGTH, validateSectionId } from '../src/lib/validate';
+import { CATEGORIES, CATEGORY_LABELS, DEFAULT_OVERRIDES } from '../src/lib/types';
+import type { Command, Overrides, Section, ShortcutEdit } from '../src/lib/types';
 
 function cmd(patch: Partial<Command>): Command {
   return {
@@ -432,5 +445,338 @@ describe('restorableShipped', () => {
 
   it('is empty when nothing was deleted', () => {
     expect(restorableShipped(BUILTIN_COMMANDS, DEFAULT_OVERRIDES)).toEqual([]);
+  });
+});
+
+// ------------------------------------------------------------ sections ----
+
+const WORK: Section[] = [{ id: 'sec-work', label: 'Work' }];
+
+function overridesWith(patch: Partial<Overrides>): Overrides {
+  return { ...DEFAULT_OVERRIDES, ...patch };
+}
+
+describe('knownCategoryIds', () => {
+  it('is every shipped category plus the declared sections', () => {
+    const known = knownCategoryIds(WORK);
+    for (const category of CATEGORIES) expect(known.has(category)).toBe(true);
+    expect(known.has('sec-work')).toBe(true);
+    expect(known.has('nonsense')).toBe(false);
+  });
+
+  it('reads a section id the way storage stored it', () => {
+    expect(knownCategoryIds([{ id: '  SEC-WORK ', label: 'Work' }]).has('sec-work')).toBe(true);
+  });
+
+  it('survives an absent section list', () => {
+    expect(knownCategoryIds(undefined).size).toBe(CATEGORIES.length);
+  });
+});
+
+describe('sectionLabel', () => {
+  it('falls back to the shipped label', () => {
+    expect(sectionLabel('dev', [])).toBe('Developer');
+    expect(sectionLabel('custom', [])).toBe('My shortcuts');
+  });
+
+  it('lets a section entry rename a shipped category', () => {
+    expect(sectionLabel('dev', [{ id: 'dev', label: 'Engineering' }])).toBe('Engineering');
+  });
+
+  it('names a user section', () => {
+    expect(sectionLabel('sec-work', WORK)).toBe('Work');
+  });
+
+  it('answers with the id itself when nothing names it', () => {
+    expect(sectionLabel('sec-gone', [])).toBe('sec-gone');
+  });
+
+  it('does not answer with something off Object.prototype', () => {
+    // `validateSectionId` accepts `constructor`, so a section with that id is
+    // storable and a bare `CATEGORY_LABELS[id]` lookup would answer with a
+    // function.
+    expect(validateSectionId('constructor').ok).toBe(true);
+    expect(sectionLabel('constructor', [])).toBe('constructor');
+    expect(sectionLabel('toString', [])).toBe('tostring');
+  });
+
+  it('ignores a section whose label could never be shown', () => {
+    expect(sectionLabel('dev', [{ id: 'dev', label: '   ' }])).toBe('Developer');
+  });
+});
+
+describe('sectionOrder', () => {
+  const commands = [
+    cmd({ keys: ['tix'], category: 'custom' }),
+    cmd({ keys: ['gh'], category: 'dev' }),
+    cmd({ keys: ['w'], category: 'sec-work' }),
+    cmd({ keys: ['x'], category: 'sec-gone' }),
+  ];
+
+  it('leads with the user\'s own shortcuts, then the shipped order, then sections, then strays', () => {
+    expect(sectionOrder(WORK, commands)).toEqual([
+      'custom',
+      ...CATEGORIES.filter((category) => category !== 'custom'),
+      'sec-work',
+      'sec-gone',
+    ]);
+  });
+
+  it('drops the lead when the user has no shortcuts of their own', () => {
+    const order = sectionOrder(WORK, [cmd({ keys: ['gh'], category: 'dev' })]);
+    expect(order[0]).toBe('ai');
+    expect(order).not.toContain('custom');
+  });
+
+  it('keeps a declared section that holds nothing, so it can be filled', () => {
+    expect(sectionOrder(WORK, [])).toContain('sec-work');
+  });
+
+  it('lists each id once, in the order sections were created', () => {
+    const sections: Section[] = [
+      { id: 'sec-b', label: 'B' },
+      { id: 'sec-a', label: 'A' },
+      { id: 'dev', label: 'Engineering' },
+    ];
+    const order = sectionOrder(sections, [cmd({ keys: ['w'], category: 'sec-a' })]);
+    expect(order.filter((id) => id === 'dev')).toEqual(['dev']);
+    expect(order.slice(-2)).toEqual(['sec-b', 'sec-a']);
+  });
+});
+
+describe('sectionOptions', () => {
+  it('always offers "My shortcuts", even when it holds nothing', () => {
+    const options = sectionOptions([], []);
+    expect(options[0]).toEqual({ id: 'custom', label: 'My shortcuts' });
+  });
+
+  it('carries the labels in browse order', () => {
+    const options = sectionOptions(WORK, [cmd({ keys: ['tix'], category: 'custom' })]);
+    expect(options[0]).toEqual({ id: 'custom', label: 'My shortcuts' });
+    expect(options[options.length - 1]).toEqual({ id: 'sec-work', label: 'Work' });
+    expect(options.map((option) => option.id)).toEqual(sectionOrder(WORK, [
+      cmd({ keys: ['tix'], category: 'custom' }),
+    ]));
+  });
+});
+
+describe('sectionMembers', () => {
+  const builtins = [
+    cmd({ keys: ['gh'], category: 'dev', builtin: true }),
+    cmd({ keys: ['npm'], category: 'dev', builtin: true }),
+    cmd({ keys: ['g'], category: 'search', builtin: true }),
+  ];
+
+  it('counts a shipped shortcut the user moved, not the one the registry ships there', () => {
+    const overrides = overridesWith({
+      sections: WORK,
+      edits: { gh: { category: 'sec-work' } },
+    });
+    expect(sectionMembers('sec-work', builtins, overrides)).toEqual(['gh']);
+    expect(sectionMembers('dev', builtins, overrides)).toEqual(['npm']);
+  });
+
+  it('counts the user\'s own shortcuts too', () => {
+    const overrides = overridesWith({
+      sections: WORK,
+      custom: [cmd({ id: 'u:tix', keys: ['tix'], category: 'sec-work' })],
+    });
+    expect(sectionMembers('sec-work', builtins, overrides)).toEqual(['u:tix']);
+  });
+
+  it('counts one that is turned off but not one that is deleted', () => {
+    const overrides = overridesWith({ disabled: ['gh'], deleted: ['npm'] });
+    expect(sectionMembers('dev', builtins, overrides)).toEqual(['gh']);
+  });
+
+  it('is empty for a section nothing is filed under', () => {
+    expect(sectionMembers('sec-work', builtins, overridesWith({ sections: WORK }))).toEqual([]);
+    expect(sectionMembers('  ', builtins, DEFAULT_OVERRIDES)).toEqual([]);
+  });
+});
+
+describe('newSectionId', () => {
+  it('slugifies the label', () => {
+    expect(newSectionId('Client work', new Set())).toBe('sec-client-work');
+    expect(newSectionId('  Work!!  ', new Set())).toBe('sec-work');
+  });
+
+  it('never collides with a shipped category id', () => {
+    for (const category of CATEGORIES) {
+      expect(newSectionId(CATEGORY_LABELS[category], new Set())).not.toBe(category);
+      expect(isShippedSection(newSectionId(category, new Set()))).toBe(false);
+    }
+  });
+
+  it('suffixes on collision, deterministically', () => {
+    const taken = new Set(['sec-work']);
+    expect(newSectionId('Work', taken)).toBe('sec-work-2');
+    taken.add('sec-work-2');
+    expect(newSectionId('Work', taken)).toBe('sec-work-3');
+  });
+
+  it('mints an id the validator accepts, however long the label', () => {
+    const id = newSectionId('x'.repeat(80), new Set());
+    expect(id.length).toBeLessThanOrEqual(MAX_SECTION_ID_LENGTH);
+    expect(validateSectionId(id).ok).toBe(true);
+    expect(validateSectionId(newSectionId('🙂🙂', new Set())).ok).toBe(true);
+  });
+});
+
+describe('fitSectionId', () => {
+  it('cuts the base so prefix + base + suffix stays inside the cap', () => {
+    const id = fitSectionId('x'.repeat(80), '-12', 'sec-');
+    expect(id.length).toBe(MAX_SECTION_ID_LENGTH);
+    expect(id.startsWith('sec-')).toBe(true);
+    expect(id.endsWith('-12')).toBe(true);
+    expect(validateSectionId(id).ok).toBe(true);
+  });
+
+  it('leaves a base that already fits alone', () => {
+    expect(fitSectionId('work', '-2')).toBe('work-2');
+    expect(fitSectionId('client-work')).toBe('client-work');
+  });
+
+  it('never ends the cut on a dash', () => {
+    // A truncation that lands on the dash of `client-work` reads `client--2`.
+    const suffix = '-2'.padEnd(MAX_SECTION_ID_LENGTH - 7, 'z');
+    expect(fitSectionId('client-work', suffix)).toBe(`client${suffix}`);
+  });
+
+  it('falls back to a usable slug when the base has nothing to cut to', () => {
+    expect(fitSectionId('', '-2')).toBe('shortcut-2');
+  });
+});
+
+describe('sectionLabelTaken', () => {
+  it('matches a shipped label case-insensitively', () => {
+    expect(sectionLabelTaken('developer', [])).toBe(true);
+    expect(sectionLabelTaken('  MY SHORTCUTS ', [])).toBe(true);
+    expect(sectionLabelTaken('Client work', [])).toBe(false);
+  });
+
+  it('matches a user section', () => {
+    expect(sectionLabelTaken('work', WORK)).toBe(true);
+  });
+
+  it('frees a shipped label the user renamed away from', () => {
+    const renamed: Section[] = [{ id: 'dev', label: 'Engineering' }];
+    expect(sectionLabelTaken('Developer', renamed)).toBe(false);
+    expect(sectionLabelTaken('Engineering', renamed)).toBe(true);
+  });
+
+  it('says nothing about a blank label — that is the validator\'s answer', () => {
+    expect(sectionLabelTaken('   ', WORK)).toBe(false);
+  });
+});
+
+describe('addSection', () => {
+  it('appends the section and hands back its id', () => {
+    const { overrides, id } = addSection(DEFAULT_OVERRIDES, '  Client work  ');
+    expect(id).toBe('sec-client-work');
+    expect(overrides.sections).toEqual([{ id: 'sec-client-work', label: 'Client work' }]);
+    expect(DEFAULT_OVERRIDES.sections).toEqual([]);
+  });
+
+  it('refuses a label nothing could display', () => {
+    expect(addSection(DEFAULT_OVERRIDES, '   ').id).toBe('');
+    expect(addSection(DEFAULT_OVERRIDES, 'x'.repeat(41)).id).toBe('');
+    expect(addSection(DEFAULT_OVERRIDES, '   ').overrides).toBe(DEFAULT_OVERRIDES);
+  });
+
+  it('refuses past the cap rather than letting storage drop it silently', () => {
+    const full = overridesWith({
+      sections: Array.from({ length: MAX_SECTIONS }, (_, n) => ({
+        id: `sec-${n}`,
+        label: `S${n}`,
+      })),
+    });
+    expect(addSection(full, 'One more').id).toBe('');
+    expect(addSection(full, 'One more').overrides).toBe(full);
+  });
+});
+
+describe('renameSection', () => {
+  it('adds an entry that renames a shipped category', () => {
+    const next = renameSection(DEFAULT_OVERRIDES, 'dev', 'Engineering');
+    expect(next.sections).toEqual([{ id: 'dev', label: 'Engineering' }]);
+    expect(sectionLabel('dev', next.sections)).toBe('Engineering');
+  });
+
+  it('removes the entry when a shipped category is renamed back', () => {
+    const renamed = renameSection(DEFAULT_OVERRIDES, 'dev', 'Engineering');
+    expect(renameSection(renamed, 'dev', 'Developer').sections).toEqual([]);
+  });
+
+  it('leaves a canonical blob when the rename-back was a no-op', () => {
+    expect(renameSection(DEFAULT_OVERRIDES, 'dev', 'Developer')).toBe(DEFAULT_OVERRIDES);
+  });
+
+  it('edits a user section in place', () => {
+    const overrides = overridesWith({
+      sections: [{ id: 'sec-a', label: 'A' }, ...WORK],
+    });
+    const next = renameSection(overrides, 'sec-work', 'Client work');
+    expect(next.sections).toEqual([
+      { id: 'sec-a', label: 'A' },
+      { id: 'sec-work', label: 'Client work' },
+    ]);
+  });
+
+  it('refuses a label the validator refuses, and never mutates', () => {
+    const overrides = overridesWith({ sections: WORK });
+    expect(renameSection(overrides, 'sec-work', '   ')).toBe(overrides);
+    expect(renameSection(overrides, '  ', 'Anything')).toBe(overrides);
+    expect(overrides.sections).toEqual(WORK);
+  });
+});
+
+describe('deleteSection', () => {
+  const overrides = overridesWith({
+    sections: [...WORK, { id: 'sec-other', label: 'Other' }],
+    edits: { gh: { category: 'sec-work' }, npm: { category: 'sec-other' } },
+    custom: [
+      cmd({ id: 'u:tix', keys: ['tix'], category: 'sec-work' }),
+      cmd({ id: 'u:pay', keys: ['pay'], category: 'sec-other' }),
+    ],
+  });
+
+  it('refuses a shipped id by handing back exactly what it was given', () => {
+    // With an ENTRY present for the shipped id, so this is answering "shipped
+    // groups can only be renamed" rather than "there is nothing there": a
+    // renamed shipped category has a section entry exactly like a user one.
+    const renamed = overridesWith({
+      sections: [{ id: 'dev', label: 'Engineering' }, ...WORK],
+      edits: { gh: { category: 'dev' } },
+      custom: [cmd({ id: 'u:tix', keys: ['tix'], category: 'dev' })],
+    });
+    for (const category of CATEGORIES) {
+      expect(deleteSection(renamed, category)).toBe(renamed);
+    }
+    expect(deleteSection(renamed, '  DEV ')).toBe(renamed);
+    expect(deleteSection(overrides, 'custom')).toBe(overrides);
+  });
+
+  it('refuses an id no section answers to', () => {
+    expect(deleteSection(overrides, 'sec-gone')).toBe(overrides);
+    expect(deleteSection(overrides, '')).toBe(overrides);
+  });
+
+  it('moves the members in BOTH places and leaves the others alone', () => {
+    const next = deleteSection(overrides, 'sec-work');
+    expect(next.sections).toEqual([{ id: 'sec-other', label: 'Other' }]);
+    expect(next.edits).toEqual({ gh: { category: 'custom' }, npm: { category: 'sec-other' } });
+    expect(next.custom.map((entry) => entry.category)).toEqual(['custom', 'sec-other']);
+  });
+
+  it('does not mutate the overrides it was handed', () => {
+    const before = JSON.stringify(overrides);
+    deleteSection(overrides, 'sec-work');
+    expect(JSON.stringify(overrides)).toBe(before);
+  });
+
+  it('keeps the edits map free of a prototype', () => {
+    const next = deleteSection(overrides, 'sec-work');
+    expect(Object.getPrototypeOf(next.edits)).toBeNull();
   });
 });

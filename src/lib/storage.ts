@@ -13,7 +13,6 @@
  */
 
 import type {
-  Category,
   Command,
   HandlerId,
   Overrides,
@@ -23,13 +22,22 @@ import type {
   ShortcutEdit,
   StoredState,
 } from './types';
-import { CATEGORIES, DEFAULT_OVERRIDES, DEFAULT_SETTINGS, DEFAULT_STOP_LIST, STORAGE_KEY } from './types';
+import {
+  CATEGORIES,
+  DEFAULT_OVERRIDES,
+  DEFAULT_SETTINGS,
+  DEFAULT_STOP_LIST,
+  FALLBACK_SECTION,
+  STORAGE_KEY,
+} from './types';
 import { BUILTIN_COMMANDS, SEARCH_ENGINES } from './commands';
 import {
   MAX_ID_LENGTH,
+  MAX_SECTIONS,
   USER_ID_PREFIX,
   foldLegacyKeyOverrides,
   isUserId,
+  knownCategoryIds,
   mintUserId,
   normalizeId,
   shortcutId,
@@ -52,9 +60,6 @@ const EXPORT_VERSION = 2;
  * for a vanished id are left alone — they are inert and cost nothing.
  */
 const SHIPPED_IDS = new Set(BUILTIN_COMMANDS.map(shortcutId));
-
-/** An import file may not fill the browse list with junk sections. */
-const MAX_SECTIONS = 64;
 
 const ENGINE_IDS = new Set<string>(SEARCH_ENGINES.map((engine) => engine.id));
 
@@ -307,16 +312,49 @@ function normalizeAccount(raw: unknown): number {
 function normalizeOverrides(raw: unknown): Overrides {
   const source = asRecord(raw);
   if (!source) return clone(DEFAULT_OVERRIDES);
+  // Sections FIRST: a category is an open id resolved against them, so reading
+  // the commands before the groups they are filed under would send every
+  // shortcut in a user section to "My shortcuts".
+  const sections = normalizeSections(source.sections);
+  const known = knownCategoryIds(sections);
   return {
     disabled: normalizeIdList(source.disabled),
     // Pruned, not kept: see `SHIPPED_IDS`.
     deleted: normalizeIdList(source.deleted).filter((id) => SHIPPED_IDS.has(id)),
     // The v1 migration, on the stored blob. Its strict twin in `parseOverrides`
     // is the v1 *file* reader; one implementation, two callers.
-    edits: foldLegacyKeyOverrides(normalizeEdits(source.edits), normalizeKeyOverrides(source.keyOverrides)),
-    sections: normalizeSections(source.sections),
-    custom: normalizeCustom(source.custom),
+    edits: foldLegacyKeyOverrides(
+      normalizeEdits(source.edits, known),
+      normalizeKeyOverrides(source.keyOverrides),
+    ),
+    sections,
+    custom: normalizeCustom(source.custom, known),
+    enabledCategories: normalizeCategoryPick(source.enabledCategories),
+    // Pruned like `deleted`, and for the reason in `SHIPPED_IDS`: an id here
+    // says "this profile has already been offered that shortcut", and one for a
+    // command no build ships is a claim about nothing that keeps the list
+    // growing across every version the user upgrades through.
+    seenBuiltins: normalizeIdList(source.seenBuiltins).filter((id) => SHIPPED_IDS.has(id)),
   };
+}
+
+/**
+ * The onboarding pick. `null` when the profile has no array there at all, which
+ * is the one signal that says "this user has never seen the picker"; an empty
+ * array is a real answer and survives as one.
+ *
+ * Filtered to `CATEGORIES` rather than to the known section ids: a pick names
+ * shipped packs, and a user section holds no builtins for it to have an effect
+ * on.
+ */
+function normalizeCategoryPick(raw: unknown): string[] | null {
+  if (!Array.isArray(raw)) return null;
+  const picked: string[] = [];
+  for (const entry of raw) {
+    const id = trimmed(entry).toLowerCase();
+    if ((CATEGORIES as string[]).includes(id) && !picked.includes(id)) picked.push(id);
+  }
+  return picked;
 }
 
 /**
@@ -346,7 +384,7 @@ function normalizeIdList(raw: unknown): string[] {
  * shipped" is representable as the absence of an entry and the stored blob
  * stays canonical.
  */
-function normalizeEdits(raw: unknown): Record<string, ShortcutEdit> {
+function normalizeEdits(raw: unknown, known: Set<string>): Record<string, ShortcutEdit> {
   const source = asRecord(raw);
   // Null-prototype: see `parseEdits`. A stored blob is untrusted for the same
   // reason a file is — it is where an import file ends up.
@@ -359,7 +397,7 @@ function normalizeEdits(raw: unknown): Record<string, ShortcutEdit> {
     // against and is edited in place, so an entry under a `u:` id is a second
     // writer for fields storage already owns.
     if (!id || !entry || isUserId(id)) continue;
-    const edit = normalizeEdit(entry);
+    const edit = normalizeEdit(entry, known);
     if (edit) out[id] = edit;
   }
   return out;
@@ -367,7 +405,7 @@ function normalizeEdits(raw: unknown): Record<string, ShortcutEdit> {
 
 /** Returns null when nothing usable is left, which is what makes an empty edit
  *  unrepresentable in the stored blob. */
-function normalizeEdit(source: Record<string, unknown>): ShortcutEdit | null {
+function normalizeEdit(source: Record<string, unknown>, known: Set<string>): ShortcutEdit | null {
   const edit: ShortcutEdit = {};
 
   const keys = normalizeAliases(source.keys);
@@ -392,11 +430,13 @@ function normalizeEdit(source: Record<string, unknown>): ShortcutEdit | null {
     if (searchUrl) edit.searchUrl = searchUrl;
   }
 
-  // Kept as written rather than narrowed to `CATEGORIES` here: a section this
-  // build does not know about may be one the user is about to create, and
-  // `applyEdit` refuses to file a command under an unknown id anyway.
+  // ASYMMETRIC with `normalizeCommand` on purpose: an unknown id is DROPPED
+  // here rather than coerced to `FALLBACK_SECTION`. A custom command has no
+  // other category to fall back to, but a shipped one does — its own — and
+  // relocating it to "My shortcuts" because a section vanished would move a
+  // shortcut the user never touched.
   const category = trimmed(source.category).toLowerCase();
-  if (category) edit.category = category;
+  if (known.has(category)) edit.category = category;
 
   if (source.example === null) edit.example = null;
   else {
@@ -448,11 +488,11 @@ function normalizeKeyOverrides(raw: unknown): Record<string, string[]> {
   return out;
 }
 
-function normalizeCustom(raw: unknown): Command[] {
+function normalizeCustom(raw: unknown, known: Set<string>): Command[] {
   if (!Array.isArray(raw)) return [];
   const entries: CustomEntry[] = [];
   for (const entry of raw) {
-    const cmd = normalizeCommand(entry);
+    const cmd = normalizeCommand(entry, known);
     if (cmd) entries.push({ cmd, raw: entry });
   }
   return assignCustomIds(entries, false);
@@ -527,7 +567,7 @@ function claimedId({ cmd, raw }: CustomEntry, strict: boolean): string {
 }
 
 /** Returns null when the entry has no usable keyword or destination. */
-function normalizeCommand(raw: unknown): Command | null {
+function normalizeCommand(raw: unknown, known: Set<string>): Command | null {
   const source = asRecord(raw);
   if (!source) return null;
   const keys = normalizeAliases(source.keys);
@@ -539,7 +579,7 @@ function normalizeCommand(raw: unknown): Command | null {
     name: trimmed(source.name) || keys[0],
     description: trimmed(source.description),
     url,
-    category: normalizeCategory(source.category),
+    category: normalizeCategory(source.category, known),
     // A custom command is never builtin, whatever the file claims.
     builtin: false,
   };
@@ -556,11 +596,16 @@ function normalizeCommand(raw: unknown): Command | null {
   return cmd;
 }
 
-/** Exported so the options form narrows an open `Draft.category` the same way a
- *  stored blob is narrowed: an id nobody ships files under "custom". */
-export function normalizeCategory(raw: unknown): Category {
-  const value = trimmed(raw).toLowerCase() as Category;
-  return CATEGORIES.includes(value) ? value : 'custom';
+/**
+ * Narrows an open category id against the sections that actually exist.
+ *
+ * Exported so the options form narrows a `Draft.category` the same way a stored
+ * blob is narrowed: an id no section answers to files under "My shortcuts",
+ * which is the one group that is always there.
+ */
+export function normalizeCategory(raw: unknown, known: Set<string>): string {
+  const value = trimmed(raw).toLowerCase();
+  return known.has(value) ? value : FALLBACK_SECTION;
 }
 
 /** Lenient recovery: an alias the resolver could never match is dropped, not kept. */
@@ -594,9 +639,21 @@ function parseOverrides(source: Record<string, unknown> | null): Overrides {
   if (source.custom !== undefined && !Array.isArray(source.custom)) {
     throw new Error('"custom" must be an array of shortcuts.');
   }
+  const pick = source.enabledCategories;
+  if (pick !== undefined && pick !== null && !Array.isArray(pick)) {
+    throw new Error('"enabledCategories" must be an array of category ids.');
+  }
+  if (source.seenBuiltins !== undefined && !Array.isArray(source.seenBuiltins)) {
+    throw new Error('"seenBuiltins" must be an array of shortcut ids.');
+  }
+  // Sections before commands, for the reason in `normalizeOverrides`: a
+  // category is resolved against the sections declared in the SAME file, so a
+  // file that carries its own group is self-contained.
+  const sections = parseSections(source.sections);
+  const known = knownCategoryIds(sections);
   const custom: Command[] = assignCustomIds(
     (Array.isArray(source.custom) ? source.custom : []).map((entry: unknown, index: number) => ({
-      cmd: parseCustomCommand(entry, index),
+      cmd: parseCustomCommand(entry, index, known),
       raw: entry,
     })),
     true,
@@ -609,9 +666,14 @@ function parseOverrides(source: Record<string, unknown> | null): Overrides {
     // what the file means.
     disabled: normalizeIdList(source.disabled),
     deleted: normalizeIdList(source.deleted).filter((id) => SHIPPED_IDS.has(id)),
-    edits: foldLegacyKeyOverrides(parseEdits(source.edits), parseKeyOverrides(source.keyOverrides)),
-    sections: parseSections(source.sections),
+    edits: foldLegacyKeyOverrides(parseEdits(source.edits, known), parseKeyOverrides(source.keyOverrides)),
+    sections,
     custom,
+    // Lenient like `disabled`: an id this build does not ship is a pack that
+    // went away, and dropping it costs nothing the user can see.
+    enabledCategories: normalizeCategoryPick(source.enabledCategories),
+    // Pruned like `deleted`, for the reason in `normalizeOverrides`.
+    seenBuiltins: normalizeIdList(source.seenBuiltins).filter((id) => SHIPPED_IDS.has(id)),
   };
 }
 
@@ -619,11 +681,9 @@ function parseOverrides(source: Record<string, unknown> | null): Overrides {
  * Strict counterpart to `normalizeEdits`. Only the fields whose silence is
  * fatal are refused — a rebinding to `"foo bar"` never matches anything, and a
  * destination that is not a URL cannot be opened. The rest degrade exactly as
- * they do on the stored path, including `category`: an id this build does not
- * know is kept in the file and ignored when the edit is folded, because it may
- * be a section the user is about to create.
+ * they do on the stored path, `category` included (see `parseCategory`).
  */
-function parseEdits(raw: unknown): Record<string, ShortcutEdit> {
+function parseEdits(raw: unknown, known: Set<string>): Record<string, ShortcutEdit> {
   const source = asRecord(raw);
   // Null-prototype: the keys come straight off untrusted JSON, and
   // `out['__proto__']` on a plain object would be swallowed by the setter it
@@ -665,10 +725,32 @@ function parseEdits(raw: unknown): Record<string, ShortcutEdit> {
     if (Array.isArray(entry.keys)) parseAliasList(entry.keys, `"edits.${id}.keys"`);
     parseEditUrl(entry.url, `"edits.${id}.url"`);
     parseEditUrl(entry.searchUrl, `"edits.${id}.searchUrl"`);
-    const edit = normalizeEdit(entry);
+    parseCategory(entry.category, `"edits.${id}.category"`);
+    const edit = normalizeEdit(entry, known);
     if (edit) out[id] = edit;
   }
   return out;
+}
+
+/**
+ * A category is the one field the strict path degrades exactly like the lenient
+ * one: an id no section answers to files a custom command under
+ * `FALLBACK_SECTION` and is dropped from an edit (invariant 17), and the file
+ * is not refused for it.
+ *
+ * Refusing it was tried and is wrong. Every v1.0.0 export whose custom shortcut
+ * was filed under `media` — a category this build no longer ships — would be
+ * unimportable, and the fix asked of the user is to hand-edit JSON they did not
+ * write. A section a file does not declare costs the user a shortcut in the
+ * wrong group, which the options page shows them and lets them fix in a click.
+ *
+ * The shape is still structural: a `category` that is not a string is a file
+ * that means something this reader cannot guess at, and the id it names cannot
+ * be reported back.
+ */
+function parseCategory(value: unknown, label: string): void {
+  if (value === undefined || value === null || typeof value === 'string') return;
+  throw new Error(`${label} must be a string naming a section.`);
 }
 
 /** `null` is "the user cleared this" and absent is "inherit"; only a written
@@ -755,7 +837,7 @@ function parseAliasList(raw: unknown[], label: string): string[] {
  * is wrong instead of quietly dropping the entry, because an import that
  * silently loses half the user's shortcuts is worse than a refused import.
  */
-function parseCustomCommand(raw: unknown, index: number): Command {
+function parseCustomCommand(raw: unknown, index: number, known: Set<string>): Command {
   const label = `Shortcut #${index + 1}`;
   const source = asRecord(raw);
   if (!source) throw new Error(`${label} is not a JSON object.`);
@@ -785,7 +867,9 @@ function parseCustomCommand(raw: unknown, index: number): Command {
     }
   }
 
-  const cmd = normalizeCommand(source);
+  parseCategory(source.category, `The "category" of shortcut "${keys[0]}"`);
+
+  const cmd = normalizeCommand(source, known);
   // Unreachable while the checks above mirror `normalizeCommand`'s two bail-outs
   // — kept so the strict and lenient paths cannot silently drift apart into an
   // import that returns nothing and says nothing.
@@ -800,6 +884,8 @@ function looksLikeOverrides(root: Record<string, unknown>): boolean {
     'deleted' in root ||
     'edits' in root ||
     'sections' in root ||
+    'enabledCategories' in root ||
+    'seenBuiltins' in root ||
     // Format 1's name for `edits`, so a bare v1 snippet is still recognized.
     'keyOverrides' in root
   );

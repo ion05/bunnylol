@@ -14,7 +14,19 @@ import { BUILTIN_COMMANDS, SEARCH_ENGINES, destinationOf } from '../lib/commands
 import type { Draft } from '../lib/draft';
 import { parseKeys, parsePrefill, splitKeys, withScheme } from '../lib/draft';
 import { AI_PROVIDERS } from '../lib/handlers';
-import { applyEdit, mintUserId, normalizeId, shortcutId } from '../lib/overrides';
+import { mergeOverrides } from '../lib/merge-import';
+import {
+  MAX_SECTIONS,
+  applyEdit,
+  firstKey,
+  knownCategoryIds,
+  mintUserId,
+  normalizeId,
+  sectionLabel,
+  sectionOptions,
+  sectionOrder,
+  shortcutId,
+} from '../lib/overrides';
 import { activeKeywords, mergeCommands, resolve, stripPassthrough, suggest } from '../lib/resolve';
 import {
   applyImport,
@@ -32,21 +44,14 @@ import { clone, errorText, stripScheme } from '../lib/text';
 import { isInterceptableAlias } from '../lib/validate';
 import type {
   BgMessage,
-  Category,
   Command,
   Overrides,
   RuleStatus,
   SearchEngineId,
   Settings,
-  ShortcutEdit,
   StoredState,
 } from '../lib/types';
-import {
-  CATEGORIES,
-  CATEGORY_LABELS,
-  DEFAULT_OVERRIDES,
-  DEFAULT_SETTINGS,
-} from '../lib/types';
+import { DEFAULT_OVERRIDES, DEFAULT_SETTINGS } from '../lib/types';
 import { el, nextId } from '../ui/dom';
 import { PILL_CLASS, pillView, statusCount } from './status';
 
@@ -401,7 +406,11 @@ function renderBrowse(): Node[] {
    *  they are still listed in `groupRefs`, and the counts must skip them. */
   const removed = new WeakSet<HTMLElement>();
 
-  for (const category of groupOrder(entries)) {
+  const order = sectionOrder(
+    stored.overrides.sections,
+    entries.map((entry) => entry.cmd),
+  );
+  for (const category of order) {
     const inGroup = entries.filter((entry) => entry.cmd.category === category);
     if (inGroup.length === 0) continue;
 
@@ -413,7 +422,10 @@ function renderBrowse(): Node[] {
         el('div', {
           class: 'group-head',
           children: [
-            el('h2', { class: 'group-title', text: CATEGORY_LABELS[category] }),
+            el('h2', {
+              class: 'group-title',
+              text: sectionLabel(category, stored.overrides.sections),
+            }),
             countNode,
           ],
         }),
@@ -513,14 +525,6 @@ function renderBrowse(): Node[] {
   return nodes;
 }
 
-function groupOrder(entries: Entry[]): Category[] {
-  // The user's own shortcuts lead: they are the reason this page exists, and
-  // they are the ones that need editing.
-  const hasCustom = entries.some((entry) => entry.cmd.category === 'custom');
-  const rest = CATEGORIES.filter((category) => category !== 'custom');
-  return hasCustom ? ['custom', ...rest] : rest;
-}
-
 /**
  * What the browse list shows, in the same order and with the same overrides
  * applied as `mergeCommands` — a row that claims a keyword the resolver does
@@ -543,7 +547,11 @@ function browseEntries(): Entry[] {
     // a rebind for something no surface resolves. It comes back through
     // Settings, not through this list.
     if (deleted.has(id)) continue;
-    const edited = applyEdit({ ...cmd, id, keys: [...cmd.keys] }, stored.overrides.edits[id]);
+    const edited = applyEdit(
+      { ...cmd, id, keys: [...cmd.keys] },
+      stored.overrides.edits[id],
+      knownCategoryIds(stored.overrides.sections),
+    );
     entries.push({
       id,
       matchKey: (edited.keys[0] ?? id).trim().toLowerCase(),
@@ -826,7 +834,12 @@ function renderForm(): HTMLElement {
   const urlInput = textInput(draft.url, 'https://github.com', true);
   const searchInput = textInput(draft.searchUrl, 'https://github.com/search?q={q}', true);
   const categorySelect = selectControl(
-    CATEGORIES.map((category) => ({ value: category, label: CATEGORY_LABELS[category] })),
+    // The sections that exist, not the shipped list: a shortcut filed under one
+    // of the user's own sections must not be silently moved to whatever the
+    // select happens to show first when they open the form.
+    sectionOptions(stored.overrides.sections, mergeCommands(BUILTIN_COMMANDS, stored.overrides)).map(
+      (section) => ({ value: section.id, label: section.label }),
+    ),
     draft.category,
   );
 
@@ -1115,7 +1128,7 @@ function buildCommand(draft: Draft): Command {
     url: withScheme(draft.url),
     // `Draft.category` is an open id; the registry's is not. Narrow it through
     // the same check storage applies to a stored blob rather than casting.
-    category: normalizeCategory(draft.category),
+    category: normalizeCategory(draft.category, knownCategoryIds(stored.overrides.sections)),
     builtin: false,
   };
   const searchUrl = draft.searchUrl.trim();
@@ -1684,11 +1697,22 @@ function renderData(): HTMLElement {
         `rebinds ${n} built-in ${n === 1 ? 'keyword' : 'keywords'} (${nameList(plan.rebinds)})`,
       );
     }
-    if (plan.edited.length > 0) {
-      const n = plan.edited.length;
+    if (plan.edits.length > 0) {
+      const n = plan.edits.length;
       also.push(
-        `changes ${n} built-in ${n === 1 ? 'shortcut' : 'shortcuts'} (${nameList(plan.edited)})`,
+        `changes ${n} built-in ${n === 1 ? 'shortcut' : 'shortcuts'} (${nameList(plan.edits)})`,
       );
+    }
+    if (plan.sections.length > 0) {
+      const n = plan.sections.length;
+      const names = nameList(plan.sections.map((section) => section.label));
+      also.push(`adds ${n} ${n === 1 ? 'section' : 'sections'} (${names})`);
+    }
+    if (plan.sectionsRefused.length > 0) {
+      const n = plan.sectionsRefused.length;
+      const names = nameList(plan.sectionsRefused.map((section) => section.label));
+      const noun = n === 1 ? 'section' : 'sections';
+      also.push(`leaves out ${n} ${noun} (${names}) because you already have ${MAX_SECTIONS}`);
     }
     if (also.length > 0) {
       const last = also[also.length - 1];
@@ -1807,123 +1831,6 @@ function countShortcuts(n: number): string {
 function nameList(items: string[], limit = 6): string {
   if (items.length <= limit) return items.join(', ');
   return `${items.slice(0, limit).join(', ')}, +${items.length - limit} more`;
-}
-
-interface MergePlan {
-  overrides: Overrides;
-  added: Command[];
-  renames: { from: string; to: string }[];
-  duplicates: string[];
-  /** Built-ins the file turns off that are still on here. */
-  disables: string[];
-  /** Shipped shortcuts the file removes that are still here. */
-  deletes: string[];
-  /** Built-ins the file rebinds that carry no rebinding of yours. */
-  rebinds: string[];
-  /** Built-ins the file changes some other way — a repointed url, a rename —
-   *  in a field we do not already edit ourselves. */
-  edited: string[];
-}
-
-/**
- * Adds an import's shortcuts to the ones already here. Neither side is ever
- * dropped: an incoming alias that is already taken is renamed (`gh` -> `gh2`)
- * and reported, and an incoming shortcut identical to one of ours is skipped
- * rather than duplicated.
- */
-function mergeOverrides(current: Overrides, incoming: Overrides): MergePlan {
-  const taken = new Set<string>();
-  const mine = new Map<string, Command>();
-  for (const cmd of current.custom) {
-    for (const key of cmd.keys) {
-      taken.add(key);
-      if (!mine.has(key)) mine.set(key, cmd);
-    }
-  }
-
-  const added: Command[] = [];
-  const renames: { from: string; to: string }[] = [];
-  const duplicates: string[] = [];
-  // What the non-`custom` halves of the merge below actually change, so the
-  // confirmation can name it instead of promising nothing else moves. Every one
-  // of them is computed from the merge itself rather than from the incoming
-  // file, so the dialog cannot name a change the merge then throws away.
-  const disabled = new Set(current.disabled);
-  const disables = incoming.disabled.filter((id) => !disabled.has(id));
-  const removed = new Set(current.deleted);
-  const deletes = incoming.deleted.filter((id) => !removed.has(id));
-
-  // Edits merge FIELD by field, not entry by entry: ours win per field, and an
-  // incoming rebind of a shortcut we renamed survives instead of being dropped
-  // whole because our entry happened to exist.
-  // Null-prototype for the same reason the storage boundary uses one: an id is
-  // a key off an import file, and `edits['__proto__']` on a plain object is
-  // swallowed by the inherited setter.
-  const edits: Record<string, ShortcutEdit> = Object.create(null);
-  const rebinds: string[] = [];
-  const edited: string[] = [];
-  for (const id of new Set([...Object.keys(current.edits), ...Object.keys(incoming.edits)])) {
-    const theirs = incoming.edits[id];
-    const ours = current.edits[id];
-    edits[id] = { ...theirs, ...ours };
-    // Exactly the fields the incoming entry contributes: what `{...theirs,
-    // ...ours}` kept from theirs.
-    const carried = Object.keys(theirs ?? {}).filter((field) => !(field in (ours ?? {})));
-    if (carried.includes('keys')) rebinds.push(id);
-    // Rebinds get their own sentence, so this one counts the rest — otherwise a
-    // single incoming edit is announced twice.
-    if (carried.some((field) => field !== 'keys')) edited.push(id);
-  }
-
-  for (const cmd of incoming.custom) {
-    const twin = mine.get(firstKey(cmd));
-    if (twin && signatureOf(twin) === signatureOf(cmd)) {
-      duplicates.push(firstKey(cmd));
-      continue;
-    }
-    const keys = cmd.keys.map((key) => {
-      if (!taken.has(key)) {
-        taken.add(key);
-        return key;
-      }
-      let suffix = 2;
-      while (taken.has(`${key}${suffix}`)) suffix += 1;
-      const renamed = `${key}${suffix}`;
-      taken.add(renamed);
-      renames.push({ from: key, to: renamed });
-      return renamed;
-    });
-    added.push({ ...cmd, keys });
-  }
-
-  return {
-    overrides: {
-      // Ours win on every collision; the import only fills the gaps.
-      disabled: [...new Set([...current.disabled, ...incoming.disabled])],
-      deleted: [...new Set([...current.deleted, ...incoming.deleted])],
-      edits,
-      // Ours keep their labels; an incoming section we do not have is added, so
-      // an imported shortcut's category still names a group that exists.
-      sections: [
-        ...current.sections,
-        ...incoming.sections.filter(
-          (section) => !current.sections.some((mine) => mine.id === section.id),
-        ),
-      ],
-      custom: [...current.custom, ...added],
-    },
-    added,
-    renames,
-    duplicates,
-    disables,
-    deletes,
-    rebinds,
-    edited,
-  };
-}
-
-function signatureOf(cmd: Command): string {
-  return `${cmd.url}\u0000${cmd.searchUrl ?? ''}\u0000${cmd.handler ?? ''}`;
 }
 
 // ------------------------------------------------------------- persistence ----
@@ -2151,15 +2058,6 @@ function flash(node: HTMLElement, text = 'Saved'): void {
   node.textContent = text;
   node.classList.add('show');
   flashTimers.set(node, window.setTimeout(() => node.classList.remove('show'), 1800));
-}
-
-/**
- * The alias a command leads with. Deliberately not `shortcutId`: its callers
- * key maps by what the user types, and a custom shortcut's id is a `u:` slug
- * that answers to nothing in the address bar.
- */
-function firstKey(cmd: Command): string {
-  return (cmd.keys[0] ?? '').trim().toLowerCase();
 }
 
 function reportFailure(err: unknown): void {

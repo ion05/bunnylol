@@ -6,6 +6,11 @@
  * service worker, all three UI surfaces, and the tests.
  */
 
+/**
+ * The sections this build ships. A CLOSED list, and the only thing a category
+ * pick may name — a user section holds no builtins, so it can never be a pack.
+ * User sections live in `Overrides.sections` and are open strings.
+ */
 export type Category =
   | 'ai'
   | 'search'
@@ -14,7 +19,6 @@ export type Category =
   | 'microsoft'
   | 'purdue'
   | 'social'
-  | 'media'
   | 'productivity'
   | 'meta'
   | 'custom';
@@ -27,7 +31,6 @@ export const CATEGORIES: Category[] = [
   'microsoft',
   'purdue',
   'social',
-  'media',
   'productivity',
   'meta',
   'custom',
@@ -41,7 +44,6 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   microsoft: 'Microsoft',
   purdue: 'Purdue',
   social: 'Social',
-  media: 'Media',
   productivity: 'Productivity',
   meta: 'BunnyLol',
   custom: 'My shortcuts',
@@ -102,7 +104,12 @@ export interface Command {
   searchUrl?: string;
   /** Opt into a smart handler instead of plain `{q}` substitution. */
   handler?: HandlerId;
-  category: Category;
+  /**
+   * An open section id: a builtin `Category`, or the id of a `Section` in
+   * `Overrides.sections`. Resolved for display by `sectionLabel`; an id that
+   * names neither is coerced to `FALLBACK_SECTION` on the next save.
+   */
+  category: string;
   builtin: boolean;
   /** Shown in the UI, e.g. "gh facebook/react -> github.com/facebook/react". */
   example?: string;
@@ -113,6 +120,15 @@ export interface Command {
    */
   provider?: string;
 }
+
+/**
+ * A registry row. The shipped commands keep the CLOSED category union and a
+ * literal `builtin: true` even though `Command` is open on both, so a typo'd
+ * category in `commands.ts` is still a compile error and
+ * `tests/commands.test.ts` keeps a real assertion rather than a tautology.
+ * Assignable to `Command` everywhere.
+ */
+export type BuiltinCommand = Command & { category: Category; builtin: true };
 
 /** A provider whose web UI accepts a prompt via URL parameter. */
 export interface AiProvider {
@@ -197,6 +213,13 @@ export interface Section {
   label: string;
 }
 
+/**
+ * Where a command whose category names no section this build knows about ends
+ * up. "My shortcuts" is the one group that is always there, so it is the only
+ * safe destination for an orphan.
+ */
+export const FALLBACK_SECTION = 'custom';
+
 /** The user's customization layer. Builtins are never mutated in place. */
 export interface Overrides {
   /** Ids of shortcuts the user turned off. Shipped or custom. */
@@ -215,6 +238,23 @@ export interface Overrides {
   sections: Section[];
   /** User-created commands. Always `builtin: false`, always a `u:` id. */
   custom: Command[];
+  /**
+   * The builtin categories the user picked during onboarding. `null` means they
+   * never saw the picker: every category counts as enabled and a builtin added
+   * later arrives on. No resolution path reads it — the resolver reads
+   * `disabled` and nothing else, so there is exactly one exclusion axis and a
+   * pick is projected onto it at write time by `applyCategoryPick`.
+   *
+   * `[]` is a real answer and not the same as `null`: it says the user
+   * unchecked every pack.
+   */
+  enabledCategories: string[] | null;
+  /**
+   * Shortcut ids this profile has already been offered, so an update can tell a
+   * builtin added since the last version from one the user deliberately turned
+   * off.
+   */
+  seenBuiltins: string[];
 }
 
 export interface StoredState {
@@ -295,6 +335,8 @@ export const DEFAULT_OVERRIDES: Overrides = {
   edits: {},
   sections: [],
   custom: [],
+  enabledCategories: null,
+  seenBuiltins: [],
 };
 
 export const STORAGE_KEY = 'bunnylol.state.v1';

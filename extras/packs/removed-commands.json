@@ -1,5 +1,12 @@
 {
   "overrides": {
+    "sections": [
+      {
+        "id": "media",
+        "label": "Media",
+        "_note": "BunnyLol shipped a \"media\" category until v1.1.0, when categories became open section ids and the empty shipped one was removed. Declared here so these entries import into the group they were filed under instead of landing in \"My shortcuts\"."
+      }
+    ],
     "custom": [
       {
         "keys": [

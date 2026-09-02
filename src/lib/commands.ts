@@ -1,4 +1,4 @@
-import type { Command, SearchEngine } from './types';
+import type { BuiltinCommand, Command, SearchEngine } from './types';
 
 /**
  * Sites that expose no stable public search endpoint (login-walled apps,
@@ -16,7 +16,7 @@ function siteSearch(host: string): string {
  */
 const OPTIONS_PAGE = 'options.html';
 
-export const BUILTIN_COMMANDS: Command[] = [
+export const BUILTIN_COMMANDS: BuiltinCommand[] = [
   // ---------------------------------------------------------------- ai ----
   {
     keys: ['c', 'claude'],
@@ -740,8 +740,6 @@ export const BUILTIN_COMMANDS: Command[] = [
     builtin: true,
     example: 'whatsapp 15551234567',
   },
-
-  // ------------------------------------------------------------- media ----
 
   // ------------------------------------------------------ productivity ----
   {

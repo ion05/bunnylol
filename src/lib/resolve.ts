@@ -15,7 +15,7 @@ import { expandTemplate, HANDLERS } from './handlers';
 // Identity and the edit algebra live in one module so the resolver, storage and
 // the options page cannot disagree about which shortcut an override entry names
 // or about what it is allowed to change.
-import { applyEdit, normalizeId, shortcutId } from './overrides';
+import { applyEdit, knownCategoryIds, normalizeId, shortcutId } from './overrides';
 // Which aliases a DNR rule can carry is decided in one place; `activeKeywords`
 // and the storage boundary must not drift apart on it.
 import { isInterceptableAlias } from './validate';
@@ -74,6 +74,9 @@ export function mergeCommands(builtins: Command[], overrides: Overrides): Comman
   const disabled = new Set((overrides?.disabled ?? []).map(normalizeId).filter(Boolean));
   const deleted = new Set((overrides?.deleted ?? []).map(normalizeId).filter(Boolean));
   const edits = overrides?.edits ?? {};
+  // An edit may file a shipped command under a user section, so the sections
+  // this profile declares are part of what an edit is allowed to say.
+  const known = knownCategoryIds(overrides?.sections);
   const merged: Command[] = [];
 
   // Custom first: `buildKeyMap` is first-writer-wins, so a user's own `gh`
@@ -92,7 +95,7 @@ export function mergeCommands(builtins: Command[], overrides: Overrides): Comman
     if (deleted.has(id) || disabled.has(id)) continue;
     // AFTER the id and the keys copy: an edit's `keys` replaces the shipped
     // ones, and it must land on the copy rather than on the registry entry.
-    merged.push(applyEdit({ ...cmd, id, keys: [...(cmd.keys ?? [])] }, edits[id]));
+    merged.push(applyEdit({ ...cmd, id, keys: [...(cmd.keys ?? [])] }, edits[id], known));
   }
   return merged;
 }
