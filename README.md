@@ -178,10 +178,11 @@ toolbar icon → **Options**.
   state is remembered per browser profile, and typing in the filter expands them until you clear
   it. **Collapse all** / **Expand all** are in the panel head.
 - **Every shortcut is editable, whether it ships with BunnyLol or you made it.** A row's actions are
-  Edit, an on/off switch and Delete, and they mean the same thing on both. The form takes keys,
-  name, description, URL, an optional search URL containing `{q}`, a section and an example, and a
-  live preview shows where a sample query would actually land as you type. Duplicate keys, malformed
-  URLs and a missing `{q}` are flagged before you can save.
+  Edit and Delete — as icons, labelled on hover — followed by the on/off switch, and they mean the
+  same thing on both. The form takes keys, name, description, URL, an optional search URL
+  containing `{q}`, a section and an example, and a live preview shows where a sample query would
+  actually land as you type. Duplicate keys, malformed URLs and a missing `{q}` are flagged before
+  you can save.
 - **Reset**, in the form, refills the inputs: with the shipped definition for a shipped shortcut,
   with the values you last saved for one of your own. It does not touch the on/off switch or save
   anything by itself — Save does.
@@ -246,9 +247,9 @@ from Chrome rather than from what BunnyLol asked for.
 
 | Pill | Colour | Meaning |
 |---|---|---|
-| *Intercepting N keywords* | green | Every eligible alias is intercepted on every engine you selected, with nothing dropped. |
+| *Shortcuts active* | green | Every eligible alias is intercepted on every engine you selected, with nothing dropped. |
 | *…N exempted by you* | green | Your choice, not a failure — those still work from `bl` + Tab and the popup. |
-| *Intercepting N keywords* + a detail line | amber | Partial coverage: the rules are live, but some aliases ended up without one because Chrome refused to compile their pattern or the rule budget filled up. The detail says which. They fall through to a normal search in the address bar. |
+| *Some keywords not intercepted* + a detail line | amber | Partial coverage: the rules are live, but some aliases ended up without one because Chrome refused to compile their pattern or the rule budget filled up. The detail says which. They fall through to a normal search in the address bar. |
 | *Interception off* | amber | No engines selected, so nothing is intercepted, by design. |
 | *Rules not registered* | red | The sync itself failed and nothing is intercepted; the detail carries the error. Click **Re-sync**. |
 

@@ -51,9 +51,13 @@ export function pillView({ status, busy, engineCount }: PillInput): PillView {
     if (warning) notes.push(warning);
     else if (dropped > 0) notes.push(`${dropped} Chrome would not accept`);
 
+    // No keyword count in the headline: the number is not something anybody
+    // acts on, and it moved every time a shortcut was toggled. The counts that
+    // matter — what was exempted, what Chrome refused — stay in the detail.
+    const partial = Boolean(warning) || dropped > 0;
     return {
-      tone: warning || dropped > 0 ? 'warn' : 'ok',
-      text: `Intercepting ${statusCount(status, 'keywords')} keywords`,
+      tone: partial ? 'warn' : 'ok',
+      text: partial ? 'Some keywords not intercepted' : 'Shortcuts active',
       detail: notes.join(' · '),
     };
   }

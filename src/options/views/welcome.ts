@@ -21,7 +21,7 @@ import { el, nextId } from '../../ui/dom';
 import { button } from '../dom';
 import { closingLine, initialPicks, pickToState } from '../model/welcome';
 import { go } from '../router';
-import { applyState, commitState, getState, reportFailure, setNotice } from '../store';
+import { applyState, commitState, getState, reportFailure } from '../store';
 
 export function renderWelcome(): Node[] {
   const overrides = getState().overrides;
@@ -88,7 +88,7 @@ export function renderWelcome(): Node[] {
   // write; the closure only runs on a click, long after both are bound.
   const proceed = button(
     'Continue',
-    () => void save(picked, rows, proceed, skip, error),
+    () => void save(picked, proceed, skip, error),
     'btn btn-primary',
   );
 
@@ -211,7 +211,6 @@ function escapeNote(): HTMLElement {
  */
 async function save(
   picked: Set<string>,
-  rows: PickRow[],
   proceed: HTMLButtonElement,
   skip: HTMLButtonElement,
   error: HTMLElement,
@@ -236,14 +235,5 @@ async function save(
     return;
   }
 
-  const count = rows.filter((row) => picked.has(row.id)).length;
-  setNotice({
-    tone: 'ok',
-    text:
-      count === 0
-        ? 'Turned every shipped pack off. Your own shortcuts are untouched.'
-        : `Turned on ${count} ${count === 1 ? 'pack' : 'packs'}.` +
-          ' Type bl in the address bar for the full list.',
-  });
   go('#help');
 }

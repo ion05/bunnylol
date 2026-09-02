@@ -14,6 +14,50 @@ export function button(label: string, onClick: () => void, className = 'btn'): H
   return node;
 }
 
+/** The two glyphs the row actions use, as path data for a 16px viewBox. Built
+ *  with `createElementNS` rather than markup so nothing here ever parses HTML. */
+export const ICONS = {
+  pencil:
+    'M11.5 2.5a1.4 1.4 0 0 1 2 2L6 12l-3 1 1-3 7.5-7.5zM10 4l2 2',
+  trash: 'M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5M6.8 7v4M9.2 7v4',
+} as const;
+
+export function icon(name: keyof typeof ICONS): SVGElement {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', ICONS[name]);
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke', 'currentColor');
+  path.setAttribute('stroke-width', '1.5');
+  path.setAttribute('stroke-linecap', 'round');
+  path.setAttribute('stroke-linejoin', 'round');
+  svg.append(path);
+  return svg;
+}
+
+/**
+ * A button that is only a glyph. The label goes to `aria-label` and `title`,
+ * so it is read out and shown on hover but never takes up row width.
+ */
+export function iconButton(
+  label: string,
+  name: keyof typeof ICONS,
+  onClick: () => void,
+  className = 'btn btn-sm btn-ghost btn-icon',
+): HTMLButtonElement {
+  const node = el('button', {
+    class: className,
+    title: label,
+    attrs: { type: 'button', 'aria-label': label },
+    children: [icon(name)],
+  });
+  node.addEventListener('click', onClick);
+  return node;
+}
+
 /**
  * Two-step destructive action. A modal `confirm()` inside an extension page is
  * a worse interruption than arming the button in place — but arming must not
@@ -28,6 +72,10 @@ export function confirmButton(
   armed: string,
   className: string,
   action: () => void,
+  glyph?: keyof typeof ICONS,
+  /** A standing sentence appended to the tooltip in both states. It cannot be
+   *  set on the returned node, because disarming rewrites the title. */
+  hint = '',
 ): HTMLButtonElement {
   let armedAt = 0;
   let timer = 0;
@@ -36,14 +84,24 @@ export function confirmButton(
   let released = false;
   const node = el('button', {
     class: className,
-    text: idle,
     attrs: { type: 'button', 'aria-live': 'polite' },
   });
+  // A glyph button still carries the words, in a visually-hidden span rather
+  // than an `aria-label`: `aria-live` announces a change to the region's TEXT,
+  // and an attribute rewritten in place is silent — which would lose the one
+  // state change worth announcing here. Same span the switch labels use.
+  const name = glyph ? el('span', { class: 'visually-hidden' }) : node;
+  if (glyph) node.append(icon(glyph), name);
+  const say = (label: string): void => {
+    name.textContent = label;
+    if (glyph || hint) node.title = hint ? `${label}. ${hint}` : label;
+  };
+  say(idle);
 
   const disarm = (): void => {
     window.clearTimeout(timer);
     armedAt = 0;
-    node.textContent = idle;
+    say(idle);
     node.classList.remove('btn-armed');
   };
 
@@ -54,7 +112,7 @@ export function confirmButton(
     if (armedAt === 0) {
       armedAt = Date.now();
       released = false;
-      node.textContent = armed;
+      say(armed);
       node.classList.add('btn-armed');
       timer = window.setTimeout(disarm, 4000);
       return;

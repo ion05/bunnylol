@@ -20,9 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shortcut can surprise you, and closing the tab keeps the ticked set. Reopen it
   from Settings.
 - One edit form for every shortcut. Shipped shortcuts and your own now have the
-  same three actions — Edit, on/off, Delete — and the same form, with a Reset
-  that refills it from the shipped definition (or, for your own, from what you
-  last saved).
+  same three actions — an Edit and a Delete icon, then the on/off switch — and
+  the same form, with a Reset that refills it from the shipped definition (or,
+  for your own, from what you last saved).
 - Deleting a shipped shortcut, and getting it back: Settings gains **Restore
   shipped shortcuts**, which returns the shipped definition along with anything
   you had edited.
@@ -58,6 +58,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Microsoft, Social, Productivity and Purdue are all opt-in. The Brightspace and
   Gradescope handlers derive their host from the shortcut's own URL too, so
   rebinding one to another institution works.
+- The rule-status pill says **Shortcuts active** instead of counting keywords,
+  and **Some keywords not intercepted** when coverage is partial. The count
+  moved every time a shortcut was switched on or off and nobody acted on it;
+  the numbers that do matter — what you exempted, what Chrome refused — are
+  still on the line under it and on the Settings coverage line.
 - `web_accessible_resources` is narrowed to `go.html`. `go.js` and `assets/*`
   are same-origin subresources of an extension page and never needed an entry;
   listing them exposed them, and the shipped sourcemaps, to the search engines.

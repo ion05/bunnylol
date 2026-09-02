@@ -29,7 +29,7 @@ describe('pillView', () => {
   it('reports a healthy sync as green', () => {
     expect(pillView(HEALTHY)).toEqual({
       tone: 'ok',
-      text: 'Intercepting 317 keywords',
+      text: 'Shortcuts active',
       detail: '',
     });
   });
@@ -50,7 +50,7 @@ describe('pillView', () => {
       }),
     });
     expect(view.tone).toBe('warn');
-    expect(view.text).toBe('Intercepting 314 keywords');
+    expect(view.text).toBe('Some keywords not intercepted');
     expect(view.detail).toBe('3 keyword(s) are not intercepted: the rule budget is full.');
   });
 
@@ -124,7 +124,7 @@ describe('pillView', () => {
   it('never prints undefined when counts are missing', () => {
     const legacy = { registered: 60, error: null, extensionId: '' } as unknown as RuleStatus;
     const view = pillView({ status: legacy, busy: false, engineCount: 3 });
-    expect(view.text).toBe('Intercepting 0 keywords');
+    expect(view.text).toBe('Shortcuts active');
     expect(view.detail).toBe('');
     expect(view.tone).toBe('ok');
   });

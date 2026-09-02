@@ -19,7 +19,7 @@ import { activeKeywords, suggest } from '../../lib/resolve';
 import { stripScheme } from '../../lib/text';
 import type { Overrides, ShortcutEdit } from '../../lib/types';
 import { el, nextId } from '../../ui/dom';
-import { button, confirmButton, switchControl } from '../dom';
+import { button, confirmButton, iconButton, switchControl } from '../dom';
 import { browseEntries, exampleOf, haystackOf } from '../model/browse';
 import type { Entry } from '../model/browse';
 import type { CollapseState } from '../model/collapse';
@@ -409,28 +409,40 @@ function renderRow(
   const actions = el('div', { class: 'row-actions' });
   row.append(keys, body, actions);
 
-  const remove = confirmButton('Delete', 'Click again to confirm', 'btn btn-sm btn-ghost', () => {
-    const overrides = getState().overrides;
-    // A deleted shortcut is gone, not off, so it leaves `disabled` either way.
-    const disabled = overrides.disabled.filter((id) => id !== entry.id);
-    const next: Overrides = entry.shipped
-      ? // `edits[id]` is deliberately KEPT: Restore brings back the shortcut
-        // the user had, not the one the registry ships.
-        { ...overrides, deleted: [...overrides.deleted, entry.id], disabled }
-      : {
-          ...overrides,
-          custom: overrides.custom.filter((cmd) => shortcutId(cmd) !== entry.id),
-          disabled,
-          edits: withoutEdit(overrides.edits, entry.id),
-        };
-    void commitOverrides(next).catch(reportFailure);
-    row.remove();
-    onRemoved(row);
-  });
-  if (entry.cmd.handler === 'meta') remove.title = META_DELETE_TITLE;
+  const remove = confirmButton(
+    `Delete ${entry.cmd.name}`,
+    'Click again to delete',
+    'btn btn-sm btn-ghost btn-icon',
+    () => {
+      const overrides = getState().overrides;
+      // A deleted shortcut is gone, not off, so it leaves `disabled` either way.
+      const disabled = overrides.disabled.filter((id) => id !== entry.id);
+      const next: Overrides = entry.shipped
+        ? // `edits[id]` is deliberately KEPT: Restore brings back the shortcut
+          // the user had, not the one the registry ships.
+          { ...overrides, deleted: [...overrides.deleted, entry.id], disabled }
+        : {
+            ...overrides,
+            custom: overrides.custom.filter((cmd) => shortcutId(cmd) !== entry.id),
+            disabled,
+            edits: withoutEdit(overrides.edits, entry.id),
+          };
+      void commitOverrides(next).catch(reportFailure);
+      row.remove();
+      onRemoved(row);
+    },
+    'trash',
+    entry.cmd.handler === 'meta' ? META_DELETE_TITLE : '',
+  );
 
+  // Edit, Delete, then the switch: the two actions that open or remove the row
+  // sit together, and the state control stays at the edge where it is always
+  // visible.
   actions.append(
-    button('Edit', () => go(`#edit?id=${encodeURIComponent(entry.id)}`), 'btn btn-sm btn-ghost'),
+    iconButton(`Edit ${entry.cmd.name}`, 'pencil', () => {
+      go(`#edit?id=${encodeURIComponent(entry.id)}`);
+    }),
+    remove,
     switchControl(`Enable ${entry.cmd.name}`, !entry.disabled, (on) => {
       const next = getState().overrides.disabled.filter((id) => id !== entry.id);
       if (!on) next.push(entry.id);
@@ -441,7 +453,6 @@ function renderRow(
       offBadge.hidden = on;
       void commitOverrides({ ...getState().overrides, disabled: next }).catch(reportFailure);
     }),
-    remove,
   );
 
   return row;

@@ -345,6 +345,18 @@ a {
   font-size: var(--fs-12);
 }
 
+/* A glyph-only button is square, and the glyph inherits the button's colour so
+   the ghost, hover and armed states paint it without a rule of their own. */
+.btn-icon {
+  width: var(--btn-h-sm);
+  padding: 0;
+}
+
+.btn-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
 /* Colour, not opacity — the same discipline the rows use, and the only way a
    disabled control's edge stays a measurable pair of colours instead of a
    fraction of whatever is behind it. Declared after the family rules rather
