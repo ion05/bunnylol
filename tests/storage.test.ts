@@ -9,6 +9,7 @@ const STATE: StoredState = {
     keyOverrides: { lh: ['local', 'l'] },
     custom: [
       {
+        id: 'u:tix',
         keys: ['tix', 'tickets'],
         name: 'Tickets',
         description: 'Internal ticket tracker',
@@ -187,6 +188,88 @@ describe('importJson leniency', () => {
     const state = importJson('{"overrides":{"keyOverrides":{"gh":[],"lh":["l"],"  ":["x"]}}}');
     expect(state.overrides.keyOverrides).toEqual({ lh: ['l'] });
   });
+
+  it('mints a stable id for custom commands that have none', () => {
+    const state = importJson(
+      JSON.stringify({
+        overrides: {
+          custom: [
+            { keys: ['tix'], url: 'https://tix.example/' },
+            { keys: ['tix2'], name: 'Tickets', url: 'https://tix.example/2' },
+          ],
+        },
+      }),
+    );
+    expect(state.overrides.custom.map((cmd) => cmd.id)).toEqual(['u:tix', 'u:tix2']);
+  });
+
+  it('assigns the same ids on a second normalization', () => {
+    const once = importJson('{"overrides":{"custom":[{"keys":["tix"],"url":"https://tix.example/"}]}}');
+    const twice = importJson(exportJson({ overrides: once.overrides, settings: DEFAULT_SETTINGS }));
+    expect(twice.overrides.custom[0].id).toBe('u:tix');
+  });
+
+  it('gives two shortcuts with the same keyword different ids', () => {
+    const state = importJson(
+      JSON.stringify({
+        overrides: {
+          custom: [
+            { keys: ['tix'], url: 'https://tix.example/' },
+            { keys: ['tix'], url: 'https://tix.example/2' },
+          ],
+        },
+      }),
+    );
+    expect(state.overrides.custom.map((cmd) => cmd.id)).toEqual(['u:tix', 'u:tix-2']);
+  });
+
+  it('re-mints a user id a sibling already claimed', () => {
+    const state = importJson(
+      JSON.stringify({
+        overrides: {
+          custom: [
+            { keys: ['tix'], url: 'https://tix.example/', id: 'u:tix' },
+            { keys: ['tickets'], url: 'https://tix.example/2', id: 'u:tix' },
+          ],
+        },
+      }),
+    );
+    // Two shortcuts on one id would share every override entry keyed by it.
+    expect(state.overrides.custom.map((cmd) => cmd.id)).toEqual(['u:tix', 'u:tickets']);
+  });
+
+  it('lets a claimed id beat an id-less sibling that would have minted it', () => {
+    const state = importJson(
+      JSON.stringify({
+        overrides: {
+          custom: [
+            { keys: ['tix'], url: 'https://tix.example/' },
+            { keys: ['zed'], url: 'https://tix.example/2', id: 'u:tix' },
+          ],
+        },
+      }),
+    );
+    // The claim is reserved before anything mints, so the shortcut that owns
+    // `u:tix` — and every override entry keyed by it — keeps it wherever it
+    // sits in the file. Minting in list order would hand it to the first entry.
+    expect(state.overrides.custom.map((cmd) => cmd.id)).toEqual(['u:tix-2', 'u:tix']);
+  });
+
+  it('keeps a user id across a key edit', () => {
+    const state = importJson(
+      '{"overrides":{"custom":[{"keys":["tickets"],"url":"https://tix.example/","id":"u:tix"}]}}',
+    );
+    expect(state.overrides.custom[0].id).toBe('u:tix');
+  });
+
+  it('mints over an id that is not a string', () => {
+    // Not a claim but a type error, and this reader forgives those; only a
+    // written id it cannot honour is worth refusing the file over.
+    const state = importJson(
+      '{"overrides":{"custom":[{"keys":["tix"],"url":"https://tix.example/","id":42}]}}',
+    );
+    expect(state.overrides.custom[0].id).toBe('u:tix');
+  });
 });
 
 /**
@@ -225,6 +308,33 @@ describe('an import that could never work', () => {
       'a rebinding whose replacements are not a list',
       '{"overrides":{"keyOverrides":{"gh":"x"}}}',
       /keyOverrides\.gh/,
+    ],
+    [
+      'a custom command claiming a shipped id',
+      '{"overrides":{"custom":[{"keys":["x"],"url":"https://x.test/","id":"gh"}]}}',
+      // Named by its keyword like every other message here — `gh` is the
+      // offence, not the entry — and by the rule it broke, since `gh` is only
+      // one of infinitely many ids outside the `u:` namespace.
+      /Shortcut "x" claims the id "gh", which is reserved for shipped shortcuts/,
+    ],
+    [
+      'a custom command claiming an id outside the user namespace',
+      '{"overrides":{"custom":[{"keys":["x"],"url":"https://x.test/","id":"not-shipped-yet"}]}}',
+      /Shortcut "x" claims the id "not-shipped-yet"/,
+    ],
+    [
+      'a custom command claiming an id no minting could have produced',
+      '{"overrides":{"custom":[{"keys":["x"],"url":"https://x.test/","id":"u:has space"}]}}',
+      // Malformed, so it is not a user id either: re-minting it here would
+      // import clean under a different id than the one the user hand-wrote.
+      // Refused for a different reason than a shipped claim, and said so —
+      // this id IS in the `u:` namespace.
+      /Shortcut "x" has an "id" BunnyLol cannot use: "u:has space"/,
+    ],
+    [
+      'a custom command claiming an over-long id',
+      `{"overrides":{"custom":[{"keys":["x"],"url":"https://x.test/","id":"u:${'y'.repeat(40)}"}]}}`,
+      /cannot use: "u:y+"/,
     ],
     [
       'a keyword past the length cap',
@@ -324,6 +434,30 @@ describe('lenient recovery from a corrupt stored blob', () => {
    * needing a `chrome.storage` stub.
    */
   const recovered = JSON.parse(exportJson(corrupt as unknown as StoredState));
+
+  it('re-mints a stored custom command whose id could not have been minted', () => {
+    const state = JSON.parse(
+      exportJson({
+        overrides: {
+          custom: [{ keys: ['x'], url: 'https://x.test/', id: 'u:has space' }],
+        },
+      } as unknown as StoredState),
+    );
+    expect(state.overrides.custom[0].id).toBe('u:x');
+  });
+
+  it('re-mints a stored custom command that claims a shipped id', () => {
+    // The stored path cannot refuse — refusing here would brick every surface —
+    // so the claim is overwritten instead. `gh` keeps its own override entries.
+    const state = JSON.parse(
+      exportJson({
+        overrides: {
+          custom: [{ keys: ['x'], url: 'https://x.test/', id: 'gh' }],
+        },
+      } as unknown as StoredState),
+    );
+    expect(state.overrides.custom[0].id).toBe('u:x');
+  });
 
   it('drops what it cannot use instead of throwing', () => {
     expect(recovered.overrides.disabled).toEqual(['gh']);

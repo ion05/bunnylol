@@ -12,6 +12,9 @@ import { DEFAULT_SETTINGS, FORCE_SEARCH_PREFIXES, PASSTHROUGH_PARAM } from './ty
 // engine hosts have exactly one definition.
 import { SEARCH_ENGINES } from './commands';
 import { expandTemplate, HANDLERS } from './handlers';
+// Identity lives in one module so the resolver, storage and the options page
+// cannot disagree about which shortcut an override entry names.
+import { shortcutId } from './overrides';
 // Which aliases a DNR rule can carry is decided in one place; `activeKeywords`
 // and the storage boundary must not drift apart on it.
 import { isInterceptableAlias } from './validate';
@@ -66,20 +69,28 @@ export function buildKeyMap(commands: Command[]): Map<string, Command> {
 export function mergeCommands(builtins: Command[], overrides: Overrides): Command[] {
   const disabled = new Set((overrides?.disabled ?? []).map((key) => key.trim().toLowerCase()));
   const keyOverrides = overrides?.keyOverrides ?? {};
+  // Every emitted command carries its resolved id: the browse rows, the override
+  // maps and the resolver then key off one string, and no surface has to know
+  // whether the command came from the registry or from storage.
   const merged: Command[] = (overrides?.custom ?? []).map((cmd) => ({
     ...cmd,
+    id: shortcutId(cmd),
     keys: [...(cmd.keys ?? [])],
   }));
 
   for (const cmd of builtins) {
-    const canonical = canonicalKey(cmd);
+    const canonical = shortcutId(cmd);
     if (disabled.has(canonical)) continue;
     const replacement = (keyOverrides[canonical] ?? [])
       .map((key) => key.trim())
       .filter((key) => key.length > 0);
     // An empty replacement list means "no override" rather than "no aliases",
     // otherwise a half-finished edit in the options page would orphan a command.
-    merged.push({ ...cmd, keys: replacement.length > 0 ? replacement : [...(cmd.keys ?? [])] });
+    merged.push({
+      ...cmd,
+      id: canonical,
+      keys: replacement.length > 0 ? replacement : [...(cmd.keys ?? [])],
+    });
   }
   return merged;
 }
@@ -354,6 +365,12 @@ function isSubsequence(needle: string, haystack: string): boolean {
   return i === needle.length;
 }
 
+/**
+ * The alias `suggest()` breaks ties on — deliberately NOT `shortcutId`. A tie
+ * is settled alphabetically on what the user types; keying it off the id would
+ * clump every custom shortcut together under its `u:` prefix instead of
+ * ordering them by the alias the user actually typed.
+ */
 function canonicalKey(cmd: Command): string {
   return (cmd.keys?.[0] ?? '').trim().toLowerCase();
 }

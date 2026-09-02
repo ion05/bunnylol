@@ -15,6 +15,7 @@
 import type { Category, Command, HandlerId, Overrides, SearchEngineId, Settings, StoredState } from './types';
 import { CATEGORIES, DEFAULT_OVERRIDES, DEFAULT_SETTINGS, DEFAULT_STOP_LIST, STORAGE_KEY } from './types';
 import { BUILTIN_COMMANDS, SEARCH_ENGINES } from './commands';
+import { MAX_ID_LENGTH, USER_ID_PREFIX, isUserId, mintUserId, normalizeId } from './overrides';
 import { mergeCommands } from './resolve';
 import { clone } from './text';
 import { validateAlias, validateUrlTemplate } from './validate';
@@ -294,12 +295,80 @@ function normalizeKeyOverrides(raw: unknown): Record<string, string[]> {
 
 function normalizeCustom(raw: unknown): Command[] {
   if (!Array.isArray(raw)) return [];
-  const commands: Command[] = [];
+  const entries: CustomEntry[] = [];
   for (const entry of raw) {
     const cmd = normalizeCommand(entry);
-    if (cmd) commands.push(cmd);
+    if (cmd) entries.push({ cmd, raw: entry });
   }
-  return commands;
+  return assignCustomIds(entries, false);
+}
+
+/** A normalized custom command next to the entry it came from, which still
+ *  carries the `id` the file claimed. */
+interface CustomEntry {
+  cmd: Command;
+  raw: unknown;
+}
+
+/**
+ * Ids are decided by a pass over the whole list, not by `normalizeCommand`:
+ * uniqueness is a property of the list, and the strict parser reuses the same
+ * entry normalizer.
+ *
+ * Every claim is reserved before anything is minted. Minting in one forward
+ * pass would let an id-less entry take the id a later entry claims and push the
+ * claim's owner onto a different one — the same silent adoption of another
+ * shortcut's override entries as a claimed shipped id, arriving from a sibling
+ * instead of from the registry, and turning on nothing but the order of the
+ * file. Between two entries claiming the same id the first still wins; the
+ * second is minted over, because one id naming two shortcuts is the thing all
+ * of this exists to prevent.
+ */
+function assignCustomIds(entries: CustomEntry[], strict: boolean): Command[] {
+  const claims = entries.map((entry) => claimedId(entry, strict));
+  // Seeded with the claims, so a mint cannot land on one that is still owed.
+  const taken = new Set(claims.filter(isUserId));
+  const handedOut = new Set<string>();
+  return entries.map((entry, index) => {
+    const claim = claims[index];
+    const id =
+      isUserId(claim) && !handedOut.has(claim) ? claim : mintUserId(entry.cmd.keys[0], taken);
+    taken.add(id);
+    handedOut.add(id);
+    return { ...entry.cmd, id };
+  });
+}
+
+/**
+ * The id an entry asks for, or `''` when it asks for nothing usable.
+ *
+ * A claim is honoured only when it is a USER id. An id without the `u:` prefix
+ * names a shipped shortcut — this build's or a later one's — and a command
+ * wearing it would inherit that shortcut's override entries, which is the same
+ * threat as the `builtin: true` claim `normalizeCommand` strips. The lenient
+ * path mints a fresh id over it; the import parser refuses the file, because a
+ * human is standing there and the fix is one line of their JSON. That refusal
+ * covers every written id it cannot honour, malformed ones included: re-minting
+ * an id the user typed and importing clean would hide the edit that needs
+ * making. The two refusals say different things, because "use the `u:`
+ * namespace" is no help to someone who already did and misspelled it.
+ */
+function claimedId({ cmd, raw }: CustomEntry, strict: boolean): string {
+  const source = asRecord(raw)?.id;
+  // A non-string is not a claim but a type error, and the lenient reader has
+  // always forgiven those; there is no id in it to honour or to refuse.
+  const written = typeof source === 'string' ? source.trim() : '';
+  if (!written) return '';
+  const claimed = normalizeId(written);
+  if (isUserId(claimed)) return claimed;
+  if (strict) {
+    throw new Error(
+      written.toLowerCase().startsWith(USER_ID_PREFIX)
+        ? `Shortcut "${cmd.keys[0]}" has an "id" BunnyLol cannot use: "${written}" contains whitespace or is longer than ${MAX_ID_LENGTH} characters. Remove its "id" field.`
+        : `Shortcut "${cmd.keys[0]}" claims the id "${written}", which is reserved for shipped shortcuts — your own shortcuts have ids starting with "${USER_ID_PREFIX}". Remove its "id" field.`,
+    );
+  }
+  return '';
 }
 
 /** Returns null when the entry has no usable keyword or destination. */
@@ -361,8 +430,12 @@ function parseOverrides(source: Record<string, unknown> | null): Overrides {
   if (source.custom !== undefined && !Array.isArray(source.custom)) {
     throw new Error('"custom" must be an array of shortcuts.');
   }
-  const custom: Command[] = (Array.isArray(source.custom) ? source.custom : []).map(
-    (entry: unknown, index: number) => parseCustomCommand(entry, index),
+  const custom: Command[] = assignCustomIds(
+    (Array.isArray(source.custom) ? source.custom : []).map((entry: unknown, index: number) => ({
+      cmd: parseCustomCommand(entry, index),
+      raw: entry,
+    })),
+    true,
   );
   return {
     // `disabled` stays lenient: its entries name builtins the user turned off,

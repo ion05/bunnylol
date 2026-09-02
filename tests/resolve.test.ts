@@ -294,6 +294,40 @@ describe('mergeCommands', () => {
     const merged = mergeCommands(BUILTIN_COMMANDS, {} as Overrides);
     expect(merged.length).toBe(BUILTIN_COMMANDS.length);
   });
+
+  it('stamps a stable id on every command it emits', () => {
+    const mine = cmd({ keys: ['tix'], id: 'u:tix', url: 'https://tix.test/' });
+    const merged = mergeCommands(
+      BUILTIN_COMMANDS,
+      overrides({ custom: [mine], keyOverrides: { gh: ['hub'] } }),
+    );
+    expect(merged.every((command) => (command.id ?? '') !== '')).toBe(true);
+    expect(merged.find((command) => command.name === 'GitHub')?.id).toBe('gh');
+    expect(merged[0].id).toBe('u:tix');
+  });
+
+  it('keeps a rebound builtin under its shipped id', () => {
+    // The id is what the override maps are keyed by, so it must not follow the
+    // keys the user just rebound.
+    const merged = mergeCommands(BUILTIN_COMMANDS, overrides({ keyOverrides: { gh: ['hub'] } }));
+    const rebound = buildKeyMap(merged).get('hub');
+    expect(rebound?.id).toBe('gh');
+    expect(rebound?.keys).toEqual(['hub']);
+  });
+
+  it('falls back to the canonical key for a custom command with no id', () => {
+    const merged = mergeCommands(
+      BUILTIN_COMMANDS,
+      overrides({ custom: [cmd({ keys: ['tix'], url: 'https://tix.test/' })] }),
+    );
+    expect(merged[0].id).toBe('tix');
+  });
+
+  it('never writes an id back into the registry', () => {
+    mergeCommands(BUILTIN_COMMANDS, overrides({ custom: [cmd({ keys: ['tix'] })] }));
+    expect(BUILTIN_COMMANDS[0].id).toBeUndefined();
+    expect(BUILTIN_COMMANDS.every((command) => command.id === undefined)).toBe(true);
+  });
 });
 
 describe('buildKeyMap', () => {

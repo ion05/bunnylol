@@ -82,7 +82,17 @@ export type HandlerId =
   | 'word';
 
 export interface Command {
-  /** Aliases. `keys[0]` is canonical and is the stable identity of the command. */
+  /**
+   * Stable identity, independent of the aliases. A shipped command omits it and
+   * is identified by its SHIPPED `keys[0]`, which never moves because the
+   * registry is code; a user-created one carries a generated `u:`-prefixed id
+   * that survives every key edit. `mergeCommands` and the storage boundary
+   * stamp the resolved value onto everything they emit, so the override maps,
+   * the browse rows and the resolver all key off one string. Never authored in
+   * `commands.ts`, never user-editable.
+   */
+  id?: string;
+  /** Aliases. `keys[0]` is canonical, and for a shipped command it is the `id`. */
   keys: string[];
   name: string;
   description: string;

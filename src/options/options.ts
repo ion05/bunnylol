@@ -14,6 +14,7 @@ import { BUILTIN_COMMANDS, SEARCH_ENGINES, destinationOf } from '../lib/commands
 import type { Draft } from '../lib/draft';
 import { parseKeys, parsePrefill, splitKeys, withScheme } from '../lib/draft';
 import { AI_PROVIDERS } from '../lib/handlers';
+import { mintUserId, shortcutId } from '../lib/overrides';
 import { activeKeywords, mergeCommands, resolve, stripPassthrough, suggest } from '../lib/resolve';
 import {
   applyImport,
@@ -58,7 +59,7 @@ interface Route {
 /** A browse row. Disabled builtins are missing from the merged list, so the
  *  browse view is built from the raw registry plus the override layer. */
 interface Entry {
-  /** Stable identity for the override layer: the command's original first key. */
+  /** Stable identity for the override layer: `shortcutId`. */
   id: string;
   /** Key the merged command answers to, used to line rows up with `suggest()`. */
   matchKey: string;
@@ -458,7 +459,7 @@ function renderBrowse(): Node[] {
     const ranks = new Map<string, number>();
     if (query) {
       suggest(query, commands, commands.length).forEach((cmd, index) => {
-        const key = canonical(cmd);
+        const key = firstKey(cmd);
         if (!ranks.has(key)) ranks.set(key, index);
       });
     }
@@ -522,14 +523,14 @@ function groupOrder(entries: Entry[]): Category[] {
 function browseEntries(): Entry[] {
   const disabled = new Set(stored.overrides.disabled.map((key) => key.trim().toLowerCase()));
   const entries: Entry[] = stored.overrides.custom.map((cmd) => ({
-    id: canonical(cmd),
-    matchKey: canonical(cmd),
+    id: shortcutId(cmd),
+    matchKey: firstKey(cmd),
     cmd,
     disabled: false,
   }));
 
   for (const cmd of BUILTIN_COMMANDS) {
-    const id = canonical(cmd);
+    const id = shortcutId(cmd);
     const override = stored.overrides.keyOverrides[id] ?? [];
     const keys = override.length > 0 ? override : cmd.keys;
     entries.push({
@@ -630,7 +631,7 @@ function renderRow(
     actions.append(
       button('Edit', () => go(`#edit?key=${encodeURIComponent(entry.id)}`), 'btn btn-sm'),
       confirmButton('Delete', 'Click again to confirm', 'btn btn-sm btn-danger', () => {
-        const custom = stored.overrides.custom.filter((cmd) => canonical(cmd) !== entry.id);
+        const custom = stored.overrides.custom.filter((cmd) => shortcutId(cmd) !== entry.id);
         void commitOverrides({ ...stored.overrides, custom }).catch(reportFailure);
         row.remove();
         onRemoved(row);
@@ -727,7 +728,7 @@ function renderKeyEditor(
   const reset = button('Reset', () => {
     const keyOverrides = { ...stored.overrides.keyOverrides };
     delete keyOverrides[entry.id];
-    const original = BUILTIN_COMMANDS.find((cmd) => canonical(cmd) === entry.id)?.keys ?? entry.cmd.keys;
+    const original = BUILTIN_COMMANDS.find((cmd) => shortcutId(cmd) === entry.id)?.keys ?? entry.cmd.keys;
     entry.cmd = { ...entry.cmd, keys: original };
     entry.matchKey = (original[0] ?? entry.id).toLowerCase();
     input.value = original.join(', ');
@@ -784,7 +785,7 @@ function describeOwner(id: string): string {
 function renderForm(): HTMLElement {
   const editingKey = route.name === 'edit' ? (route.params.get('key') ?? '').toLowerCase() : '';
   const existing = editingKey
-    ? stored.overrides.custom.find((cmd) => canonical(cmd) === editingKey)
+    ? stored.overrides.custom.find((cmd) => shortcutId(cmd) === editingKey)
     : undefined;
   const editing = existing ? editingKey : '';
 
@@ -972,9 +973,23 @@ function renderForm(): HTMLElement {
     const cmd = buildCommand(current);
     const custom = editing
       ? stored.overrides.custom.map((existingCmd) =>
-          canonical(existingCmd) === editing ? cmd : existingCmd,
+          // The id is carried across explicitly: a shortcut whose keys changed is
+          // still the same shortcut, and `buildCommand` only knows the form.
+          shortcutId(existingCmd) === editing ? { ...cmd, id: editing } : existingCmd,
         )
-      : [...stored.overrides.custom, cmd];
+      : [
+          ...stored.overrides.custom,
+          // Minted here rather than left to `saveOverrides`: the row this
+          // render puts on screen needs a real id for its Edit and Delete
+          // links, and an optimistic copy without one no longer matches the
+          // blob that comes back through `onStateChanged`, costing a full
+          // repaint on every new shortcut. Storage honours a `u:` claim, and
+          // minting is deterministic, so it mints the same id we did.
+          {
+            ...cmd,
+            id: mintUserId(cmd.keys[0] ?? '', new Set(stored.overrides.custom.map(shortcutId))),
+          },
+        ];
     try {
       await commitOverrides({ ...stored.overrides, custom });
     } catch (err) {
@@ -1065,7 +1080,7 @@ function paintPreview(
 
 function previewOverrides(draft: Command, editing: string): Overrides {
   const custom = editing
-    ? stored.overrides.custom.map((cmd) => (canonical(cmd) === editing ? draft : cmd))
+    ? stored.overrides.custom.map((cmd) => (shortcutId(cmd) === editing ? draft : cmd))
     : [...stored.overrides.custom, draft];
   return { ...stored.overrides, custom };
 }
@@ -1118,7 +1133,7 @@ function validate(draft: Draft, editing: string): Problem[] {
 
   const owner = buildKeyOwner();
   const mine = new Map(
-    stored.overrides.custom.map((cmd) => [canonical(cmd), cmd] as const),
+    stored.overrides.custom.map((cmd) => [shortcutId(cmd), cmd] as const),
   );
   for (const key of keys) {
     const ownerId = owner.get(key);
@@ -1131,7 +1146,7 @@ function validate(draft: Draft, editing: string): Problem[] {
         text: `“${key}” is already used by your shortcut “${clash.name}”. Pick another keyword, or edit that one instead.`,
       });
     } else {
-      const builtin = BUILTIN_COMMANDS.find((cmd) => canonical(cmd) === ownerId);
+      const builtin = BUILTIN_COMMANDS.find((cmd) => shortcutId(cmd) === ownerId);
       const spare = (builtin?.keys ?? []).filter((alias) => alias.toLowerCase() !== key);
       problems.push({
         level: 'warn',
@@ -1799,9 +1814,9 @@ function mergeOverrides(current: Overrides, incoming: Overrides): MergePlan {
   );
 
   for (const cmd of incoming.custom) {
-    const twin = mine.get(canonical(cmd));
+    const twin = mine.get(firstKey(cmd));
     if (twin && signatureOf(twin) === signatureOf(cmd)) {
-      duplicates.push(canonical(cmd));
+      duplicates.push(firstKey(cmd));
       continue;
     }
     const keys = cmd.keys.map((key) => {
@@ -2065,7 +2080,12 @@ function flash(node: HTMLElement, text = 'Saved'): void {
   flashTimers.set(node, window.setTimeout(() => node.classList.remove('show'), 1800));
 }
 
-function canonical(cmd: Command): string {
+/**
+ * The alias a command leads with. Deliberately not `shortcutId`: its callers
+ * key maps by what the user types, and a custom shortcut's id is a `u:` slug
+ * that answers to nothing in the address bar.
+ */
+function firstKey(cmd: Command): string {
   return (cmd.keys[0] ?? '').trim().toLowerCase();
 }
 
