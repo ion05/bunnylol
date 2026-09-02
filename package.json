@@ -1,0 +1,25 @@
+{
+  "name": "bunnylol",
+  "version": "1.0.0",
+  "description": "BunnyLol-style keyword shortcuts for Chromium browsers",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/gen-icons.mjs && tsc --noEmit && vite build",
+    "build:fast": "vite build",
+    "dev": "vite build --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7",
+    "vitest": "^2.1.8"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true,
+    "esbuild@0.21.5": true
+  }
+}
