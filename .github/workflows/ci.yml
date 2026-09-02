@@ -28,3 +28,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+
+      # `pnpm build` runs scripts/gen-icons.mjs, so a change to the generator or
+      # to --accent repaints these. Committed PNGs that the generator no longer
+      # produces are a silent drift no other step can see.
+      - run: git diff --exit-code -- public/icons store

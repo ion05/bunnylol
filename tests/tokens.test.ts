@@ -10,9 +10,12 @@ import popupCss from '../src/popup/popup.css?raw';
 import goHtml from '../go.html?raw';
 import goTs from '../src/go/go.ts?raw';
 import manifestJson from '../public/manifest.json?raw';
+import genIcons from '../scripts/gen-icons.mjs?raw';
 import fontsDoc from '../docs/fonts.md?raw';
 import designLicence from '../design/fonts/Inter-OFL.txt?raw';
 import shippedLicence from '../public/fonts/Inter-OFL.txt?raw';
+// The generator's palette parser, split out of the .mjs so it can be run here.
+import { readFlatHex } from '../scripts/lib/tokens.mjs';
 
 const SHEETS: Array<[string, string]> = [
   ['options.css', optionsCss],
@@ -24,7 +27,8 @@ const SHEETS: Array<[string, string]> = [
  * assertions in this file are negative — `not.toMatch` on a string that never
  * arrived passes — and the CSS ones only survive because vitest.config.ts sets
  * `css: true`. A stub or a moved file has to fail here rather than turn the
- * suite green by emptying it. The smallest of these, go.html, is ~1.8 KB.
+ * suite green by emptying it. The smallest of these, public/manifest.json, is
+ * ~1.2 KB.
  */
 const RAW_IMPORTS: Array<[string, string]> = [
   ['design/tokens.css', tokens],
@@ -34,6 +38,7 @@ const RAW_IMPORTS: Array<[string, string]> = [
   ['go.html', goHtml],
   ['src/go/go.ts', goTs],
   ['public/manifest.json', manifestJson],
+  ['scripts/gen-icons.mjs', genIcons],
   ['docs/fonts.md', fontsDoc],
   ['design/fonts/Inter-OFL.txt', designLicence],
   ['public/fonts/Inter-OFL.txt', shippedLicence],
@@ -75,9 +80,9 @@ describe('design tokens', () => {
 
     const flat = colours.filter((d) => !d.value.startsWith('light-dark(')).map((d) => d.name);
     // The sand is the brand colour in both schemes, so it is a flat hex rather
-    // than a pair; #1a1a1a on it is 8.53:1 either way. The icon is still the
-    // legacy indigo — the unit that rewires scripts/gen-icons.mjs onto this
-    // declaration is what makes it a parsed dependency.
+    // than a pair; #1a1a1a on it is 8.53:1 either way. Both are parsed by
+    // scripts/gen-icons.mjs, which is why neither may become a light-dark()
+    // pair: a PNG has one colour, not one per scheme.
     expect(flat.sort()).toEqual(['accent', 'accent-fg']);
 
     for (const { name } of colours) {
@@ -580,6 +585,86 @@ describe('the dispatch page', () => {
       expect([name, goTs.includes(`'${name}'`)]).toEqual([name, true]);
       expect([name, goHtml.includes(`.${name}{`)]).toEqual([name, true]);
     }
+  });
+});
+
+describe('the extension icon', () => {
+  /** A hex from tokens.css as [r, g, b]. */
+  const rgb = (hex: string): number[] => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+
+  const uint32 = (bytes: Uint8Array, at: number): number =>
+    ((bytes[at] << 24) | (bytes[at + 1] << 16) | (bytes[at + 2] << 8) | bytes[at + 3]) >>> 0;
+
+  /**
+   * Reads the pixels of a PNG this repo generated: one IDAT, no interlacing,
+   * filter byte 0 on every scanline, straight (un-premultiplied) alpha.
+   * Asserting on the generator's source is not asserting on the icon — these
+   * bytes are what ships, and nothing in `pnpm test` regenerates them.
+   *
+   * Inflated through DecompressionStream rather than node:zlib because this
+   * repo has no @types/node and takes no new dependency to get one; 'deflate'
+   * is the zlib wrapper an IDAT carries.
+   */
+  const pixels = async (path: string): Promise<(x: number, y: number) => number[]> => {
+    const png = readFileSync(new URL(path, import.meta.url));
+    const parts: Uint8Array<ArrayBuffer>[] = [];
+    let width = 0;
+    for (let at = 8; at < png.length; ) {
+      const length = uint32(png, at);
+      const type = String.fromCharCode(...png.subarray(at + 4, at + 8));
+      const body = png.subarray(at + 8, at + 8 + length);
+      if (type === 'IHDR') width = uint32(body, 0);
+      if (type === 'IDAT') parts.push(body);
+      at += 12 + length;
+    }
+    const inflating = new Blob(parts).stream().pipeThrough(new DecompressionStream('deflate'));
+    const raw = new Uint8Array(await new Response(inflating).arrayBuffer());
+    const stride = width * 4;
+    return (x, y) => {
+      expect(raw[y * (stride + 1)]).toBe(0);
+      const start = y * (stride + 1) + 1 + x * 4;
+      return [...raw.subarray(start, start + 4)];
+    };
+  };
+
+  it('reads both of its colours from tokens.css', () => {
+    // The indigo tile and the white glyph were literals in this script, which
+    // is how the icon stayed indigo through a whole palette change.
+    expect(genIcons).toContain("join(root, 'design', 'tokens.css')");
+    expect(genIcons).toMatch(/readFlatHex\(\w+, '--accent'\)/);
+    expect(genIcons).toMatch(/readFlatHex\(\w+, '--accent-fg'\)/);
+    expect(genIcons).not.toMatch(/0x4f, 0x46, 0xe5/);
+    expect(genIcons).not.toMatch(/const (?:BG|FG) = \[/);
+  });
+
+  it('takes the palette apart the way the icon needs it, and refuses otherwise', () => {
+    // The generator's own parser, run rather than read: it only ever meets the
+    // real tokens.css, where neither refusal below can be reproduced without
+    // editing the palette. Both are the same answer — a PNG has one colour, not
+    // one per scheme, and no colour at all is not a colour to guess at.
+    expect(readFlatHex(tokens, '--accent')).toEqual(rgb(tokenValue(tokens, 'accent', 'light')));
+    expect(readFlatHex(':root { --accent: #e1ab76; }', '--accent')).toEqual([0xe1, 0xab, 0x76]);
+    expect(() => readFlatHex(':root { --accent: light-dark(#e1ab76, #e1ab76); }', '--accent')).toThrow(
+      /--accent/,
+    );
+    // The colon has to follow the name, or --accent-text answers for --accent.
+    expect(() => readFlatHex(':root { --accent-text: #895420; }', '--accent')).toThrow(/--accent/);
+  });
+
+  it('paints the committed PNGs in those colours', async () => {
+    const accent = rgb(tokenValue(tokens, 'accent', 'light'));
+    const glyph = rgb(tokenValue(tokens, 'accent-fg', 'light'));
+    const toolbar = await pixels('../public/icons/icon128.png');
+    const store = await pixels('../store/icon128.png');
+    for (const [name, pixel] of [['toolbar', toolbar], ['store', store]] as const) {
+      // The tile above the ears, then the middle of the rabbit's head.
+      expect([name, pixel(64, 19)]).toEqual([name, [...accent, 255]]);
+      expect([name, pixel(64, 90)]).toEqual([name, [...glyph, 255]]);
+    }
+    // The store tile is the same art at 96px centred in a 128px frame, so it
+    // has 16px of nothing around it where the toolbar icon is full bleed.
+    expect(store(8, 64)).toEqual([0, 0, 0, 0]);
+    expect(toolbar(8, 64)).toEqual([...accent, 255]);
   });
 });
 

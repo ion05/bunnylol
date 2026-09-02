@@ -259,7 +259,7 @@ actually arrives prefilled.
 pnpm dev        # vite build --watch
 pnpm test       # vitest over the resolver, the handlers and the rule builder
 pnpm typecheck  # tsc --noEmit
-node scripts/gen-icons.mjs   # regenerate public/icons/*.png
+node scripts/gen-icons.mjs   # regenerate public/icons/*.png and store/icon128.png
 ```
 
 The resolver (`src/lib/resolve.ts`) is pure and free of `chrome.*` calls, so the dispatch page, the
