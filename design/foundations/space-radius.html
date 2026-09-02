@@ -1,0 +1,114 @@
+<!-- @dsCard group="Foundations" -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Space, radius, metrics</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../components.css" />
+    <link rel="stylesheet" href="../preview.css" />
+    <style>
+      .m-row { display: grid; grid-template-columns: 84px 1fr; gap: var(--sp-5); align-items: center; }
+      .m-tok { font-family: var(--font-mono); font-size: var(--fs-11); color: var(--text-faint); }
+      .m-bar { height: 12px; background: var(--accent); border-radius: 2px; }
+      .m-box { border: 1px solid var(--control-border); background: var(--bg-sunken); height: 44px; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: var(--fs-11); color: var(--text-dim); }
+      .m-note { font-size: var(--fs-11); color: var(--text-faint); }
+      .m-grid { display: flex; gap: var(--sp-5); flex-wrap: wrap; }
+    </style>
+  </head>
+  <body>
+    <main class="sheet">
+      <header class="sheet-head">
+        <h1 class="sheet-title">Space, radius, metrics</h1>
+        <p class="sheet-note">Spacing steps, the two radii, control heights, and the four layout constants that carry a measured reason. No shadow token exists.</p>
+      </header>
+      <div class="pair">
+        <section class="scheme">
+          <div class="scheme-label">Light</div>
+          <div class="scheme-body">
+            <div class="spec">
+              <div class="spec-name">Spacing — a 2/4/6/8 base, then 12/16/20/24/32</div>
+              <div class="m-row"><span class="m-tok">--sp-1<br />2px</span><div class="m-bar" style="width: 2px"></div></div>
+              <div class="m-row"><span class="m-tok">--sp-2<br />4px</span><div class="m-bar" style="width: 4px"></div></div>
+              <div class="m-row"><span class="m-tok">--sp-3<br />6px</span><div class="m-bar" style="width: 6px"></div></div>
+              <div class="m-row"><span class="m-tok">--sp-4<br />8px</span><div class="m-bar" style="width: 8px"></div></div>
+              <div class="m-row"><span class="m-tok">--sp-5<br />12px</span><div class="m-bar" style="width: 12px"></div></div>
+              <div class="m-row"><span class="m-tok">--sp-6<br />16px</span><div class="m-bar" style="width: 16px"></div></div>
+              <div class="m-row"><span class="m-tok">--sp-7<br />20px</span><div class="m-bar" style="width: 20px"></div></div>
+              <div class="m-row"><span class="m-tok">--sp-8<br />24px</span><div class="m-bar" style="width: 24px"></div></div>
+              <div class="m-row"><span class="m-tok">--sp-9<br />32px</span><div class="m-bar" style="width: 32px"></div></div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Radius — two, plus one for the switch</div>
+              <div class="m-grid">
+                <div style="flex: 1 1 120px"><div class="m-box" style="border-radius: var(--radius-1)">--radius-1</div><div class="m-note" style="margin-top: var(--sp-2)">chips, badges, small buttons, popup rows</div></div>
+                <div style="flex: 1 1 120px"><div class="m-box" style="border-radius: var(--radius-2)">--radius-2</div><div class="m-note" style="margin-top: var(--sp-2)">inputs, buttons, blocks, the toast</div></div>
+                <div style="flex: 1 1 120px"><div class="m-box" style="border-radius: var(--radius-full)">--radius-full</div><div class="m-note" style="margin-top: var(--sp-2)">the switch, and nothing else</div></div>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Control heights</div>
+              <div class="m-grid">
+                <div><div class="m-box" style="height: var(--control-h); border-radius: var(--radius-2); padding: 0 var(--sp-5)">--control-h</div><div class="m-note" style="margin-top: var(--sp-2)">inputs and selects (30px)</div></div>
+                <div><div class="m-box" style="height: var(--control-h-sm); border-radius: var(--radius-2); padding: 0 var(--sp-5)">--control-h-sm</div><div class="m-note" style="margin-top: var(--sp-2)">compact inputs (26px)</div></div>
+                <div><div class="m-box" style="height: var(--btn-h); border-radius: var(--radius-2); padding: 0 var(--sp-5)">--btn-h</div><div class="m-note" style="margin-top: var(--sp-2)">buttons (28px)</div></div>
+                <div><div class="m-box" style="height: var(--btn-h-sm); border-radius: var(--radius-2); padding: 0 var(--sp-5)">--btn-h-sm</div><div class="m-note" style="margin-top: var(--sp-2)">row actions (24px)</div></div>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Layout — each of these has a recorded reason</div>
+              <div class="m-note" style="line-height: var(--lh-body)"><code style="font-family: var(--font-mono)">--layout-max: 900px</code> — the options shell.<br /><code style="font-family: var(--font-mono)">--popup-w: 380px</code> — fixed, because a popup that resizes while you type reads as broken.<br /><code style="font-family: var(--font-mono)">--popup-list-h: 268px</code> — a fixed height, not a max: the box keeps its size as matches come and go.<br /><code style="font-family: var(--font-mono)">--row-h: 36px</code> / <code style="font-family: var(--font-mono)">--row-h-popup: 32px</code> — minimums, so a two-line row still grows.</div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Elevation</div>
+              <div class="m-note">There is no shadow token. Every surface is separated by a 1px border or by a sunken fill. The dispatch toast — the one element that floats — uses a border for the same reason.</div>
+            </div>
+          </div>
+        </section>
+        <section class="scheme dark">
+          <div class="scheme-label">Dark</div>
+          <div class="scheme-body">
+            <div class="spec">
+              <div class="spec-name">Spacing — a 2/4/6/8 base, then 12/16/20/24/32</div>
+              <div class="m-row"><span class="m-tok">--sp-1<br />2px</span><div class="m-bar" style="width: 2px"></div></div>
+              <div class="m-row"><span class="m-tok">--sp-2<br />4px</span><div class="m-bar" style="width: 4px"></div></div>
+              <div class="m-row"><span class="m-tok">--sp-3<br />6px</span><div class="m-bar" style="width: 6px"></div></div>
+              <div class="m-row"><span class="m-tok">--sp-4<br />8px</span><div class="m-bar" style="width: 8px"></div></div>
+              <div class="m-row"><span class="m-tok">--sp-5<br />12px</span><div class="m-bar" style="width: 12px"></div></div>
+              <div class="m-row"><span class="m-tok">--sp-6<br />16px</span><div class="m-bar" style="width: 16px"></div></div>
+              <div class="m-row"><span class="m-tok">--sp-7<br />20px</span><div class="m-bar" style="width: 20px"></div></div>
+              <div class="m-row"><span class="m-tok">--sp-8<br />24px</span><div class="m-bar" style="width: 24px"></div></div>
+              <div class="m-row"><span class="m-tok">--sp-9<br />32px</span><div class="m-bar" style="width: 32px"></div></div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Radius — two, plus one for the switch</div>
+              <div class="m-grid">
+                <div style="flex: 1 1 120px"><div class="m-box" style="border-radius: var(--radius-1)">--radius-1</div><div class="m-note" style="margin-top: var(--sp-2)">chips, badges, small buttons, popup rows</div></div>
+                <div style="flex: 1 1 120px"><div class="m-box" style="border-radius: var(--radius-2)">--radius-2</div><div class="m-note" style="margin-top: var(--sp-2)">inputs, buttons, blocks, the toast</div></div>
+                <div style="flex: 1 1 120px"><div class="m-box" style="border-radius: var(--radius-full)">--radius-full</div><div class="m-note" style="margin-top: var(--sp-2)">the switch, and nothing else</div></div>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Control heights</div>
+              <div class="m-grid">
+                <div><div class="m-box" style="height: var(--control-h); border-radius: var(--radius-2); padding: 0 var(--sp-5)">--control-h</div><div class="m-note" style="margin-top: var(--sp-2)">inputs and selects (30px)</div></div>
+                <div><div class="m-box" style="height: var(--control-h-sm); border-radius: var(--radius-2); padding: 0 var(--sp-5)">--control-h-sm</div><div class="m-note" style="margin-top: var(--sp-2)">compact inputs (26px)</div></div>
+                <div><div class="m-box" style="height: var(--btn-h); border-radius: var(--radius-2); padding: 0 var(--sp-5)">--btn-h</div><div class="m-note" style="margin-top: var(--sp-2)">buttons (28px)</div></div>
+                <div><div class="m-box" style="height: var(--btn-h-sm); border-radius: var(--radius-2); padding: 0 var(--sp-5)">--btn-h-sm</div><div class="m-note" style="margin-top: var(--sp-2)">row actions (24px)</div></div>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Layout — each of these has a recorded reason</div>
+              <div class="m-note" style="line-height: var(--lh-body)"><code style="font-family: var(--font-mono)">--layout-max: 900px</code> — the options shell.<br /><code style="font-family: var(--font-mono)">--popup-w: 380px</code> — fixed, because a popup that resizes while you type reads as broken.<br /><code style="font-family: var(--font-mono)">--popup-list-h: 268px</code> — a fixed height, not a max: the box keeps its size as matches come and go.<br /><code style="font-family: var(--font-mono)">--row-h: 36px</code> / <code style="font-family: var(--font-mono)">--row-h-popup: 32px</code> — minimums, so a two-line row still grows.</div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Elevation</div>
+              <div class="m-note">There is no shadow token. Every surface is separated by a 1px border or by a sunken fill. The dispatch toast — the one element that floats — uses a border for the same reason.</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

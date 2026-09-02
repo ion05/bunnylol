@@ -1,0 +1,96 @@
+<!-- @dsCard group="Patterns" -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dispatch</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../components.css" />
+    <link rel="stylesheet" href="../preview.css" />
+    <style>
+      /* go.html keeps an inline <style> with these values written out as literal
+         hexes: the page's whole job is to location.replace before it is seen,
+         and go.ts budgets 150ms before it will even reveal "Opening…", so a
+         render-blocking <link> would be a regression. It also loads no font.
+         tests/tokens.test.ts pins each literal against the matching token so
+         the two cannot drift. This preview uses the tokens directly so both
+         schemes render on one page. */
+      .go { min-height: 260px; padding: var(--sp-9) var(--sp-8); background: var(--bg); color: var(--text); font: 13px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif; }
+      .go-center { display: grid; place-items: center; text-align: center; }
+      .go-status { margin: 0; color: var(--text-dim); }
+      .go-toast { position: absolute; left: 16px; bottom: 16px; display: inline-flex; align-items: center; gap: 2px; padding: 6px 8px; border-radius: var(--radius-2); background: var(--bg-raised); color: var(--text); border: 1px solid var(--border-strong); font-size: var(--fs-12); }
+      .go-toast .toast-x { margin-left: 8px; padding: 0 4px; border: 0; background: none; color: var(--text-dim); font: inherit; line-height: 1; cursor: pointer; }
+      .go-toast .toast-x:hover { color: var(--text); }
+      .go-toast code { font-family: var(--font-mono); }
+      .go-rel { position: relative; }
+      .err { max-width: 520px; text-align: left; }
+      .err-title { font-size: var(--fs-16); font-weight: var(--fw-semibold); margin: 0 0 12px; }
+      .err-echo { margin: 0 0 8px; color: var(--text-dim); }
+      .err-echo code { font-family: var(--font-mono); }
+      .err-why { margin: 0 0 20px; color: var(--text-faint); }
+      .err-actions { margin: 0; display: flex; gap: var(--sp-5); }
+      .err-link { color: inherit; }
+    </style>
+  </head>
+  <body>
+    <main class="sheet screens">
+      <header class="sheet-head">
+        <h1 class="sheet-title">Dispatch</h1>
+        <p class="sheet-note">go.html: the page an intercepted keyword lands on for the few milliseconds before it redirects, the toast that says what it did, and the two states where it cannot.</p>
+      </header>
+      <div class="pair stack">
+        <section class="scheme">
+          <div class="scheme-label">Light</div>
+          <div class="scheme-body flush">
+              <div class="go go-center go-rel">
+                <p class="go-status">Opening&hellip;</p>
+                <span class="go-toast"><span>Searched Google instead &mdash; <code>\gh</code></span><button class="toast-x" type="button" aria-label="Dismiss">&times;</button></span>
+              </div>
+              <div class="go go-center" style="border-top: 1px solid var(--border)">
+                <div class="err">
+                  <h1 class="err-title">That shortcut goes nowhere.</h1>
+                  <p class="err-echo">You typed <code>tix ENG-4210</code>.</p>
+                  <p class="err-why">Ticket has no URL and no search URL, so there is nothing to open. Give it one and it will work everywhere.</p>
+                  <p class="err-actions"><a class="err-link" href="#">Edit Ticket</a><a class="err-link" href="#">All shortcuts</a></p>
+                </div>
+              </div>
+              <div class="go go-center" style="border-top: 1px solid var(--border)">
+                <div class="err">
+                  <h1 class="err-title">No shortcut called &ldquo;tixx&rdquo;.</h1>
+                  <p class="err-echo">You typed <code>tixx ENG-4210</code>.</p>
+                  <p class="err-why">Nothing claims that keyword. To search for it instead, put a <code>\</code> in front.</p>
+                  <p class="err-actions"><a class="err-link" href="#">Make it</a><a class="err-link" href="#">All shortcuts</a></p>
+                </div>
+              </div>
+          </div>
+        </section>
+        <section class="scheme dark">
+          <div class="scheme-label">Dark</div>
+          <div class="scheme-body flush">
+              <div class="go go-center go-rel">
+                <p class="go-status">Opening&hellip;</p>
+                <span class="go-toast"><span>Searched Google instead &mdash; <code>\gh</code></span><button class="toast-x" type="button" aria-label="Dismiss">&times;</button></span>
+              </div>
+              <div class="go go-center" style="border-top: 1px solid var(--border)">
+                <div class="err">
+                  <h1 class="err-title">That shortcut goes nowhere.</h1>
+                  <p class="err-echo">You typed <code>tix ENG-4210</code>.</p>
+                  <p class="err-why">Ticket has no URL and no search URL, so there is nothing to open. Give it one and it will work everywhere.</p>
+                  <p class="err-actions"><a class="err-link" href="#">Edit Ticket</a><a class="err-link" href="#">All shortcuts</a></p>
+                </div>
+              </div>
+              <div class="go go-center" style="border-top: 1px solid var(--border)">
+                <div class="err">
+                  <h1 class="err-title">No shortcut called &ldquo;tixx&rdquo;.</h1>
+                  <p class="err-echo">You typed <code>tixx ENG-4210</code>.</p>
+                  <p class="err-why">Nothing claims that keyword. To search for it instead, put a <code>\</code> in front.</p>
+                  <p class="err-actions"><a class="err-link" href="#">Make it</a><a class="err-link" href="#">All shortcuts</a></p>
+                </div>
+              </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

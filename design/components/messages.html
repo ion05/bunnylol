@@ -1,0 +1,72 @@
+<!-- @dsCard group="Components" -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Messages</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../components.css" />
+    <link rel="stylesheet" href="../preview.css" />
+  </head>
+  <body>
+    <main class="sheet">
+      <header class="sheet-head">
+        <h1 class="sheet-title">Messages</h1>
+        <p class="sheet-note">One line of text, coloured and weighted. No coloured bar, no icon, no tinted background — there are no --ok-soft / --warn-soft / --danger-soft tokens to build one from.</p>
+      </header>
+      <div class="pair">
+        <section class="scheme">
+          <div class="scheme-label">Light</div>
+          <div class="scheme-body">
+            <div class="spec">
+              <div class="spec-name">Tones</div>
+              <div class="msg-list">
+                <span class="msg msg-error">&ldquo;gh&rdquo; is already used by GitHub. Pick another keyword or edit GitHub instead.</span>
+                <span class="msg msg-warn">This URL has no %s, so words typed after the keyword are dropped.</span>
+                <span class="msg msg-ok">Imported 14 shortcuts and 2 sections.</span>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Under a field</div>
+              <div class="field">
+                <label class="field-label" for="msg-keys">Keywords</label>
+                <input class="input mono bad" id="msg-keys" value="gh, git hub" />
+                <div class="field-errors"><span class="msg msg-error">A keyword cannot contain a space.</span></div>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Why there is no bar and no icon</div>
+              <div class="spec-name" style="color: var(--text-dim); line-height: var(--lh-body); max-width: 52ch">The old .msg::before drew a coloured rule down the left of every message. Colour plus weight carries the tone, the wording carries the meaning, and the invalid input carries a red border &mdash; so the bar was decoration that only ever added a second thing to keep in sync.</div>
+            </div>
+          </div>
+        </section>
+        <section class="scheme dark">
+          <div class="scheme-label">Dark</div>
+          <div class="scheme-body">
+            <div class="spec">
+              <div class="spec-name">Tones</div>
+              <div class="msg-list">
+                <span class="msg msg-error">&ldquo;gh&rdquo; is already used by GitHub. Pick another keyword or edit GitHub instead.</span>
+                <span class="msg msg-warn">This URL has no %s, so words typed after the keyword are dropped.</span>
+                <span class="msg msg-ok">Imported 14 shortcuts and 2 sections.</span>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Under a field</div>
+              <div class="field">
+                <label class="field-label" for="msg-keys">Keywords</label>
+                <input class="input mono bad" id="msg-keys" value="gh, git hub" />
+                <div class="field-errors"><span class="msg msg-error">A keyword cannot contain a space.</span></div>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Why there is no bar and no icon</div>
+              <div class="spec-name" style="color: var(--text-dim); line-height: var(--lh-body); max-width: 52ch">The old .msg::before drew a coloured rule down the left of every message. Colour plus weight carries the tone, the wording carries the meaning, and the invalid input carries a red border &mdash; so the bar was decoration that only ever added a second thing to keep in sync.</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

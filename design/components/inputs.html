@@ -1,0 +1,135 @@
+<!-- @dsCard group="Components" -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Inputs and controls</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../components.css" />
+    <link rel="stylesheet" href="../preview.css" />
+    <style>
+      .is-focus { outline: 2px solid var(--ring); outline-offset: 2px; }
+    </style>
+  </head>
+  <body>
+    <main class="sheet">
+      <header class="sheet-head">
+        <h1 class="sheet-title">Inputs and controls</h1>
+        <p class="sheet-note">Inputs sit on the sunken fill with a --control-border edge, which is the token that exists to clear WCAG 1.4.11’s 3:1 for control edges. Focus is shown forced on.</p>
+      </header>
+      <div class="pair">
+        <section class="scheme">
+          <div class="scheme-label">Light</div>
+          <div class="scheme-body">
+            <div class="spec">
+              <div class="spec-name">Text</div>
+              <div class="spec-col" style="width: 100%">
+                <input class="input" style="width: 100%" value="GitHub" aria-label="Name" />
+                <input class="input" style="width: 100%" placeholder="What it does, in one line" aria-label="Description" />
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Mono — anything the user types that a machine reads back</div>
+              <div class="spec-col" style="width: 100%">
+                <input class="input mono" style="width: 100%" value="gh github" aria-label="Keys" />
+                <input class="input mono" style="width: 100%" value="https://github.com/search?q=%s" aria-label="Search URL" />
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Invalid — border plus a message, never a message alone</div>
+              <div class="spec-col" style="width: 100%">
+                <input class="input mono bad" style="width: 100%" value="git hub" aria-label="Keys" />
+                <span class="msg msg-error">A keyword cannot contain a space. Separate keywords with a comma.</span>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Select — one SVG chevron</div>
+              <select class="select" style="width: 100%" aria-label="Section">
+                <option>My shortcuts</option>
+                <option>Search</option>
+                <option selected>Developer</option>
+                <option>New section&hellip;</option>
+              </select>
+              <div class="spec-name">One data URI, not two stacked gradients. A data URI cannot resolve currentColor and light-dark() takes colours rather than images, so the stroke is a single #8a8a82 &mdash; 3.10:1 on the light sunken fill, 5.07:1 on the dark one.</div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Checkbox &mdash; &ldquo;include this in a set&rdquo;</div>
+              <label class="check"><input type="checkbox" checked /> <span>Intercept Google</span></label>
+              <label class="check"><input type="checkbox" /> <span>Intercept Bing</span></label>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Switch &mdash; &ldquo;this thing is on or off&rdquo;</div>
+              <div class="spec-row">
+                <label class="switch"><input type="checkbox" checked aria-label="Enable GitHub" /> <span>on</span></label>
+                <label class="switch"><input type="checkbox" aria-label="Enable Gradescope" /> <span>off</span></label>
+              </div>
+              <div class="spec-name">The two are not interchangeable. A checkbox picks members of a set (which engines to intercept, which packs to enable); a switch turns one shortcut on or off. The knob carries a 1px dark ring because it is --bg on a sand track when checked &mdash; 2.4:1 without it.</div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Focus</div>
+              <div class="spec-col" style="width: 100%">
+                <input class="input is-focus" style="width: 100%" value="GitHub" aria-label="Name focused" />
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="scheme dark">
+          <div class="scheme-label">Dark</div>
+          <div class="scheme-body">
+            <div class="spec">
+              <div class="spec-name">Text</div>
+              <div class="spec-col" style="width: 100%">
+                <input class="input" style="width: 100%" value="GitHub" aria-label="Name" />
+                <input class="input" style="width: 100%" placeholder="What it does, in one line" aria-label="Description" />
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Mono — anything the user types that a machine reads back</div>
+              <div class="spec-col" style="width: 100%">
+                <input class="input mono" style="width: 100%" value="gh github" aria-label="Keys" />
+                <input class="input mono" style="width: 100%" value="https://github.com/search?q=%s" aria-label="Search URL" />
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Invalid — border plus a message, never a message alone</div>
+              <div class="spec-col" style="width: 100%">
+                <input class="input mono bad" style="width: 100%" value="git hub" aria-label="Keys" />
+                <span class="msg msg-error">A keyword cannot contain a space. Separate keywords with a comma.</span>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Select — one SVG chevron</div>
+              <select class="select" style="width: 100%" aria-label="Section">
+                <option>My shortcuts</option>
+                <option>Search</option>
+                <option selected>Developer</option>
+                <option>New section&hellip;</option>
+              </select>
+              <div class="spec-name">One data URI, not two stacked gradients. A data URI cannot resolve currentColor and light-dark() takes colours rather than images, so the stroke is a single #8a8a82 &mdash; 3.10:1 on the light sunken fill, 5.07:1 on the dark one.</div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Checkbox &mdash; &ldquo;include this in a set&rdquo;</div>
+              <label class="check"><input type="checkbox" checked /> <span>Intercept Google</span></label>
+              <label class="check"><input type="checkbox" /> <span>Intercept Bing</span></label>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Switch &mdash; &ldquo;this thing is on or off&rdquo;</div>
+              <div class="spec-row">
+                <label class="switch"><input type="checkbox" checked aria-label="Enable GitHub" /> <span>on</span></label>
+                <label class="switch"><input type="checkbox" aria-label="Enable Gradescope" /> <span>off</span></label>
+              </div>
+              <div class="spec-name">The two are not interchangeable. A checkbox picks members of a set (which engines to intercept, which packs to enable); a switch turns one shortcut on or off. The knob carries a 1px dark ring because it is --bg on a sand track when checked &mdash; 2.4:1 without it.</div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Focus</div>
+              <div class="spec-col" style="width: 100%">
+                <input class="input is-focus" style="width: 100%" value="GitHub" aria-label="Name focused" />
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

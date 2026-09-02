@@ -1,0 +1,201 @@
+<!-- @dsCard group="Patterns" -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Welcome</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../components.css" />
+    <link rel="stylesheet" href="../preview.css" />
+    <style>
+      .welcome { max-width: 640px; margin: 0 auto; padding: var(--sp-9) var(--sp-7) 96px; display: flex; flex-direction: column; gap: var(--sp-7); }
+      .welcome h1 { margin: 0; font-size: var(--fs-20); font-weight: var(--fw-semibold); letter-spacing: -0.015em; }
+      .welcome p { margin: 0; font-size: var(--fs-13); line-height: var(--lh-body); color: var(--text-dim); max-width: 62ch; }
+      .picks { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--sp-4); }
+      .pick { display: grid; grid-template-columns: 14px 1fr; gap: var(--sp-4); align-items: start; padding: var(--sp-5); border: 1px solid var(--border); border-radius: var(--radius-2); cursor: pointer; }
+      .pick:hover { background: var(--bg-raised); }
+      .pick input { margin: 2px 0 0; width: 14px; height: 14px; accent-color: var(--accent); }
+      .pick-name { font-size: var(--fs-13); font-weight: var(--fw-medium); }
+      .pick-count { font-size: var(--fs-12); color: var(--text-dim); }
+      .pick-keys { display: block; font-family: var(--font-mono); font-size: var(--fs-11); color: var(--text-faint); margin-top: var(--sp-1); }
+      .optional-head { font-size: var(--fs-12); font-weight: var(--fw-medium); color: var(--text-dim); }
+      .escape { padding: var(--sp-5); border: 1px solid var(--border); border-radius: var(--radius-2); background: var(--bg-sunken); font-size: var(--fs-12); color: var(--text-dim); line-height: var(--lh-body); }
+      .escape code { font-family: var(--font-mono); color: var(--text); }
+    </style>
+  </head>
+  <body>
+    <main class="sheet screens">
+      <header class="sheet-head">
+        <h1 class="sheet-title">Welcome</h1>
+        <p class="sheet-note">Shown once, on install. Categories only, never individual shortcuts. Search, Developer and AI are pre-picked; Purdue is offered unchecked as an optional pack.</p>
+      </header>
+      <div class="pair stack">
+        <section class="scheme">
+          <div class="scheme-label">Light</div>
+          <div class="scheme-body flush">
+              <header class="topbar">
+                <div class="topbar-inner">
+                  <div class="brand"><h1 class="brand-name">BunnyLol</h1></div>
+                  <span class="status"><span class="status-dot"></span><span>Setting up&hellip;</span></span>
+                </div>
+              </header>
+              <div class="welcome">
+                <h1>Pick what BunnyLol should know</h1>
+                <p>Type a keyword in the address bar and BunnyLol takes you straight there. Turn on the groups you want. None of this is final &mdash; every shortcut can be edited, moved to another section, switched off or deleted, and you can come back to this screen from Settings.</p>
+                <div class="picks">
+                <label class="pick">
+                  <input type="checkbox" checked />
+                  <span>
+                    <span class="pick-name">Search</span><span class="pick-count"> &middot; 11 shortcuts</span>
+                    <span class="pick-keys">g &middot; ddg &middot; yt</span>
+                  </span>
+                </label>
+                <label class="pick">
+                  <input type="checkbox" checked />
+                  <span>
+                    <span class="pick-name">Developer</span><span class="pick-count"> &middot; 15 shortcuts</span>
+                    <span class="pick-keys">gh &middot; npm &middot; ghc</span>
+                  </span>
+                </label>
+                <label class="pick">
+                  <input type="checkbox" checked />
+                  <span>
+                    <span class="pick-name">AI</span><span class="pick-count"> &middot; 6 shortcuts</span>
+                    <span class="pick-keys">c &middot; gpt &middot; gem</span>
+                  </span>
+                </label>
+                <label class="pick">
+                  <input type="checkbox" />
+                  <span>
+                    <span class="pick-name">Google</span><span class="pick-count"> &middot; 10 shortcuts</span>
+                    <span class="pick-keys">gmail &middot; gcal &middot; gd</span>
+                  </span>
+                </label>
+                <label class="pick">
+                  <input type="checkbox" />
+                  <span>
+                    <span class="pick-name">Microsoft</span><span class="pick-count"> &middot; 8 shortcuts</span>
+                    <span class="pick-keys">outlook &middot; teams &middot; od</span>
+                  </span>
+                </label>
+                <label class="pick">
+                  <input type="checkbox" />
+                  <span>
+                    <span class="pick-name">Social</span><span class="pick-count"> &middot; 11 shortcuts</span>
+                    <span class="pick-keys">x &middot; ig &middot; li</span>
+                  </span>
+                </label>
+                <label class="pick">
+                  <input type="checkbox" />
+                  <span>
+                    <span class="pick-name">Productivity</span><span class="pick-count"> &middot; 17 shortcuts</span>
+                    <span class="pick-keys">notion &middot; linear &middot; figma</span>
+                  </span>
+                </label>
+                </div>
+                <div class="optional-head">Optional packs</div>
+                <div class="picks">
+                <label class="pick">
+                  <input type="checkbox" />
+                  <span>
+                    <span class="pick-name">Purdue</span><span class="pick-count"> &middot; 8 shortcuts</span>
+                    <span class="pick-keys">bs &middot; gs &middot; myp</span>
+                  </span>
+                </label>
+                </div>
+                <div class="escape">If a keyword collides with something you actually meant to search for, put a <code>\</code> in front of it &mdash; <code>\gh rust</code> searches instead of jumping. <code>=</code> does the opposite and forces the shortcut.</div>
+                <div class="spec-row">
+                  <button class="btn btn-primary" type="button">Continue</button>
+                  <button class="btn btn-ghost" type="button">Skip</button>
+                </div>
+                <p style="font-size: var(--fs-12); color: var(--text-faint)">Closing this tab keeps the starter set: Search, Developer and AI.</p>
+              </div>
+          </div>
+        </section>
+        <section class="scheme dark">
+          <div class="scheme-label">Dark</div>
+          <div class="scheme-body flush">
+              <header class="topbar">
+                <div class="topbar-inner">
+                  <div class="brand"><h1 class="brand-name">BunnyLol</h1></div>
+                  <span class="status"><span class="status-dot"></span><span>Setting up&hellip;</span></span>
+                </div>
+              </header>
+              <div class="welcome">
+                <h1>Pick what BunnyLol should know</h1>
+                <p>Type a keyword in the address bar and BunnyLol takes you straight there. Turn on the groups you want. None of this is final &mdash; every shortcut can be edited, moved to another section, switched off or deleted, and you can come back to this screen from Settings.</p>
+                <div class="picks">
+                <label class="pick">
+                  <input type="checkbox" checked />
+                  <span>
+                    <span class="pick-name">Search</span><span class="pick-count"> &middot; 11 shortcuts</span>
+                    <span class="pick-keys">g &middot; ddg &middot; yt</span>
+                  </span>
+                </label>
+                <label class="pick">
+                  <input type="checkbox" checked />
+                  <span>
+                    <span class="pick-name">Developer</span><span class="pick-count"> &middot; 15 shortcuts</span>
+                    <span class="pick-keys">gh &middot; npm &middot; ghc</span>
+                  </span>
+                </label>
+                <label class="pick">
+                  <input type="checkbox" checked />
+                  <span>
+                    <span class="pick-name">AI</span><span class="pick-count"> &middot; 6 shortcuts</span>
+                    <span class="pick-keys">c &middot; gpt &middot; gem</span>
+                  </span>
+                </label>
+                <label class="pick">
+                  <input type="checkbox" />
+                  <span>
+                    <span class="pick-name">Google</span><span class="pick-count"> &middot; 10 shortcuts</span>
+                    <span class="pick-keys">gmail &middot; gcal &middot; gd</span>
+                  </span>
+                </label>
+                <label class="pick">
+                  <input type="checkbox" />
+                  <span>
+                    <span class="pick-name">Microsoft</span><span class="pick-count"> &middot; 8 shortcuts</span>
+                    <span class="pick-keys">outlook &middot; teams &middot; od</span>
+                  </span>
+                </label>
+                <label class="pick">
+                  <input type="checkbox" />
+                  <span>
+                    <span class="pick-name">Social</span><span class="pick-count"> &middot; 11 shortcuts</span>
+                    <span class="pick-keys">x &middot; ig &middot; li</span>
+                  </span>
+                </label>
+                <label class="pick">
+                  <input type="checkbox" />
+                  <span>
+                    <span class="pick-name">Productivity</span><span class="pick-count"> &middot; 17 shortcuts</span>
+                    <span class="pick-keys">notion &middot; linear &middot; figma</span>
+                  </span>
+                </label>
+                </div>
+                <div class="optional-head">Optional packs</div>
+                <div class="picks">
+                <label class="pick">
+                  <input type="checkbox" />
+                  <span>
+                    <span class="pick-name">Purdue</span><span class="pick-count"> &middot; 8 shortcuts</span>
+                    <span class="pick-keys">bs &middot; gs &middot; myp</span>
+                  </span>
+                </label>
+                </div>
+                <div class="escape">If a keyword collides with something you actually meant to search for, put a <code>\</code> in front of it &mdash; <code>\gh rust</code> searches instead of jumping. <code>=</code> does the opposite and forces the shortcut.</div>
+                <div class="spec-row">
+                  <button class="btn btn-primary" type="button">Continue</button>
+                  <button class="btn btn-ghost" type="button">Skip</button>
+                </div>
+                <p style="font-size: var(--fs-12); color: var(--text-faint)">Closing this tab keeps the starter set: Search, Developer and AI.</p>
+              </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

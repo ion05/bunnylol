@@ -1,0 +1,617 @@
+<!-- @dsCard group="Patterns" -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Browse</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../components.css" />
+    <link rel="stylesheet" href="../preview.css" />
+    <style>
+      /* Preview only: one row is frozen in its hover state so the Edit / switch /
+         Delete cluster is visible in a still image. In the product the buttons
+         are opacity: 0 until :hover or :focus-within. */
+      .row.is-hover { background: var(--bg-raised); }
+      .row.is-hover .row-actions .btn { opacity: 1; }
+    </style>
+  </head>
+  <body>
+    <main class="sheet screens">
+      <header class="sheet-head">
+        <h1 class="sheet-title">Browse</h1>
+        <p class="sheet-note">The route you land on. Three sections open, six collapsed, one row held in its hover state so the actions show.</p>
+      </header>
+      <div class="pair stack">
+        <section class="scheme">
+          <div class="scheme-label">Light</div>
+          <div class="scheme-body flush">
+              <header class="topbar">
+                <div class="topbar-inner">
+                  <div class="brand"><h1 class="brand-name">BunnyLol</h1></div>
+                  <span class="status status-ok"><span class="status-dot"></span><span>All 14 keywords are intercepted.</span></span>
+                  <nav class="nav" aria-label="Sections">
+                    <a class="nav-link" aria-current="page" href="#help">Shortcuts</a>
+                    <a class="nav-link" href="#new">New shortcut</a>
+                    <a class="nav-link" href="#settings">Settings</a>
+                  </nav>
+                </div>
+              </header>
+              <div class="shell">
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2 class="panel-title">Shortcuts</h2>
+                    <p class="panel-sub">Type a keyword in the address bar. Anything after it is passed along as a query. Every shortcut here can be edited, moved, switched off or deleted.</p>
+                  </div>
+                  <div class="panel-body">
+                    <div class="toolbar">
+                      <input class="input" style="flex: 1 1 240px" type="search" placeholder="Filter shortcuts" aria-label="Filter shortcuts" />
+                      <span class="count">89 shortcuts</span>
+                      <span style="flex: 1"></span>
+                      <button class="btn btn-sm btn-ghost" type="button">Collapse all</button>
+                      <button class="btn btn-sm btn-ghost" type="button">Expand all</button>
+                    </div>
+                  <div class="group">
+                    <div class="group-head">
+                      <button class="group-toggle" type="button" aria-expanded="true">
+                        <span class="group-chevron"></span>
+                        <span class="group-title">My shortcuts</span>
+                        <span class="group-count">3</span>
+                      </button>
+                    </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">tix</span></div>
+                    <div class="row-body">
+                      <div class="row-name">Ticket<span class="badge">yours</span></div>
+                      <div class="row-desc">Open a Jira ticket by number.</div>
+                      <div class="row-url">jira.company.com/browse/%s</div>
+                      <div class="row-example">tix ENG-4210</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable Ticket" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">dash</span></div>
+                    <div class="row-body">
+                      <div class="row-name">Team dashboard<span class="badge">yours</span><span class="badge badge-quiet">omnibox only</span></div>
+                      <div class="row-desc">The on-call dashboard.</div>
+                      <div class="row-url">grafana.company.com/d/oncall</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable Team dashboard" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  <div class="row off">
+                    <div class="row-keys"><span class="chip">rev</span></div>
+                    <div class="row-body">
+                      <div class="row-name">Reviews waiting on me<span class="badge">yours</span><span class="badge badge-quiet">off</span></div>
+                      <div class="row-desc">Pull requests assigned for review.</div>
+                      <div class="row-url">github.com/pulls/review-requested</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" aria-label="Enable Reviews waiting on me" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  </div>
+                  <div class="group">
+                    <div class="group-head">
+                      <button class="group-toggle" type="button" aria-expanded="true">
+                        <span class="group-chevron"></span>
+                        <span class="group-title">Search</span>
+                        <span class="group-count">11</span>
+                      </button>
+                    </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">g</span><span class="chip">google</span></div>
+                    <div class="row-body">
+                      <div class="row-name">Google</div>
+                      <div class="row-desc">Plain Google search.</div>
+                      <div class="row-url">google.com/search?q=%s</div>
+                      <div class="row-example">g best mechanical keyboard</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable Google" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">ddg</span><span class="chip">duckduckgo</span></div>
+                    <div class="row-body">
+                      <div class="row-name">DuckDuckGo</div>
+                      <div class="row-desc">Search DuckDuckGo.</div>
+                      <div class="row-url">duckduckgo.com/?q=%s</div>
+                      <div class="row-example">ddg privacy focused browsers</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable DuckDuckGo" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  <div class="row is-hover">
+                    <div class="row-keys"><span class="chip">yt</span><span class="chip">youtube</span></div>
+                    <div class="row-body">
+                      <div class="row-name">YouTube</div>
+                      <div class="row-desc">Search YouTube, or jump to a channel with @handle.</div>
+                      <div class="row-url">youtube.com/results?search_query=%s</div>
+                      <div class="row-example">yt lofi beats</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable YouTube" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">wiki</span><span class="chip">w</span><span class="chip">wikipedia</span></div>
+                    <div class="row-body">
+                      <div class="row-name">Wikipedia</div>
+                      <div class="row-desc">Search English Wikipedia.</div>
+                      <div class="row-url">en.wikipedia.org/w/index.php?search=%s</div>
+                      <div class="row-example">wiki halting problem</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable Wikipedia" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">hn</span><span class="chip">hackernews</span></div>
+                    <div class="row-body">
+                      <div class="row-name">Hacker News</div>
+                      <div class="row-desc">Search Hacker News via Algolia.</div>
+                      <div class="row-url">hn.algolia.com/?q=%s</div>
+                      <div class="row-example">hn postgres full text search</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable Hacker News" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  </div>
+                  <div class="group">
+                    <div class="group-head">
+                      <button class="group-toggle" type="button" aria-expanded="true">
+                        <span class="group-chevron"></span>
+                        <span class="group-title">Developer</span>
+                        <span class="group-count">15</span>
+                      </button>
+                    </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">gh</span><span class="chip">github</span></div>
+                    <div class="row-body">
+                      <div class="row-name">GitHub</div>
+                      <div class="row-desc">Jump to a repo, a user, or search GitHub.</div>
+                      <div class="row-url">github.com/search?q=%s</div>
+                      <div class="row-example">gh facebook/react</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable GitHub" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">pr</span><span class="chip">prs</span></div>
+                    <div class="row-body">
+                      <div class="row-name">GitHub Pull Requests</div>
+                      <div class="row-desc">Your pull requests, or the open PRs for a repo.</div>
+                      <div class="row-url">github.com/pulls</div>
+                      <div class="row-example">pr vitejs/vite</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable GitHub Pull Requests" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">ghc</span><span class="chip">codesearch</span></div>
+                    <div class="row-body">
+                      <div class="row-name">GitHub Code Search</div>
+                      <div class="row-desc">Search code across GitHub.</div>
+                      <div class="row-url">github.com/search?type=code&amp;q=%s</div>
+                      <div class="row-example">ghc declarativeNetRequest addRules</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable GitHub Code Search" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">npm</span></div>
+                    <div class="row-body">
+                      <div class="row-name">npm<span class="badge">modified</span></div>
+                      <div class="row-desc">Jump to a package page or search npm.</div>
+                      <div class="row-url">npmjs.com/search?q=%s</div>
+                      <div class="row-example">npm zod</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable npm" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">regex</span><span class="chip">regex101</span></div>
+                    <div class="row-body">
+                      <div class="row-name">regex101</div>
+                      <div class="row-desc">Test a regular expression.</div>
+                      <div class="row-url">regex101.com</div>
+                      <div class="row-example">regex \d{3}-\d{4}</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable regex101" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  </div>
+                  <div class="group">
+                    <div class="group-head">
+                      <button class="group-toggle" type="button" aria-expanded="false">
+                        <span class="group-chevron"></span>
+                        <span class="group-title">AI</span>
+                        <span class="group-count">6</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="group">
+                    <div class="group-head">
+                      <button class="group-toggle" type="button" aria-expanded="false">
+                        <span class="group-chevron"></span>
+                        <span class="group-title">Google</span>
+                        <span class="group-count">10</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="group">
+                    <div class="group-head">
+                      <button class="group-toggle" type="button" aria-expanded="false">
+                        <span class="group-chevron"></span>
+                        <span class="group-title">Microsoft</span>
+                        <span class="group-count">8</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="group">
+                    <div class="group-head">
+                      <button class="group-toggle" type="button" aria-expanded="false">
+                        <span class="group-chevron"></span>
+                        <span class="group-title">Social</span>
+                        <span class="group-count">11</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="group">
+                    <div class="group-head">
+                      <button class="group-toggle" type="button" aria-expanded="false">
+                        <span class="group-chevron"></span>
+                        <span class="group-title">Productivity</span>
+                        <span class="group-count">17</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="group">
+                    <div class="group-head">
+                      <button class="group-toggle" type="button" aria-expanded="false">
+                        <span class="group-chevron"></span>
+                        <span class="group-title">Purdue</span>
+                        <span class="group-count">8</span>
+                      </button>
+                    </div>
+                  </div>
+                  </div>
+                </section>
+              </div>
+          </div>
+        </section>
+        <section class="scheme dark">
+          <div class="scheme-label">Dark</div>
+          <div class="scheme-body flush">
+              <header class="topbar">
+                <div class="topbar-inner">
+                  <div class="brand"><h1 class="brand-name">BunnyLol</h1></div>
+                  <span class="status status-ok"><span class="status-dot"></span><span>All 14 keywords are intercepted.</span></span>
+                  <nav class="nav" aria-label="Sections">
+                    <a class="nav-link" aria-current="page" href="#help">Shortcuts</a>
+                    <a class="nav-link" href="#new">New shortcut</a>
+                    <a class="nav-link" href="#settings">Settings</a>
+                  </nav>
+                </div>
+              </header>
+              <div class="shell">
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2 class="panel-title">Shortcuts</h2>
+                    <p class="panel-sub">Type a keyword in the address bar. Anything after it is passed along as a query. Every shortcut here can be edited, moved, switched off or deleted.</p>
+                  </div>
+                  <div class="panel-body">
+                    <div class="toolbar">
+                      <input class="input" style="flex: 1 1 240px" type="search" placeholder="Filter shortcuts" aria-label="Filter shortcuts" />
+                      <span class="count">89 shortcuts</span>
+                      <span style="flex: 1"></span>
+                      <button class="btn btn-sm btn-ghost" type="button">Collapse all</button>
+                      <button class="btn btn-sm btn-ghost" type="button">Expand all</button>
+                    </div>
+                  <div class="group">
+                    <div class="group-head">
+                      <button class="group-toggle" type="button" aria-expanded="true">
+                        <span class="group-chevron"></span>
+                        <span class="group-title">My shortcuts</span>
+                        <span class="group-count">3</span>
+                      </button>
+                    </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">tix</span></div>
+                    <div class="row-body">
+                      <div class="row-name">Ticket<span class="badge">yours</span></div>
+                      <div class="row-desc">Open a Jira ticket by number.</div>
+                      <div class="row-url">jira.company.com/browse/%s</div>
+                      <div class="row-example">tix ENG-4210</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable Ticket" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">dash</span></div>
+                    <div class="row-body">
+                      <div class="row-name">Team dashboard<span class="badge">yours</span><span class="badge badge-quiet">omnibox only</span></div>
+                      <div class="row-desc">The on-call dashboard.</div>
+                      <div class="row-url">grafana.company.com/d/oncall</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable Team dashboard" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  <div class="row off">
+                    <div class="row-keys"><span class="chip">rev</span></div>
+                    <div class="row-body">
+                      <div class="row-name">Reviews waiting on me<span class="badge">yours</span><span class="badge badge-quiet">off</span></div>
+                      <div class="row-desc">Pull requests assigned for review.</div>
+                      <div class="row-url">github.com/pulls/review-requested</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" aria-label="Enable Reviews waiting on me" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  </div>
+                  <div class="group">
+                    <div class="group-head">
+                      <button class="group-toggle" type="button" aria-expanded="true">
+                        <span class="group-chevron"></span>
+                        <span class="group-title">Search</span>
+                        <span class="group-count">11</span>
+                      </button>
+                    </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">g</span><span class="chip">google</span></div>
+                    <div class="row-body">
+                      <div class="row-name">Google</div>
+                      <div class="row-desc">Plain Google search.</div>
+                      <div class="row-url">google.com/search?q=%s</div>
+                      <div class="row-example">g best mechanical keyboard</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable Google" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">ddg</span><span class="chip">duckduckgo</span></div>
+                    <div class="row-body">
+                      <div class="row-name">DuckDuckGo</div>
+                      <div class="row-desc">Search DuckDuckGo.</div>
+                      <div class="row-url">duckduckgo.com/?q=%s</div>
+                      <div class="row-example">ddg privacy focused browsers</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable DuckDuckGo" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  <div class="row is-hover">
+                    <div class="row-keys"><span class="chip">yt</span><span class="chip">youtube</span></div>
+                    <div class="row-body">
+                      <div class="row-name">YouTube</div>
+                      <div class="row-desc">Search YouTube, or jump to a channel with @handle.</div>
+                      <div class="row-url">youtube.com/results?search_query=%s</div>
+                      <div class="row-example">yt lofi beats</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable YouTube" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">wiki</span><span class="chip">w</span><span class="chip">wikipedia</span></div>
+                    <div class="row-body">
+                      <div class="row-name">Wikipedia</div>
+                      <div class="row-desc">Search English Wikipedia.</div>
+                      <div class="row-url">en.wikipedia.org/w/index.php?search=%s</div>
+                      <div class="row-example">wiki halting problem</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable Wikipedia" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">hn</span><span class="chip">hackernews</span></div>
+                    <div class="row-body">
+                      <div class="row-name">Hacker News</div>
+                      <div class="row-desc">Search Hacker News via Algolia.</div>
+                      <div class="row-url">hn.algolia.com/?q=%s</div>
+                      <div class="row-example">hn postgres full text search</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable Hacker News" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  </div>
+                  <div class="group">
+                    <div class="group-head">
+                      <button class="group-toggle" type="button" aria-expanded="true">
+                        <span class="group-chevron"></span>
+                        <span class="group-title">Developer</span>
+                        <span class="group-count">15</span>
+                      </button>
+                    </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">gh</span><span class="chip">github</span></div>
+                    <div class="row-body">
+                      <div class="row-name">GitHub</div>
+                      <div class="row-desc">Jump to a repo, a user, or search GitHub.</div>
+                      <div class="row-url">github.com/search?q=%s</div>
+                      <div class="row-example">gh facebook/react</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable GitHub" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">pr</span><span class="chip">prs</span></div>
+                    <div class="row-body">
+                      <div class="row-name">GitHub Pull Requests</div>
+                      <div class="row-desc">Your pull requests, or the open PRs for a repo.</div>
+                      <div class="row-url">github.com/pulls</div>
+                      <div class="row-example">pr vitejs/vite</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable GitHub Pull Requests" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">ghc</span><span class="chip">codesearch</span></div>
+                    <div class="row-body">
+                      <div class="row-name">GitHub Code Search</div>
+                      <div class="row-desc">Search code across GitHub.</div>
+                      <div class="row-url">github.com/search?type=code&amp;q=%s</div>
+                      <div class="row-example">ghc declarativeNetRequest addRules</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable GitHub Code Search" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">npm</span></div>
+                    <div class="row-body">
+                      <div class="row-name">npm<span class="badge">modified</span></div>
+                      <div class="row-desc">Jump to a package page or search npm.</div>
+                      <div class="row-url">npmjs.com/search?q=%s</div>
+                      <div class="row-example">npm zod</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable npm" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="row-keys"><span class="chip">regex</span><span class="chip">regex101</span></div>
+                    <div class="row-body">
+                      <div class="row-name">regex101</div>
+                      <div class="row-desc">Test a regular expression.</div>
+                      <div class="row-url">regex101.com</div>
+                      <div class="row-example">regex \d{3}-\d{4}</div>
+                    </div>
+                    <div class="row-actions">
+                      <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                      <label class="switch"><input type="checkbox" checked aria-label="Enable regex101" /></label>
+                      <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                    </div>
+                  </div>
+                  </div>
+                  <div class="group">
+                    <div class="group-head">
+                      <button class="group-toggle" type="button" aria-expanded="false">
+                        <span class="group-chevron"></span>
+                        <span class="group-title">AI</span>
+                        <span class="group-count">6</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="group">
+                    <div class="group-head">
+                      <button class="group-toggle" type="button" aria-expanded="false">
+                        <span class="group-chevron"></span>
+                        <span class="group-title">Google</span>
+                        <span class="group-count">10</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="group">
+                    <div class="group-head">
+                      <button class="group-toggle" type="button" aria-expanded="false">
+                        <span class="group-chevron"></span>
+                        <span class="group-title">Microsoft</span>
+                        <span class="group-count">8</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="group">
+                    <div class="group-head">
+                      <button class="group-toggle" type="button" aria-expanded="false">
+                        <span class="group-chevron"></span>
+                        <span class="group-title">Social</span>
+                        <span class="group-count">11</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="group">
+                    <div class="group-head">
+                      <button class="group-toggle" type="button" aria-expanded="false">
+                        <span class="group-chevron"></span>
+                        <span class="group-title">Productivity</span>
+                        <span class="group-count">17</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="group">
+                    <div class="group-head">
+                      <button class="group-toggle" type="button" aria-expanded="false">
+                        <span class="group-chevron"></span>
+                        <span class="group-title">Purdue</span>
+                        <span class="group-count">8</span>
+                      </button>
+                    </div>
+                  </div>
+                  </div>
+                </section>
+              </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

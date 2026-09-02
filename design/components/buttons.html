@@ -1,0 +1,121 @@
+<!-- @dsCard group="Components" -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Buttons</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../components.css" />
+    <link rel="stylesheet" href="../preview.css" />
+    <style>
+      .is-focus { outline: 2px solid var(--ring); outline-offset: 2px; }
+    </style>
+  </head>
+  <body>
+    <main class="sheet">
+      <header class="sheet-head">
+        <h1 class="sheet-title">Buttons</h1>
+        <p class="sheet-note">Four families, one filled. Sizes are set by --btn-h / --btn-h-sm, never by padding alone. The focus ring is shown forced on; in the product it appears on :focus-visible only.</p>
+      </header>
+      <div class="pair">
+        <section class="scheme">
+          <div class="scheme-label">Light</div>
+          <div class="scheme-body">
+            <div class="spec">
+              <div class="spec-name">Families</div>
+              <div class="spec-row">
+                <button class="btn btn-primary" type="button">Save shortcut</button>
+                <button class="btn" type="button">Cancel</button>
+                <button class="btn btn-ghost" type="button">Reset</button>
+                <button class="btn btn-danger" type="button">Delete</button>
+              </div>
+              <div class="spec-name">Primary is the only filled button on a page. Sand fill with #1a1a1a text is 8.53:1; white on sand would be 2.04:1.</div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Armed — the second press of a destructive action</div>
+              <div class="spec-row">
+                <button class="btn btn-danger" type="button">Delete everything</button>
+                <span style="color: var(--text-decor)">&rarr;</span>
+                <button class="btn btn-armed" type="button">Really delete?</button>
+              </div>
+              <div class="spec-name">confirmButton arms on the first click and commits on the second. The red fill is the confirmation state, not decoration — nothing else on the page is filled red.</div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Small — row actions only</div>
+              <div class="spec-row">
+                <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                <button class="btn btn-sm" type="button">Restore</button>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Disabled — dimmed by colour, not opacity</div>
+              <div class="spec-row">
+                <button class="btn btn-primary" type="button" disabled>Save shortcut</button>
+                <button class="btn" type="button" disabled>Import</button>
+              </div>
+              <div class="spec-name">opacity: 0.5 also fades the border below 3:1 and cannot be measured. The disabled state sets colour and border-color instead.</div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Focus — one global ring, --accent-text</div>
+              <div class="spec-row">
+                <button class="btn btn-primary is-focus" type="button">Save shortcut</button>
+                <button class="btn is-focus" type="button">Cancel</button>
+              </div>
+              <div class="spec-name">6.26:1 in light, 9.11:1 in dark. The raw sand would have been 2.04:1 and illegal as a focus indicator.</div>
+            </div>
+          </div>
+        </section>
+        <section class="scheme dark">
+          <div class="scheme-label">Dark</div>
+          <div class="scheme-body">
+            <div class="spec">
+              <div class="spec-name">Families</div>
+              <div class="spec-row">
+                <button class="btn btn-primary" type="button">Save shortcut</button>
+                <button class="btn" type="button">Cancel</button>
+                <button class="btn btn-ghost" type="button">Reset</button>
+                <button class="btn btn-danger" type="button">Delete</button>
+              </div>
+              <div class="spec-name">Primary is the only filled button on a page. Sand fill with #1a1a1a text is 8.53:1; white on sand would be 2.04:1.</div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Armed — the second press of a destructive action</div>
+              <div class="spec-row">
+                <button class="btn btn-danger" type="button">Delete everything</button>
+                <span style="color: var(--text-decor)">&rarr;</span>
+                <button class="btn btn-armed" type="button">Really delete?</button>
+              </div>
+              <div class="spec-name">confirmButton arms on the first click and commits on the second. The red fill is the confirmation state, not decoration — nothing else on the page is filled red.</div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Small — row actions only</div>
+              <div class="spec-row">
+                <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+                <button class="btn btn-sm btn-ghost" type="button">Delete</button>
+                <button class="btn btn-sm" type="button">Restore</button>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Disabled — dimmed by colour, not opacity</div>
+              <div class="spec-row">
+                <button class="btn btn-primary" type="button" disabled>Save shortcut</button>
+                <button class="btn" type="button" disabled>Import</button>
+              </div>
+              <div class="spec-name">opacity: 0.5 also fades the border below 3:1 and cannot be measured. The disabled state sets colour and border-color instead.</div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Focus — one global ring, --accent-text</div>
+              <div class="spec-row">
+                <button class="btn btn-primary is-focus" type="button">Save shortcut</button>
+                <button class="btn is-focus" type="button">Cancel</button>
+              </div>
+              <div class="spec-name">6.26:1 in light, 9.11:1 in dark. The raw sand would have been 2.04:1 and illegal as a focus indicator.</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

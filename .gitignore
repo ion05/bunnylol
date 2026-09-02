@@ -6,3 +6,6 @@ dist/
 
 # Conductor machine-local settings (a shared .conductor/settings.toml stays tracked).
 .conductor/settings.local.toml
+
+# A 2.4 MB self-contained export that duplicates the artboards already in design/canvas/*.dc.html.
+design/canvas/bunnylol-redesign.html

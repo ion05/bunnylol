@@ -1,0 +1,390 @@
+<!-- @dsCard group="Foundations" -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Colours</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../components.css" />
+    <link rel="stylesheet" href="../preview.css" />
+    <style>
+      .swatches { display: flex; flex-direction: column; gap: var(--sp-4); }
+      .sw { display: grid; grid-template-columns: 40px 1fr; gap: var(--sp-5); align-items: center; }
+      .sw-chip { width: 40px; height: 40px; border-radius: var(--radius-1); border: 1px solid var(--border); }
+      .sw-meta { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+      .sw-name { font-family: var(--font-mono); font-size: var(--fs-12); color: var(--text); }
+      .sw-hex { font-family: var(--font-mono); font-size: var(--fs-11); color: var(--text-dim); }
+      .sw-note { font-size: var(--fs-11); color: var(--text-faint); }
+      .sw-text { font-size: var(--fs-14); font-weight: var(--fw-medium); }
+    </style>
+  </head>
+  <body>
+    <main class="sheet">
+      <header class="sheet-head">
+        <h1 class="sheet-title">Colours</h1>
+        <p class="sheet-note">Every token in tokens.css, with the contrast ratio it was chosen for. The accent exists as two tokens because #e1ab76 is 2.04:1 on white and cannot legally be text, a focus ring, or a state indicator in light mode.</p>
+      </header>
+      <div class="pair">
+        <section class="scheme">
+          <div class="scheme-label">Light</div>
+          <div class="scheme-body['']">
+            <div class="spec">
+              <div class="spec-name">Surfaces</div>
+              <div class="swatches">
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--bg)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--bg</span>
+                    <span class="sw-hex">#ffffff</span>
+                    <span class="sw-note">Page and panels.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--bg-raised)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--bg-raised</span>
+                    <span class="sw-hex">#fafaf9</span>
+                    <span class="sw-note">Hover fill.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--bg-sunken)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--bg-sunken</span>
+                    <span class="sw-hex">#f2f2f0</span>
+                    <span class="sw-note">Inputs, chips, code, selected row, toolbar strip.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--border)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--border</span>
+                    <span class="sw-hex">#e5e5e2</span>
+                    <span class="sw-note">1.26:1 — a hairline separator, never the edge of a control.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--border-strong)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--border-strong</span>
+                    <span class="sw-hex">#d3d3ce</span>
+                    <span class="sw-note">1.5:1 — heavier separator, disabled button edge.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--control-border)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--control-border</span>
+                    <span class="sw-hex">#8a8a82</span>
+                    <span class="sw-note">Control edges. 3.10:1 on --bg-sunken light, 4.07:1 dark — clears WCAG 1.4.11.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Text</div>
+              <div class="swatches">
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--text)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--text</span>
+                    <span class="sw-hex">#1a1a19</span>
+                    <span class="sw-note">17.42:1 light, 15.72:1 dark on --bg.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--text-dim)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--text-dim</span>
+                    <span class="sw-hex">#5b5b57</span>
+                    <span class="sw-note">6.82 / 7.33 on --bg; 6.08 / 6.94 on --bg-sunken.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--text-faint)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--text-faint</span>
+                    <span class="sw-hex">#6e6e68</span>
+                    <span class="sw-note">5.13 / 5.35 on --bg; 4.58 / 5.07 on --bg-sunken.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--text-decor)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--text-decor</span>
+                    <span class="sw-hex">#a3a39c</span>
+                    <span class="sw-note">Decorative marks only — the status dot, the preview arrow. Exempt from text contrast.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Accent</div>
+              <div class="swatches">
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--accent)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--accent</span>
+                    <span class="sw-hex">#e1ab76</span>
+                    <span class="sw-note">Fill only. 2.04:1 on white — never text, never a ring, never a state indicator.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--accent-hover)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--accent-hover</span>
+                    <span class="sw-hex">#d69b5d</span>
+                    <span class="sw-note">Hover fill for the primary button.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--accent-text)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--accent-text</span>
+                    <span class="sw-hex">#895420</span>
+                    <span class="sw-note">The readable half. 6.26:1 light, 9.11:1 dark on --bg. Same hue and saturation at half lightness.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--accent-fg)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--accent-fg</span>
+                    <span class="sw-hex">#1a1a1a</span>
+                    <span class="sw-note">Text on the sand fill: 8.53:1. White would be 2.04:1.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Semantic</div>
+              <div class="swatches">
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--ok)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--ok</span>
+                    <span class="sw-hex">#10794a</span>
+                    <span class="sw-note">5.45 light, 8.39 dark on --bg.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--warn)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--warn</span>
+                    <span class="sw-hex">#8a5d09</span>
+                    <span class="sw-note">5.75 light, 8.27 dark on --bg.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--danger)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--danger</span>
+                    <span class="sw-hex">#b83228</span>
+                    <span class="sw-note">5.96 light, 6.77 dark on --bg.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--danger-fg)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--danger-fg</span>
+                    <span class="sw-hex">#ffffff</span>
+                    <span class="sw-note">Armed confirm button only. 5.96:1 on --danger.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">In use</div>
+              <p class="sw-text" style="margin: 0">Text on the page background.</p>
+              <p class="sw-text" style="margin: 0; color: var(--text-dim)">Dim text: descriptions, labels, counts.</p>
+              <p class="sw-text" style="margin: 0; color: var(--text-faint)">Faint text: hints, URLs, examples.</p>
+              <p class="sw-text" style="margin: 0; color: var(--accent-text)">Accent text: links, the keyword mark, the active nav underline.</p>
+              <p class="sw-text" style="margin: 0; color: var(--ok)">Everything is intercepted.</p>
+              <p class="sw-text" style="margin: 0; color: var(--warn)">Some keywords are not intercepted.</p>
+              <p class="sw-text" style="margin: 0; color: var(--danger)">Could not write the rules.</p>
+            </div>
+          </div>
+        </section>
+        <section class="scheme dark">
+          <div class="scheme-label">Dark</div>
+          <div class="scheme-body['']">
+            <div class="spec">
+              <div class="spec-name">Surfaces</div>
+              <div class="swatches">
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--bg)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--bg</span>
+                    <span class="sw-hex">#131312</span>
+                    <span class="sw-note">Page and panels.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--bg-raised)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--bg-raised</span>
+                    <span class="sw-hex">#1c1c1a</span>
+                    <span class="sw-note">Hover fill.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--bg-sunken)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--bg-sunken</span>
+                    <span class="sw-hex">#191917</span>
+                    <span class="sw-note">Inputs, chips, code, selected row, toolbar strip.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--border)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--border</span>
+                    <span class="sw-hex">#2a2a27</span>
+                    <span class="sw-note">1.26:1 — a hairline separator, never the edge of a control.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--border-strong)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--border-strong</span>
+                    <span class="sw-hex">#3a3a36</span>
+                    <span class="sw-note">1.5:1 — heavier separator, disabled button edge.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--control-border)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--control-border</span>
+                    <span class="sw-hex">#7a7a72</span>
+                    <span class="sw-note">Control edges. 3.10:1 on --bg-sunken light, 4.07:1 dark — clears WCAG 1.4.11.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Text</div>
+              <div class="swatches">
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--text)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--text</span>
+                    <span class="sw-hex">#ececea</span>
+                    <span class="sw-note">17.42:1 light, 15.72:1 dark on --bg.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--text-dim)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--text-dim</span>
+                    <span class="sw-hex">#a3a39c</span>
+                    <span class="sw-note">6.82 / 7.33 on --bg; 6.08 / 6.94 on --bg-sunken.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--text-faint)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--text-faint</span>
+                    <span class="sw-hex">#8a8a83</span>
+                    <span class="sw-note">5.13 / 5.35 on --bg; 4.58 / 5.07 on --bg-sunken.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--text-decor)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--text-decor</span>
+                    <span class="sw-hex">#6a6a63</span>
+                    <span class="sw-note">Decorative marks only — the status dot, the preview arrow. Exempt from text contrast.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Accent</div>
+              <div class="swatches">
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--accent)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--accent</span>
+                    <span class="sw-hex">#e1ab76</span>
+                    <span class="sw-note">Fill only. 2.04:1 on white — never text, never a ring, never a state indicator.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--accent-hover)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--accent-hover</span>
+                    <span class="sw-hex">#eab98a</span>
+                    <span class="sw-note">Hover fill for the primary button.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--accent-text)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--accent-text</span>
+                    <span class="sw-hex">#e1ab76</span>
+                    <span class="sw-note">The readable half. 6.26:1 light, 9.11:1 dark on --bg. Same hue and saturation at half lightness.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--accent-fg)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--accent-fg</span>
+                    <span class="sw-hex">#1a1a1a</span>
+                    <span class="sw-note">Text on the sand fill: 8.53:1. White would be 2.04:1.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Semantic</div>
+              <div class="swatches">
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--ok)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--ok</span>
+                    <span class="sw-hex">#4cc38a</span>
+                    <span class="sw-note">5.45 light, 8.39 dark on --bg.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--warn)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--warn</span>
+                    <span class="sw-hex">#d9a441</span>
+                    <span class="sw-note">5.75 light, 8.27 dark on --bg.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--danger)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--danger</span>
+                    <span class="sw-hex">#f0796b</span>
+                    <span class="sw-note">5.96 light, 6.77 dark on --bg.</span>
+                  </div>
+                </div>
+                <div class="sw">
+                  <div class="sw-chip" style="background: var(--danger-fg)"></div>
+                  <div class="sw-meta">
+                    <span class="sw-name">--danger-fg</span>
+                    <span class="sw-hex">#1b0f0d</span>
+                    <span class="sw-note">Armed confirm button only. 5.96:1 on --danger.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">In use</div>
+              <p class="sw-text" style="margin: 0">Text on the page background.</p>
+              <p class="sw-text" style="margin: 0; color: var(--text-dim)">Dim text: descriptions, labels, counts.</p>
+              <p class="sw-text" style="margin: 0; color: var(--text-faint)">Faint text: hints, URLs, examples.</p>
+              <p class="sw-text" style="margin: 0; color: var(--accent-text)">Accent text: links, the keyword mark, the active nav underline.</p>
+              <p class="sw-text" style="margin: 0; color: var(--ok)">Everything is intercepted.</p>
+              <p class="sw-text" style="margin: 0; color: var(--warn)">Some keywords are not intercepted.</p>
+              <p class="sw-text" style="margin: 0; color: var(--danger)">Could not write the rules.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

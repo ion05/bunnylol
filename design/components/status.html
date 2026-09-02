@@ -1,0 +1,66 @@
+<!-- @dsCard group="Components" -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Status</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../components.css" />
+    <link rel="stylesheet" href="../preview.css" />
+  </head>
+  <body>
+    <main class="sheet">
+      <header class="sheet-head">
+        <h1 class="sheet-title">Status</h1>
+        <p class="sheet-note">Text plus a 6px dot. No background, no border, no radius — the tinted capsule is gone. PILL_CLASS in src/options/status.ts stays the single tone → appearance seam.</p>
+      </header>
+      <div class="pair">
+        <section class="scheme">
+          <div class="scheme-label">Light</div>
+          <div class="scheme-body">
+            <div class="spec">
+              <div class="spec-name">The four tones status.ts can emit</div>
+              <div class="spec-col">
+                <span class="status"><span class="status-dot"></span><span>Checking interception&hellip;</span></span>
+                <span class="status status-ok"><span class="status-dot"></span><span>All 12 keywords are intercepted.</span></span>
+                <span class="status status-warn"><span class="status-dot"></span><span>9 of 12 keywords are intercepted.</span></span>
+                <span class="status status-bad"><span class="status-dot"></span><span>Could not write the redirect rules.</span></span>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">With detail &mdash; truncated to one line</div>
+              <span class="status status-bad"><span class="status-dot"></span><span>Could not write the redirect rules.<span class="status-detail">Declarative Net Request rejected rule id 41: duplicate id in the same batch</span></span></span>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Why there is no capsule</div>
+              <div class="spec-name" style="color: var(--text-dim); line-height: var(--lh-body); max-width: 52ch">A tinted pill was the loudest AI-tell in the audit. The text already names the state, so the dot is decorative and may use --text-decor for the neutral case; the warn and bad tones change colour <em>and</em> weight, so the state is never carried by colour alone.</div>
+            </div>
+          </div>
+        </section>
+        <section class="scheme dark">
+          <div class="scheme-label">Dark</div>
+          <div class="scheme-body">
+            <div class="spec">
+              <div class="spec-name">The four tones status.ts can emit</div>
+              <div class="spec-col">
+                <span class="status"><span class="status-dot"></span><span>Checking interception&hellip;</span></span>
+                <span class="status status-ok"><span class="status-dot"></span><span>All 12 keywords are intercepted.</span></span>
+                <span class="status status-warn"><span class="status-dot"></span><span>9 of 12 keywords are intercepted.</span></span>
+                <span class="status status-bad"><span class="status-dot"></span><span>Could not write the redirect rules.</span></span>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">With detail &mdash; truncated to one line</div>
+              <span class="status status-bad"><span class="status-dot"></span><span>Could not write the redirect rules.<span class="status-detail">Declarative Net Request rejected rule id 41: duplicate id in the same batch</span></span></span>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Why there is no capsule</div>
+              <div class="spec-name" style="color: var(--text-dim); line-height: var(--lh-body); max-width: 52ch">A tinted pill was the loudest AI-tell in the audit. The text already names the state, so the dot is decorative and may use --text-decor for the neutral case; the warn and bad tones change colour <em>and</em> weight, so the state is never carried by colour alone.</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

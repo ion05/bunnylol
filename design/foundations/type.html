@@ -1,0 +1,139 @@
+<!-- @dsCard group="Foundations" -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Type</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../components.css" />
+    <link rel="stylesheet" href="../preview.css" />
+    <style>
+      .t-row { display: grid; grid-template-columns: 92px 1fr; gap: var(--sp-5); align-items: baseline; }
+      .t-tok { font-family: var(--font-mono); font-size: var(--fs-11); color: var(--text-faint); }
+      .t-use { font-size: var(--fs-11); color: var(--text-faint); }
+    </style>
+  </head>
+  <body>
+    <main class="sheet">
+      <header class="sheet-head">
+        <h1 class="sheet-title">Type</h1>
+        <p class="sheet-note">Inter, bundled as a variable woff2 with a latin unicode-range. Six sizes, three weights, two line heights. No fractional sizes — the audit found 13.5px and 12.5px drifting across three stylesheets.</p>
+      </header>
+      <div class="pair">
+        <section class="scheme">
+          <div class="scheme-label">Light</div>
+          <div class="scheme-body">
+            <div class="spec">
+              <div class="spec-name">Scale — six sizes, no fractional values</div>
+              <div class="t-row">
+                <span class="t-tok">--fs-20<br />20px</span>
+                <div><div style="font-size: var(--fs-20)">Ask Claude, or open a new chat.</div><div class="t-use">Page title on the welcome screen. Nothing else.</div></div>
+              </div>
+              <div class="t-row">
+                <span class="t-tok">--fs-16<br />16px</span>
+                <div><div style="font-size: var(--fs-16)">Ask Claude, or open a new chat.</div><div class="t-use">The dispatch error page heading.</div></div>
+              </div>
+              <div class="t-row">
+                <span class="t-tok">--fs-14<br />14px</span>
+                <div><div style="font-size: var(--fs-14)">Ask Claude, or open a new chat.</div><div class="t-use">Wordmark, panel titles, the popup query input.</div></div>
+              </div>
+              <div class="t-row">
+                <span class="t-tok">--fs-13<br />13px</span>
+                <div><div style="font-size: var(--fs-13)">Ask Claude, or open a new chat.</div><div class="t-use">Body. Row names, buttons, inputs, nav.</div></div>
+              </div>
+              <div class="t-row">
+                <span class="t-tok">--fs-12<br />12px</span>
+                <div><div style="font-size: var(--fs-12)">Ask Claude, or open a new chat.</div><div class="t-use">Descriptions, labels, counts, badges, chips, hints.</div></div>
+              </div>
+              <div class="t-row">
+                <span class="t-tok">--fs-11<br />11px</span>
+                <div><div style="font-size: var(--fs-11)">Ask Claude, or open a new chat.</div><div class="t-use">URLs, examples, the popup footer, the "yours" badge.</div></div>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Weights — three, and the reason for each</div>
+              <div class="t-row">
+                <span class="t-tok">--fw-regular<br />400</span>
+                <div><div style="font-weight: var(--fw-regular); font-size: var(--fs-14)">Shortcuts that resolve nowhere</div><div class="t-use">Everything by default, and the "yours" badge.</div></div>
+              </div>
+              <div class="t-row">
+                <span class="t-tok">--fw-medium<br />500</span>
+                <div><div style="font-weight: var(--fw-medium); font-size: var(--fs-14)">Shortcuts that resolve nowhere</div><div class="t-use">Row names, buttons, field labels, nav links, the warn/error state.</div></div>
+              </div>
+              <div class="t-row">
+                <span class="t-tok">--fw-semibold<br />600</span>
+                <div><div style="font-weight: var(--fw-semibold); font-size: var(--fs-14)">Shortcuts that resolve nowhere</div><div class="t-use">The wordmark, panel titles, the active nav link, the popup keyword mark.</div></div>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Mono — keywords, URLs and code only</div>
+              <div class="t-row"><span class="t-tok">--font-mono</span><div><div style="font-family: var(--font-mono); font-size: var(--fs-12)">gh · claude · gcal · https://claude.ai/new?q=%s</div><div class="t-use">Keyword chips, destination URLs, the popup key column, the export block.</div></div></div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Line height</div>
+              <div class="t-row"><span class="t-tok">--lh-tight<br />1.3</span><div style="max-width: 42ch; line-height: var(--lh-tight)">Headings and single-line controls, where a taller line only adds slack.</div></div>
+              <div class="t-row"><span class="t-tok">--lh-body<br />1.45</span><div style="max-width: 42ch; line-height: var(--lh-body)">Running text — panel subtitles, hints, the welcome copy and the message lines, which are the only places a paragraph ever wraps.</div></div>
+            </div>
+          </div>
+        </section>
+        <section class="scheme dark">
+          <div class="scheme-label">Dark</div>
+          <div class="scheme-body">
+            <div class="spec">
+              <div class="spec-name">Scale — six sizes, no fractional values</div>
+              <div class="t-row">
+                <span class="t-tok">--fs-20<br />20px</span>
+                <div><div style="font-size: var(--fs-20)">Ask Claude, or open a new chat.</div><div class="t-use">Page title on the welcome screen. Nothing else.</div></div>
+              </div>
+              <div class="t-row">
+                <span class="t-tok">--fs-16<br />16px</span>
+                <div><div style="font-size: var(--fs-16)">Ask Claude, or open a new chat.</div><div class="t-use">The dispatch error page heading.</div></div>
+              </div>
+              <div class="t-row">
+                <span class="t-tok">--fs-14<br />14px</span>
+                <div><div style="font-size: var(--fs-14)">Ask Claude, or open a new chat.</div><div class="t-use">Wordmark, panel titles, the popup query input.</div></div>
+              </div>
+              <div class="t-row">
+                <span class="t-tok">--fs-13<br />13px</span>
+                <div><div style="font-size: var(--fs-13)">Ask Claude, or open a new chat.</div><div class="t-use">Body. Row names, buttons, inputs, nav.</div></div>
+              </div>
+              <div class="t-row">
+                <span class="t-tok">--fs-12<br />12px</span>
+                <div><div style="font-size: var(--fs-12)">Ask Claude, or open a new chat.</div><div class="t-use">Descriptions, labels, counts, badges, chips, hints.</div></div>
+              </div>
+              <div class="t-row">
+                <span class="t-tok">--fs-11<br />11px</span>
+                <div><div style="font-size: var(--fs-11)">Ask Claude, or open a new chat.</div><div class="t-use">URLs, examples, the popup footer, the "yours" badge.</div></div>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Weights — three, and the reason for each</div>
+              <div class="t-row">
+                <span class="t-tok">--fw-regular<br />400</span>
+                <div><div style="font-weight: var(--fw-regular); font-size: var(--fs-14)">Shortcuts that resolve nowhere</div><div class="t-use">Everything by default, and the "yours" badge.</div></div>
+              </div>
+              <div class="t-row">
+                <span class="t-tok">--fw-medium<br />500</span>
+                <div><div style="font-weight: var(--fw-medium); font-size: var(--fs-14)">Shortcuts that resolve nowhere</div><div class="t-use">Row names, buttons, field labels, nav links, the warn/error state.</div></div>
+              </div>
+              <div class="t-row">
+                <span class="t-tok">--fw-semibold<br />600</span>
+                <div><div style="font-weight: var(--fw-semibold); font-size: var(--fs-14)">Shortcuts that resolve nowhere</div><div class="t-use">The wordmark, panel titles, the active nav link, the popup keyword mark.</div></div>
+              </div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Mono — keywords, URLs and code only</div>
+              <div class="t-row"><span class="t-tok">--font-mono</span><div><div style="font-family: var(--font-mono); font-size: var(--fs-12)">gh · claude · gcal · https://claude.ai/new?q=%s</div><div class="t-use">Keyword chips, destination URLs, the popup key column, the export block.</div></div></div>
+            </div>
+            <div class="spec">
+              <div class="spec-name">Line height</div>
+              <div class="t-row"><span class="t-tok">--lh-tight<br />1.3</span><div style="max-width: 42ch; line-height: var(--lh-tight)">Headings and single-line controls, where a taller line only adds slack.</div></div>
+              <div class="t-row"><span class="t-tok">--lh-body<br />1.45</span><div style="max-width: 42ch; line-height: var(--lh-body)">Running text — panel subtitles, hints, the welcome copy and the message lines, which are the only places a paragraph ever wraps.</div></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

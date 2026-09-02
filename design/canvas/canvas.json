@@ -1,0 +1,18 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html",        "title": "Browse",     "x": 0,    "y": 0,    "w": 1000, "h": 1180 },
+    { "file": "EditForm.dc.html",    "title": "Edit form",  "x": 1080, "y": 0,    "w": 1000, "h": 1180 },
+    { "file": "Settings.dc.html",    "title": "Settings",   "x": 2160, "y": 0,    "w": 1000, "h": 1560 },
+    { "file": "Welcome.dc.html",     "title": "Welcome",    "x": 0,    "y": 1660, "w": 1000, "h": 1080 },
+    { "file": "Popup.dc.html",       "title": "Popup",      "x": 1080, "y": 1660, "w": 460,  "h": 900 },
+    { "file": "Dispatch.dc.html",    "title": "Dispatch",   "x": 1620, "y": 1660, "w": 900,  "h": 700 },
+    { "file": "Foundations.dc.html", "title": "Foundations","x": 2600, "y": 1660, "w": 1000, "h": 2000 }
+  ],
+  "annotations": [
+    { "id": "accent-note", "x": 0, "y": -180, "w": 460,
+      "text": "Every artboard has a light/dark switch in the tweak row above it.\n\nOne accent, two tokens: #e1ab76 is a FILL only (2.04:1 on white). #895420 is the readable half, used for links, the keyword mark, the nav underline and the focus ring." },
+    { "id": "flat-note", "x": 520, "y": -180, "w": 460,
+      "text": "No shadow token exists. Surfaces are separated by a 1px border or a sunken fill. Nothing dims by opacity — rows, disabled buttons and the dispatch page all set a colour instead." }
+  ],
+  "launch": { "view": "canvas" }
+}
