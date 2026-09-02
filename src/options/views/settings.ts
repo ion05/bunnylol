@@ -345,7 +345,10 @@ export function renderSections(): HTMLElement {
           members === 0
             ? 'Click again — the section is empty'
             : `Click again — ${moves} to ${fallbackLabel()}`,
-          'btn btn-sm btn-danger',
+          // Ghost, like every other row action: the red belongs to the armed
+          // state `confirmButton` adds, not to a button that has not been
+          // asked to do anything yet.
+          'btn btn-sm btn-ghost',
           () => commit(deleteSection(getState().overrides, id)),
         ),
       );

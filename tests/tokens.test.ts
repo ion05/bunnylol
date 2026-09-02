@@ -341,6 +341,70 @@ describe('the options page implements the approved component contract', () => {
     expect(armed).toBeGreaterThan(ruleIndex(optionsCss, '.btn-danger:hover'));
   });
 
+  it('states a message with colour and weight, not with a bar or an icon', () => {
+    // `.msg::before` drew a 3px rule down the left of every message. The tone is
+    // the colour and the weight, the wording is the meaning, and an invalid
+    // input already carries its own red border — the bar was a second thing to
+    // keep in sync that said nothing the message did not.
+    expect(options).not.toMatch(/\.msg::(?:before|after)/);
+    const [msg, ...more] = rulesFor(optionsCss, '.msg');
+    expect(more).toEqual([]);
+    expect(msg).toMatch(/display:\s*block/);
+    // Colour alone would be the whole signal otherwise. Both tones that mean
+    // something went wrong carry the weight; `.msg-ok` is the absence of a
+    // problem and has nothing to state twice.
+    for (const selector of ['.msg-error', '.msg-warn']) {
+      expect([selector, rulesFor(optionsCss, selector)]).toEqual([
+        selector,
+        [expect.stringMatching(/font-weight:\s*var\(--fw-medium\)/)],
+      ]);
+    }
+  });
+
+  it('outlines the blocks on the form, settings and data routes instead of tinting them', () => {
+    // Every one of these was a tint: the preview and the import choice sat on
+    // --bg-raised behind a color-mix(--accent 30%) hairline, and the danger zone
+    // was a red box. A block is a 1px border on the sunken fill, or on nothing.
+    for (const [selector, fill] of [
+      ['.preview', 'var(--bg-sunken)'],
+      ['.import-choice', 'var(--bg-sunken)'],
+      ['.code-block', 'var(--bg-sunken)'],
+      ['.escape', 'var(--bg-sunken)'],
+      ['.danger-zone', 'none'],
+    ] as const) {
+      const [rule, ...extra] = rulesFor(optionsCss, selector);
+      expect([selector, extra]).toEqual([selector, []]);
+      expect([selector, rule]).toEqual([
+        selector,
+        expect.stringMatching(new RegExp(`background:\\s*${fill.replace(/[()-]/g, '\\$&')}`)),
+      ]);
+      expect([selector, rule]).toEqual([
+        selector,
+        expect.stringMatching(/border:\s*1px solid var\(--border(?:-strong)?\)/),
+      ]);
+    }
+    // There is no -soft companion to build a tinted surface out of.
+    expect(options).not.toMatch(/--(?:accent|ok|warn|danger|bg)-soft/);
+  });
+
+  it('names the wide field the way the contract does', () => {
+    // The contract's modifier is `.field.wide`; the sheet carried `.field-wide`,
+    // which is a different class and would have gone on styling nothing the day
+    // a view was written against the contract's markup instead.
+    expect(selectors).toContain('.field.wide');
+    expect(options).not.toContain('.field-wide');
+    for (const [file, source] of Object.entries(CLASS_SOURCES)) {
+      expect([file, source.includes('field-wide')]).toEqual([file, false]);
+    }
+  });
+
+  it('takes every font weight from the scale', () => {
+    // 550 and 650 are steps the scale does not have — a variable font will draw
+    // them, which is exactly why they survived unnoticed between --fw-medium
+    // and --fw-semibold. (popup.css joins this sweep with the popup restyle.)
+    expect(stripComments(optionsCss)).not.toMatch(/font-weight:(?!\s*var\(--fw-)/);
+  });
+
   it('has no shim or dead rule left from the pre-contract vocabulary', () => {
     // `.badge-mod` existed only to undo the old uppercase `.badge`; `.brand-tag`
     // was the lowercase tagline under the wordmark.

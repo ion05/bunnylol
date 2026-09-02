@@ -29,7 +29,7 @@ h1,
 h2,
 h3 {
   margin: 0;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   letter-spacing: -0.01em;
 }
 
@@ -678,23 +678,26 @@ a {
 .form {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: var(--sp-6);
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: var(--sp-2);
   min-width: 0;
 }
 
-.field-wide {
+.field.wide {
   grid-column: 1 / -1;
 }
 
+/* Quieter than the value it labels: the field's own text is what the user
+   reads, and a label at the same weight competes with it. */
 .field-label {
-  font-size: var(--fs-13);
-  font-weight: 550;
+  font-size: var(--fs-12);
+  font-weight: var(--fw-medium);
+  color: var(--text-dim);
 }
 
 .field-hint {
@@ -746,27 +749,28 @@ a {
   cursor: pointer;
 }
 
+/* No bar and no icon. The colour and the weight carry the tone, the wording
+   carries the meaning, and an invalid input carries its own red border — the
+   3px rule `.msg::before` used to draw was a second thing to keep in sync that
+   said nothing the message did not already say. */
 .msg {
-  display: flex;
-  gap: 7px;
+  display: block;
   font-size: var(--fs-12);
   line-height: var(--lh-body);
 }
 
-.msg::before {
-  content: '';
-  flex: none;
-  width: 3px;
-  border-radius: 2px;
-  background: currentcolor;
-}
-
 .msg-error {
   color: var(--danger);
+  font-weight: var(--fw-medium);
 }
 
+/* Weight as well as colour: "state is never colour alone", and a warning that
+   differs from the paragraph beside it only in hue is exactly that.
+   design/components.css sets colour only here; design/README.md is the
+   authority and rule 4 is explicit about warn and error, so it wins. */
 .msg-warn {
   color: var(--warn);
+  font-weight: var(--fw-medium);
 }
 
 .msg-ok {
@@ -777,7 +781,7 @@ a {
 .field-errors {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-3);
 }
 
 .field-errors:empty {
@@ -787,8 +791,8 @@ a {
 .form-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding-top: 2px;
+  gap: var(--sp-4);
+  padding-top: var(--sp-2);
 }
 
 .form-actions .spacer {
@@ -806,38 +810,42 @@ a {
 .preview {
   border: 1px solid var(--border);
   border-radius: var(--radius-2);
-  background: var(--bg-raised);
+  background: var(--bg-sunken);
   overflow: hidden;
 }
 
 .preview-head {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
+  gap: var(--sp-5);
+  padding: var(--sp-4) var(--sp-5);
   border-bottom: 1px solid var(--border);
 }
 
+/* Sentence case: an uppercased, letter-spaced label is a heading shouting at
+   the two lines it is only naming. */
 .preview-head h3 {
   font-size: var(--fs-12);
-  font-weight: 650;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--text-dim);
   margin-right: auto;
 }
 
+/* Not in the contract's specimen, which previews a static shortcut: the
+   product's preview is live, so the head carries the input that feeds it. */
 .preview-sample {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-4);
   font-size: var(--fs-12);
   color: var(--text-dim);
 }
 
 .preview-sample .input {
   width: 210px;
-  padding: 4px 8px;
+  height: var(--control-h-sm);
   font-size: var(--fs-12);
 }
 
@@ -846,12 +854,15 @@ a {
   flex-direction: column;
 }
 
+/* A grid rather than the contract's flex row: the product previews two typed
+   queries at once, and the arrows only line up under each other if the typed
+   column is one width for both. */
 .preview-row {
   display: grid;
   grid-template-columns: minmax(0, 34%) 14px minmax(0, 1fr);
   align-items: baseline;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
   border-top: 1px solid var(--border);
   font-family: var(--font-mono);
   font-size: var(--fs-12);
@@ -870,6 +881,9 @@ a {
   color: var(--text-decor);
 }
 
+/* Wrapped, where the contract's specimen ellipsises: the whole point of the
+   live preview is the query string the handler built, and that is the end of
+   the URL — the half an ellipsis would hide. */
 .preview-url {
   color: var(--text-dim);
   overflow-wrap: anywhere;
@@ -884,20 +898,26 @@ a {
 .checks {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 18px;
+  gap: var(--sp-4) var(--sp-7);
 }
 
+/* A checkbox means "include this in a set" — which engines to intercept, which
+   packs to enable. A switch means "this thing is on or off" (a shortcut). Do
+   not swap one for the other. Centred rather than the contract's `flex-start`
+   because every label here is one line, so the box lines up with the text
+   instead of hanging above it. */
 .check {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: var(--fs-14);
+  gap: var(--sp-4);
+  font-size: var(--fs-13);
   cursor: pointer;
 }
 
 .check input {
-  width: 16px;
-  height: 16px;
+  flex: none;
+  width: 14px;
+  height: 14px;
   margin: 0;
   /* A fill, not a mark: accent-color paints the box and the browser draws the
      check in a contrasting colour itself, so --accent applies. Per
@@ -910,26 +930,26 @@ a {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-3);
 }
 
 .chip-removable {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding-right: 2px;
+  gap: var(--sp-1);
+  padding-right: var(--sp-1);
 }
 
 .chip-x {
   appearance: none;
-  padding: 0 4px;
+  padding: 0 var(--sp-2);
   border: 0;
-  border-radius: 4px;
-  background: transparent;
+  border-radius: var(--radius-1);
+  background: none;
   color: var(--text-dim);
   font: inherit;
-  font-size: var(--fs-13);
-  line-height: 1.2;
+  font-size: var(--fs-12);
+  line-height: 1;
   cursor: pointer;
 }
 
@@ -942,34 +962,39 @@ a {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 10px;
+  gap: var(--sp-4);
 }
 
 .stop-add .field {
   flex: 1 1 240px;
 }
 
-/* Lines the buttons up with the input rather than with its label. */
+/* Lines the buttons up with the input rather than with its label: the nearest
+   step on the scale to the label's line box plus the field gap. */
 .stop-add .btn-row {
-  padding-top: 25px;
+  padding-top: var(--sp-7);
 }
 
+/* Outlined on the sunken fill, like every other block on these two routes. The
+   old tinted border was `color-mix(in srgb, var(--accent) 30%, …)`, which drew
+   a 1.5:1 hairline. */
 .import-choice {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px;
+  gap: var(--sp-4);
+  padding: var(--sp-5);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-2);
-  background: var(--bg-raised);
+  background: var(--bg-sunken);
 }
 
 .import-title {
-  font-size: var(--fs-14);
+  font-size: var(--fs-13);
+  font-weight: var(--fw-medium);
 }
 
 .import-line {
-  font-size: var(--fs-13);
+  font-size: var(--fs-12);
   color: var(--text-dim);
   max-width: 66ch;
 }
@@ -977,17 +1002,20 @@ a {
 .templates {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--sp-5);
 }
 
+/* A row rather than the contract's plain block: the product's one code block
+   is a URL to copy, so the Copy button and its confirmation sit in it. */
 .code-block {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: var(--sp-5);
+  padding: var(--sp-4) var(--sp-5);
   border: 1px solid var(--border);
   border-radius: var(--radius-2);
   background: var(--bg-sunken);
+  overflow-x: auto;
 }
 
 .code-block code {
@@ -998,12 +1026,14 @@ a {
   overflow-wrap: anywhere;
 }
 
+/* Outlined, not tinted: the destructive intent is carried by `.btn-danger` and
+   by `confirmButton`'s two-step arm, not by a red box around the copy. */
 .danger-zone {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  padding: 14px;
+  gap: var(--sp-4);
+  padding: var(--sp-5);
   border: 1px solid var(--border);
   border-radius: var(--radius-2);
   background: none;
@@ -1011,9 +1041,9 @@ a {
 
 .danger-zone p {
   margin-right: auto;
-  font-size: var(--fs-13);
+  font-size: var(--fs-12);
   color: var(--text-dim);
-  max-width: 52ch;
+  max-width: 56ch;
 }
 
 /* Restore rows reuse the browse row's grid; only the card's own padding has to
@@ -1068,7 +1098,7 @@ a {
 .section-row .row-body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-3);
   min-width: 0;
 }
 

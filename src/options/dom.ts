@@ -130,7 +130,7 @@ export function field(label: string, control: HTMLElement, hint?: string, wide =
     control.setAttribute('aria-describedby', hintNode.id);
     children.push(hintNode);
   }
-  return el('div', { class: wide ? 'field field-wide' : 'field', children });
+  return el('div', { class: wide ? 'field wide' : 'field', children });
 }
 
 export interface FieldSlot {
