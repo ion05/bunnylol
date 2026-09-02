@@ -13,7 +13,7 @@ body:
     attributes:
       label: Proposed aliases
       description: >-
-        Comma-separated. Aliases must be globally unique — a test enforces
+        Comma-separated. Aliases must be globally unique. A test enforces
         this.
     validations:
       required: true

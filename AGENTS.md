@@ -12,15 +12,15 @@ search results page. It is not affiliated with Meta, and the README and any list
 say so.
 
 The shipped shortcuts are plain data in `src/lib/commands.ts`, grouped into packs the user picks
-from on first run. Everything a user then does to one — rename, re-key, move, switch off, delete —
-is an override layer on top. The registry is never mutated, so a corrected URL in a later build
-still reaches someone who only renamed the command.
+from on first run. Everything a user then does to one (rename, re-key, move, switch off, delete) is
+an override layer on top. The registry is never mutated, so a corrected URL in a later build still
+reaches someone who only renamed the command.
 
 ## The one decision that explains everything
 
 **The first word of an address-bar query is ALWAYS a command when it matches a registered
 keyword.** `c programming tutorial` goes to Claude. `pr firms in new york` goes to the user's
-GitHub pull requests. This is deliberate — it is how Meta's bunnylol works — and it was chosen
+GitHub pull requests. This is deliberate. It is how Meta's bunnylol works, and it was chosen
 explicitly over three alternatives (an opt-in allowlist, a sigil prefix, and a curated blocklist)
 after the blocklist approach failed to converge: a verifier found that roughly two in five of the
 eligible aliases could hijack some plausible English search, and blocking those only surfaces the
@@ -31,7 +31,7 @@ The escape hatch is therefore load-bearing, not a nicety. A leading `\` or `=`
 break the entire product.
 
 `Settings.interceptStopList` exists as a user-curated *exemption* list and **defaults to empty**
-(`DEFAULT_STOP_LIST`). Do not repopulate it as a blocklist — that was tried and rejected.
+(`DEFAULT_STOP_LIST`). Do not repopulate it as a blocklist. That was tried and rejected.
 
 ## Architecture
 
@@ -51,7 +51,7 @@ src/lib/text.ts         String helpers every surface shares
 src/lib/url.ts          Small URL helpers
 src/lib/install.ts      The onInstalled branch: starter pick, rule sync, welcome tab
 src/background.ts       MV3 service worker: listener registration, rule sync, omnibox
-src/go/go.ts            Dispatch page — resolves and navigates
+src/go/go.ts            Dispatch page: resolves and navigates
 src/ui/dom.ts           `el` / `mark` / `nextId`: the element builders every surface shares
 src/options/            Shortcut manager UI (below)
 src/popup/              Toolbar command bar
@@ -74,27 +74,27 @@ src/options/store.ts        Page state behind accessors; `commitOverrides`/`comm
 src/options/dom.ts          Stateless widgets the views assemble panels from
 src/options/rule-status.ts  The pill in the topbar and the coverage line in Settings
 src/options/status.ts       Pure: a `RuleStatus` in, the words and the tone out
-src/options/model/*.ts      browse, collapse, form, welcome — the decisions, without a DOM
-src/options/views/*.ts      browse, form, settings, data, welcome — the DOM
+src/options/model/*.ts      browse, collapse, form, welcome: the decisions, without a DOM
+src/options/views/*.ts      browse, form, settings, data, welcome: the DOM
 ```
 
 `install.ts` is separate from `background.ts` because the service worker registers listeners
-synchronously at module scope — `chrome.omnibox.setDefaultSuggestion` runs the moment that file is
+synchronously at module scope. `chrome.omnibox.setDefaultSuggestion` runs the moment that file is
 loaded, which makes it unimportable in a test. The listener there hands the event straight to
 `onInstalled`, so the install path is driven end to end against the storage and rule stubs.
 
-A shortcut's `category` is an OPEN section id — a shipped `Category`, or the id of a `Section` in
-`Overrides.sections` — resolved for display by `sectionLabel`. `CATEGORIES` stays the closed
-shipped list, and the registry rows are typed `BuiltinCommand`, so a typo'd shipped category is
-still a compile error.
+A shortcut's `category` is an OPEN section id: a shipped `Category`, or the id of a `Section` in
+`Overrides.sections`. `sectionLabel` resolves it for display. `CATEGORIES` stays the closed shipped
+list, and the registry rows are typed `BuiltinCommand`, so a typo'd shipped category is still a
+compile error.
 
 The onboarding pick is not a second exclusion axis. `Overrides.enabledCategories` records what the
-user chose so the picker can be reopened with their answer; the *effect* is projected onto
-`Overrides.disabled` at write time by `applyCategoryPick`. The resolver reads `disabled` and
-nothing else, so DNR, the omnibox and the popup inherit a pick for free and none of them has to
-know what a category is.
+user chose, so the picker can be reopened with their answer. `applyCategoryPick` projects the
+*effect* onto `Overrides.disabled` at write time. The resolver reads `disabled` and nothing else,
+so DNR, the omnibox and the popup inherit a pick for free, and none of them has to know what a
+category is.
 
-`resolve.ts` is pure and shared by every surface — dispatch page, omnibox, popup, options live
+`resolve.ts` is pure and shared by every surface: dispatch page, omnibox, popup, options live
 preview, tests. Behaviour cannot drift between surfaces because there is one code path. Keep it
 that way: no `chrome.*` and no DOM in `resolve.ts`.
 
@@ -109,11 +109,11 @@ tests. **If a test in this list fails, do not "fix" the test.**
 
 1. **BunnyLol must never intercept its own output.** Some commands resolve to a URL on a search
    engine we intercept (`g`, `ddg`, and historically `weather`). `destination()` in `resolve.ts`
-   marks these with the passthrough param so the higher-priority allow rules claim them. Without
-   it `weather` looped infinitely and `g npm install` landed on npmjs.com.
+   marks these with the passthrough param, so the higher-priority allow rules claim them. Without
+   it, `weather` looped infinitely and `g npm install` landed on npmjs.com.
    Guarded by `tests/self-interception.test.ts`, which derives the at-risk set **from the rules**
    (every command whose resolved URL a redirect rule would actually claim back) rather than naming
-   commands — so it cannot silently become vacuous when a command is removed.
+   commands. So it cannot silently become vacuous when a command is removed.
 
 2. **DNR rule priority is `redirect (1) < escape (2) < allow (3)`,** and `fitPlan` fails closed:
    an engine gets redirect rules only if Chrome accepted both its allow and escape rules.
@@ -128,13 +128,13 @@ tests. **If a test in this list fails, do not "fix" the test.**
    searches. RE2 has no lookahead, so the pattern swallows the tail and the substitution drops it.
 
 5. **Keyword retention is ranked separately from alternation ordering.** The alternation must be
-   longest-first so `github` beats `gh`, but truncating *that* order removes exactly the short hot
-   aliases — at ~400 custom shortcuts `gh`, `g` and `npm` silently stopped being intercepted.
+   longest-first so `github` beats `gh`. But truncating *that* order removes exactly the short hot
+   aliases: at ~400 custom shortcuts, `gh`, `g` and `npm` silently stopped being intercepted.
 
 6. **All alias, URL and section validation goes through `src/lib/validate.ts`.** Nothing re-derives
-   a rule locally: today's callers are the import parser (`storage.ts`), the override algebra
+   a rule locally. Today's callers are the import parser (`storage.ts`), the override algebra
    (`overrides.ts`), the one shortcut form (through `draft.ts` and `model/form.ts`), the section
-   editor in Settings, and `resolve.ts` for `isInterceptableAlias`. That list will grow — add a
+   editor in Settings, and `resolve.ts` for `isInterceptableAlias`. That list will grow, so add a
    call site rather than a local rule. When the rule lived in whichever module needed it, each had
    a different hole: whitespace aliases and scheme-less URLs both persisted happily while being
    unusable. `validateAlias` also rejects an alias starting with an escape prefix, since `resolve()`
@@ -144,9 +144,9 @@ tests. **If a test in this list fails, do not "fix" the test.**
    ids, phone numbers and dictionary headwords all guard their input and degrade to a search.
    Otherwise `fedex near me open now` renders "tracking number not found".
 
-8. **Arguments are never silently dropped** — with one deliberate, enumerated exception. The cloud
+8. **Arguments are never silently dropped**, with one deliberate, enumerated exception. The cloud
    consoles (`aws`, `gcp`, `vercel`, `netlify`, `cf`) had their `site:` doc search removed on
-   request and are pure jumps now. They are listed by name in `tests/commands.test.ts` so adding a
+   request and are pure jumps now. They are listed by name in `tests/commands.test.ts`, so adding a
    third is a decision someone makes, not a test that quietly stopped caring.
 
 9. **No command may have a write side effect as its default argument behaviour.** `td bank near me`
@@ -172,9 +172,9 @@ tests. **If a test in this list fails, do not "fix" the test.**
 
 15. **`syncRules` is serialized, with one trailing coalesced slot.** Rule ids are renumbered
     densely from the current keyword count, so two overlapping rebuilds read the same `existing`
-    ids and both add them; Chrome refuses the second and `failClosed` answers a refusal by tearing
-    the whole dynamic table down, leaving no address-bar interception at all. A burst of saves —
-    one `onStateChanged` per onboarding write — is exactly that pattern. The fast path consults the
+    ids and both add them. Chrome refuses the second, and `failClosed` answers a refusal by tearing
+    the whole dynamic table down, leaving no address-bar interception at all. A burst of saves, one
+    `onStateChanged` per onboarding write, is exactly that pattern. The fast path consults the
     trailing slot **before** the in-flight slot, because `chain` is cleared a microtask or two
     before the follow-up it scheduled starts, and a caller landing in that gap would otherwise open
     a third rebuild alongside it. Guarded by `tests/sync-rules.test.ts` `describe('concurrent
@@ -185,13 +185,13 @@ tests. **If a test in this list fails, do not "fix" the test.**
     longer cannot push the window past the end of the sweep.
 
 16. **An edit may never change a shortcut's identity or behaviour selector.**
-    `Overrides.edits` carries only the seven fields the edit form shows; `applyEdit` copies them
+    `Overrides.edits` carries only the seven fields the edit form shows. `applyEdit` copies them
     one at a time rather than spreading, so a hand-edited import cannot set `handler`, `provider`,
-    `builtin` or `id` — the difference between renaming GitHub and pointing the `github` handler
-    at your own host. An edit whose `url` is blank or unparseable inherits the shipped one, because
-    `rawDestination` returns `cmd.url` and an empty string is not a destination (invariant 12).
-    Guarded by `tests/overrides.test.ts`, by `tests/overrides-security.test.ts` (which drives the
-    hostile shapes one field at a time) and by the whole-path test in `tests/storage.test.ts`
+    `builtin` or `id`. That is the difference between renaming GitHub and pointing the `github`
+    handler at your own host. An edit whose `url` is blank or unparseable inherits the shipped one,
+    because `rawDestination` returns `cmd.url` and an empty string is not a destination (invariant
+    12). Guarded by `tests/overrides.test.ts`, by `tests/overrides-security.test.ts` (which drives
+    the hostile shapes one field at a time) and by the whole-path test in `tests/storage.test.ts`
     `describe('an edit cannot smuggle behaviour through the import')`, which drives the JSON
     through `importJson` → `applyImport` → `mergeCommands` rather than calling `applyEdit`
     directly. Its last case hands `mergeCommands` an override object the parser never saw: the
@@ -199,37 +199,38 @@ tests. **If a test in this list fails, do not "fix" the test.**
     `applyEdit` went back to spreading.
 
 17. **A category is an open section id, and every lookup keyed by one is hostile input.**
-    `validateSectionId` is deliberately permissive — it accepts a builtin id, because that is how a
-    shipped group gets renamed, and it accepts `constructor` — so `CATEGORY_LABELS[id]` on a
+    `validateSectionId` is deliberately permissive. It accepts a builtin id, because that is how a
+    shipped group gets renamed, and it accepts `constructor`. So `CATEGORY_LABELS[id]` on a
     user-supplied id answers with something off `Object.prototype`. Go through `sectionLabel`, or
-    guard with `Object.hasOwn`. Two more rules follow from the same openness and are NOT symmetric:
-    an unknown id on a **custom** command falls back to `FALLBACK_SECTION` (it has nowhere else to
-    go), while an unknown id on an **edit** is dropped (a shipped command has its own category, and
-    relocating it to "My shortcuts" because a section vanished would move a shortcut the user never
-    touched). The import parser degrades the same two ways rather than refusing the file: refusing
-    was tried, and it made every v1.0.0 export whose custom shortcut was filed under the
-    since-removed `media` category unimportable, with the only fix being to hand-edit JSON the user
-    did not write. The one category refusal left is structural — a `category` that is not a string
-    names no id to degrade to. A pack SHOULD still declare the sections it files things under
-    (`extras/packs/removed-commands.json` is the worked example); it just is not made to. Guarded by
-    `tests/overrides.test.ts`, `tests/storage.test.ts` and `tests/overrides-security.test.ts`.
+    guard with `Object.hasOwn`. Two more rules follow from the same openness, and they are NOT
+    symmetric. An unknown id on a **custom** command falls back to `FALLBACK_SECTION`, because it
+    has nowhere else to go. An unknown id on an **edit** is dropped, because a shipped command has
+    its own category, and relocating it to "My shortcuts" because a section vanished would move a
+    shortcut the user never touched. The import parser degrades the same two ways rather than
+    refusing the file. Refusing was tried, and it made every v1.0.0 export whose custom shortcut
+    was filed under the since-removed `media` category unimportable, with the only fix being to
+    hand-edit JSON the user did not write. The one category refusal left is structural: a
+    `category` that is not a string names no id to degrade to. A pack SHOULD still declare the
+    sections it files things under (`extras/packs/removed-commands.json` is the worked example); it
+    just is not made to. Guarded by `tests/overrides.test.ts`, `tests/storage.test.ts` and
+    `tests/overrides-security.test.ts`.
 
 ## Smaller rules, easy to undo by accident
 
-Not invariants — no bug shipped from these — but each is a decision with a reason, and the obvious
-edit reverses it.
+These are not invariants, since no bug shipped from them. But each is a decision with a reason, and
+the obvious edit reverses it.
 
 - **`applyFilter` in `views/browse.ts` is the only writer of `row.hidden` and `rowsHost.hidden`.**
-  Collapse hides a group by writing the rows host; the filter hides individual rows and force-shows
+  Collapse hides a group by writing the rows host. The filter hides individual rows and force-shows
   a collapsed group that matches. Two writers means a row that a cleared filter never brings back.
 - **Collapse state lives in `localStorage` (`bunnylol.collapsed`), never in `Settings`.** It is
-  per-machine view state that changes several times a minute; in the state blob every fold would be
+  per-machine view state that changes several times a minute. In the state blob every fold would be
   a storage write, and every write re-syncs the DNR rules.
-- **The picker performs exactly one write.** Continue calls `commitState` once with the whole pick;
-  a write per ticked box is a burst of `onStateChanged` events, which is the pattern invariant 15
+- **The picker performs exactly one write.** Continue calls `commitState` once with the whole pick.
+  A write per ticked box is a burst of `onStateChanged` events, which is the pattern invariant 15
   exists for.
 - **`DEFAULT_OVERRIDES` is everything-enabled.** The Purdue pack is not off by default in the
-  defaults — the install-time pick is what turns it off (`writeStarterPick` → `applyCategoryPick`).
+  defaults. The install-time pick is what turns it off (`writeStarterPick` → `applyCategoryPick`).
   A profile that never onboarded therefore fails open with every shortcut live, which is what
   `migrateNewBuiltins` relies on when `enabledCategories` is null.
 - **The install-time pick is written BEFORE `syncRules`.** That is what makes closing the welcome
@@ -237,21 +238,21 @@ edit reverses it.
   is `.catch`-guarded there because it reads `chrome.runtime.id` before its own try, and a
   rejection in a fire-and-forget listener would skip the picker.
 - **The picker opens only for a profile that never answered it.** `reason === 'install'` also fires
-  when the extension is removed and added back over storage that survived; resetting a configured
+  when the extension is removed and added back over storage that survived. Resetting a configured
   profile to the starter set is the one thing that path must never do. Settings → "Choose shortcut
   packs…" is the way back in.
 - **`edits` entries are for shipped ids only.** A `u:`-prefixed id names a user-created shortcut,
-  which is edited in place; `normalizeEdits` drops an edit keyed by one.
+  which is edited in place. `normalizeEdits` drops an edit keyed by one.
 
 ## Verify by executing, not by reading
 
 The most valuable bugs here were found by *running* code, not inspecting it. The DNR regex looked
-correct to three reviewers; applying it to a real Chrome-generated URL exposed it immediately.
+correct to three reviewers. Applying it to a real Chrome-generated URL exposed it immediately.
 When you change routing, build the real rules and replay real URLs through them.
 
 `tests/helpers/rules.ts` has the matcher. `tests/sync-rules.test.ts` stubs `globalThis.chrome` and
-exercises the **production** path — note that `buildRules` is only called by tests, so a test that
-drives `buildRules` alone is not testing what ships.
+exercises the **production** path. Note that only tests call `buildRules`, so a test that drives
+`buildRules` alone is not testing what ships.
 
 ## Commands
 
@@ -263,8 +264,8 @@ pnpm build         # gen-icons + typecheck + vite build -> dist/
 pnpm package       # build, then release/bunnylol-<version>.zip for the Web Store
 ```
 
-Load `dist/` unpacked at `chrome://extensions` with Developer mode on; other Chromium browsers work
-the same way. Reload the extension after every build — editing source does not update a loaded
+Load `dist/` unpacked at `chrome://extensions` with Developer mode on. Other Chromium browsers work
+the same way. Reload the extension after every build: editing source does not update a loaded
 extension.
 
 `pnpm build` regenerates the icons from `design/tokens.css` and the PNGs are committed, so CI runs
@@ -273,54 +274,54 @@ gitignored.
 
 ## Conventions
 
-- pnpm, pinned via `packageManager`. Do not run `npm install` — it creates a second lockfile.
-- TypeScript strict, `verbatimModuleSyntax` — use `import type` for type-only imports.
+- pnpm, pinned via `packageManager`. Do not run `npm install`: it creates a second lockfile.
+- TypeScript strict, `verbatimModuleSyntax`: use `import type` for type-only imports.
 - Import siblings without a file extension.
 - 2-space indent, single quotes, semicolons, no default exports.
 - **No new dependencies.** The whole thing runs on four devDependencies; inline the functionality.
 - Comment only where the *reason* is non-obvious. Do not restate the code.
 - Vanilla TS and CSS in the UI. No framework.
-- Colours, sizes and spacing in the UI sheets come from `design/tokens.css`; no literal hex, no raw
-  `font-size: Npx`, never `color: var(--accent)` — `tests/tokens.test.ts` enforces it. `--accent` is
-  a fill (2.04:1 on white); `--accent-text` is the readable half-lightness twin for text, links and
-  the focus ring.
-- `src/lib` and `src/options/model` must import cleanly under vitest's `environment: node` — no
+- Colours, sizes and spacing in the UI sheets come from `design/tokens.css`. No literal hex, no raw
+  `font-size: Npx`, and never `color: var(--accent)`. `tests/tokens.test.ts` enforces it. `--accent`
+  is a fill (2.04:1 on white). `--accent-text` is the readable half-lightness twin for text, links
+  and the focus ring.
+- `src/lib` and `src/options/model` must import cleanly under vitest's `environment: node`: no
   `document`, no `chrome.*` at module scope. That is what makes the pure decisions testable without
   a DOM, and a stray import breaks a suite rather than a feature.
-- Do not edit `extras/` expecting it to compile — it is intentionally outside tsconfig.
+- Do not edit `extras/` expecting it to compile. It is intentionally outside tsconfig.
 - `design/` is the approved design bundle. Change it through a design review, not in passing.
 
 ## Editing the command registry
 
 Commands are plain data in `src/lib/commands.ts`. When adding or removing one:
 
-- Aliases must be globally unique — `tests/commands.test.ts` asserts this.
+- Aliases must be globally unique. `tests/commands.test.ts` asserts this.
 - Every `handler` named must exist in `HANDLERS`, and every `HandlerId` must be used. Removing the
-  last command that uses a handler orphans it; remove the handler, its `HandlerId`, and any helper
+  last command that uses a handler orphans it. Remove the handler, its `HandlerId`, and any helper
   constants it alone used, or `noUnusedLocals` will fail the build.
 - Removing a command can break tests that named it. Prefer rewriting such a test to derive its
   cases from `BUILTIN_COMMANDS` over substituting another command name.
 - Pruned commands go into `extras/packs/removed-commands.json` verbatim rather than being deleted.
-  It is an importable pack, not code; `extras/packs/README.md` documents the format.
+  It is an importable pack, not code. `extras/packs/README.md` documents the format.
 
 ## Known-unverified and deliberately-limited
 
 - **Outlook deep-link search** (`outlook.office.com/mail/deeplink/search?query=`) is the widely
-  documented OWA form but could not be confirmed — `outlook.office.com` returns 417 to
-  unauthenticated requests. Needs one click-through in a signed-in mailbox.
+  documented OWA form but could not be confirmed. `outlook.office.com` returns 417 to
+  unauthenticated requests. It needs one click-through in a signed-in mailbox.
 - **Gemini has no URL prompt prefill** and never has. `gem` routes to Google's AI Mode
   (`?udm=50&q=`) instead.
-- **Consumer Copilot strips `?q=`** — verified by isolation testing: `?q=` alone triggers a 302 to
+- **Consumer Copilot strips `?q=`**, verified by isolation testing: `?q=` alone triggers a 302 to
   the bare home page, `?foo=1` does not. That command has since been removed entirely.
 - AI prefill params are undocumented and change without notice. They all live in `AI_PROVIDERS` in
   `handlers.ts` and are editable from the options page without a rebuild. If one breaks, fix it
-  there — do not scatter URL templates.
+  there. Do not scatter URL templates.
 
 ## Review workflow
 
 Project convention: substantial work arrives as **distinct commits sliced by architectural layer**,
 so each one carries a single reviewable idea and passes the gate (`pnpm typecheck && pnpm test &&
-pnpm build`) on its own. Verify that standing alone — a test that imports a module from a later
+pnpm build`) on its own. Verify that standing alone: a test that imports a module from a later
 commit silently breaks the property without failing anything.
 
 Those commits may be stacked as branches, each PR based on the previous one, or landed as one
@@ -328,4 +329,4 @@ branch. If you stack them, **do not pass `--delete-branch`** when merging: delet
 auto-closes the child PR that targets it. Merge bottom-up without it, or retarget the tip to master
 and merge once.
 
-`CONTRIBUTING.md` is the same material written for a human contributor; keep the two in step.
+`CONTRIBUTING.md` is the same material written for a human contributor. Keep the two in step.
