@@ -4,7 +4,6 @@
       "Bash(pnpm test:*)",
       "Bash(pnpm typecheck:*)",
       "Bash(pnpm build:*)",
-      "Bash(pnpm install:*)",
       "Bash(npx vitest:*)",
       "Bash(npx tsc:*)",
       "Bash(git status:*)",
