@@ -8,6 +8,7 @@ import optionsCss from '../src/options/options.css?raw';
 import optionsTs from '../src/options/options.ts?raw';
 import popupCss from '../src/popup/popup.css?raw';
 import goHtml from '../go.html?raw';
+import goTs from '../src/go/go.ts?raw';
 import manifestJson from '../public/manifest.json?raw';
 import fontsDoc from '../docs/fonts.md?raw';
 import designLicence from '../design/fonts/Inter-OFL.txt?raw';
@@ -31,6 +32,7 @@ const RAW_IMPORTS: Array<[string, string]> = [
   ['src/options/options.ts', optionsTs],
   ['src/popup/popup.css', popupCss],
   ['go.html', goHtml],
+  ['src/go/go.ts', goTs],
   ['public/manifest.json', manifestJson],
   ['docs/fonts.md', fontsDoc],
   ['design/fonts/Inter-OFL.txt', designLicence],
@@ -478,9 +480,106 @@ describe('the bundled font', () => {
 
   it('never reaches the dispatch page', () => {
     // go.html is the hot path: go.ts budgets 150ms before it will even reveal
-    // 'Opening…', so a font fetch is work the dispatch does not need.
-    // PR 11 adds the assertion that go.html's hand-copied hexes match tokens.css.
+    // 'Opening…', so a font fetch is work the dispatch does not need. The
+    // describe below pins the rest of that page against the tokens.
     expect(goHtml).not.toMatch(/@font-face|Inter|\.woff2/);
+  });
+});
+
+describe('the dispatch page', () => {
+  /**
+   * go.html cannot `@import` the tokens: its whole job is to redirect before it
+   * is seen, so the sheet is inline and the values are copied by hand. Each
+   * colour is pinned to the token it was copied from, in both schemes, so
+   * editing tokens.css alone turns this red — which is the only thing standing
+   * between the two files and silent drift.
+   */
+  const HAND_COPIED: Array<[string, string]> = [
+    ['bg', 'the page'],
+    ['text', 'body copy, the toast and the hovered dismiss button'],
+    ['text-dim', 'the status line, the typed echo and the dismiss button'],
+    ['text-faint', 'the explanation under the echo'],
+    ['bg-raised', 'the toast fill'],
+    ['border-strong', 'the toast edge'],
+  ];
+
+  /**
+   * The values that are not colours were copied by hand too — the type scale,
+   * the weights, the radius and the spacing steps — and nothing about `24px`
+   * says which token it came from. Each entry names the token, the value
+   * tokens.css declares, and the declaration go.html spent it on, built from
+   * that same value so the two cannot be edited apart.
+   */
+  const HAND_COPIED_SCALARS: Array<[string, string, (value: string) => string]> = [
+    ['fs-13', '13px', (v) => `font:${v}/1.45`],
+    ['lh-body', '1.45', (v) => `font:13px/${v}`],
+    ['sp-9', '32px', (v) => `padding:${v} 24px`],
+    ['sp-8', '24px', (v) => `padding:32px ${v}`],
+    ['sp-1', '2px', (v) => `gap:${v};`],
+    ['radius-2', '6px', (v) => `border-radius:${v};`],
+    ['fs-12', '12px', (v) => `font-size:${v};`],
+    ['fs-16', '16px', (v) => `.err-title{font-size:${v};`],
+    ['fw-semibold', '600', (v) => `font-weight:${v};`],
+    ['sp-5', '12px', (v) => `gap:${v}}`],
+  ];
+
+  const squashed = goHtml.replace(/\s+/g, '');
+  /** The rules run over several lines; a declaration's own spacing is kept. */
+  const collapsed = goHtml.replace(/\s+/g, ' ');
+
+  it.each(HAND_COPIED)('writes --%s as the pair tokens.css declares (%s)', (name) => {
+    const light = tokenValue(tokens, name, 'light');
+    const dark = tokenValue(tokens, name, 'dark');
+    expect(light).not.toBe(dark);
+    expect(squashed).toContain(`light-dark(${light},${dark})`);
+  });
+
+  it.each(HAND_COPIED_SCALARS)('spends --%s where tokens.css puts %s', (name, literal, use) => {
+    // A scale step is flat in both schemes, so a pair here would be a token that
+    // had quietly become something a hand-copied literal cannot stand for.
+    expect(tokenValue(tokens, name, 'light')).toBe(literal);
+    expect(tokenValue(tokens, name, 'dark')).toBe(literal);
+    expect(collapsed).toContain(use(literal));
+  });
+
+  it('copies no colour tokens.css does not declare', () => {
+    // The other direction: a hex nobody named is a colour that was invented
+    // here, and light-dark() means the pair above cannot cover only one scheme.
+    const declared = new Set(
+      declarations.flatMap(({ name }) => [
+        tokenValue(tokens, name, 'light').toLowerCase(),
+        tokenValue(tokens, name, 'dark').toLowerCase(),
+      ]),
+    );
+    const used = goHtml.match(/#[0-9a-f]{3,8}\b/gi) ?? [];
+    expect(used.length).toBeGreaterThanOrEqual(HAND_COPIED.length * 2);
+    for (const hex of used) {
+      expect([hex, declared.has(hex.toLowerCase())]).toEqual([hex, true]);
+    }
+  });
+
+  it('floats its one floating element on a border, not a shadow', () => {
+    // There is no shadow token to build one from, in either scheme.
+    expect(goHtml).not.toMatch(/box-shadow/);
+    expect(squashed).toContain('border:1pxsolidlight-dark(');
+  });
+
+  it('dims by colour rather than by opacity', () => {
+    // `opacity: .6` on the status line and `.65` on the error explanation were
+    // unmeasurable fractions of whatever was behind them; --text-dim and
+    // --text-faint are colours with recorded ratios.
+    expect(stripComments(goHtml)).not.toMatch(/opacity:/);
+  });
+
+  it('styles the error page by class rather than by cssText', () => {
+    // Five inline `style.cssText` strings meant the dispatch page could not be
+    // restyled without editing TypeScript, and none of them were tokens.
+    expect(goTs).not.toContain('style.cssText');
+    expect(goTs).not.toMatch(/\.style\.[a-zA-Z]+\s*=/);
+    for (const name of ['err-title', 'err-echo', 'err-why', 'err-actions', 'go-link', 'err-fallback']) {
+      expect([name, goTs.includes(`'${name}'`)]).toEqual([name, true]);
+      expect([name, goHtml.includes(`.${name}{`)]).toEqual([name, true]);
+    }
   });
 });
 

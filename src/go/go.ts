@@ -129,31 +129,29 @@ function fail(query: string, error: unknown): void {
   const box = document.getElementById('err') ?? document.body;
 
   const title = document.createElement('h1');
-  title.style.cssText = 'font-size:16px;font-weight:600;margin:0 0 12px';
+  title.className = 'err-title';
   title.textContent = 'BunnyLol could not open that';
 
   const echo = document.createElement('p');
-  echo.style.cssText = 'margin:0 0 8px;opacity:.85';
+  echo.className = 'err-echo';
   const code = document.createElement('code');
   code.textContent = query || '(empty query)';
   echo.append('You typed ', code);
 
   const why = document.createElement('p');
-  why.style.cssText = 'margin:0 0 20px;opacity:.65';
+  why.className = 'err-why';
   why.textContent = errorText(error) || 'Unknown error.';
 
+  // The links are spaced by the class's own gap; the separator character this
+  // used to append would be a flex item of its own.
   const actions = document.createElement('p');
-  actions.style.cssText = 'margin:0';
-  actions.append(
-    link(searchUrl(query), 'Search for it instead'),
-    ' · ',
-    link(optionsUrl(), 'BunnyLol settings'),
-  );
+  actions.className = 'err-actions';
+  actions.append(link(searchUrl(query), 'Search for it instead'), link(optionsUrl(), 'BunnyLol settings'));
 
   box.replaceChildren(title, echo, why, actions);
-  box.style.display = 'block';
+  box.hidden = false;
   // `#wrap`'s padding went with it in the body fallback.
-  if (box === document.body) box.style.padding = '24px';
+  if (box === document.body) box.classList.add('err-fallback');
 }
 
 /**
@@ -182,11 +180,12 @@ function safeHref(href: string, fallback: string): string {
   return fallback;
 }
 
+/** Both of the error page's actions and the toast's "search instead". */
 function link(href: string, text: string): HTMLAnchorElement {
   const a = document.createElement('a');
   a.href = href;
   a.textContent = text;
-  a.style.cssText = 'color:inherit';
+  a.className = 'go-link';
   return a;
 }
 
