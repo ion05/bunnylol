@@ -12,6 +12,7 @@ import {
   withPassthrough,
 } from '../src/lib/resolve';
 import { BUILTIN_COMMANDS } from '../src/lib/commands';
+import { shortcutId } from '../src/lib/overrides';
 import {
   DEFAULT_OVERRIDES,
   DEFAULT_SETTINGS,
@@ -25,7 +26,7 @@ function settings(patch: Partial<Settings> = {}): Settings {
 }
 
 function overrides(patch: Partial<Overrides> = {}): Overrides {
-  return { ...DEFAULT_OVERRIDES, disabled: [], keyOverrides: {}, custom: [], ...patch };
+  return { ...DEFAULT_OVERRIDES, ...patch };
 }
 
 function cmd(patch: Partial<Command> & { keys: string[] }): Command {
@@ -251,7 +252,7 @@ describe('mergeCommands', () => {
   });
 
   it('replaces a builtin key list with its override', () => {
-    const merged = mergeCommands(BUILTIN_COMMANDS, overrides({ keyOverrides: { gh: ['hub', 'gh2'] } }));
+    const merged = mergeCommands(BUILTIN_COMMANDS, overrides({ edits: { gh: { keys: ['hub', 'gh2'] } } }));
     const keys = buildKeyMap(merged);
     expect(keys.get('hub')?.name).toBe('GitHub');
     expect(keys.get('gh2')?.name).toBe('GitHub');
@@ -260,7 +261,7 @@ describe('mergeCommands', () => {
   });
 
   it('treats an empty override list as no override', () => {
-    const merged = mergeCommands(BUILTIN_COMMANDS, overrides({ keyOverrides: { gh: [] } }));
+    const merged = mergeCommands(BUILTIN_COMMANDS, overrides({ edits: { gh: { keys: [] } } }));
     expect(buildKeyMap(merged).get('gh')?.name).toBe('GitHub');
   });
 
@@ -277,7 +278,7 @@ describe('mergeCommands', () => {
     const builtinsBefore = structuredClone(BUILTIN_COMMANDS);
     const input = overrides({
       disabled: ['npm'],
-      keyOverrides: { gh: ['hub'] },
+      edits: { gh: { keys: ['hub'] } },
       custom: [cmd({ keys: ['tix'], url: 'https://tix.test/' })],
     });
     const inputBefore = structuredClone(input);
@@ -299,7 +300,7 @@ describe('mergeCommands', () => {
     const mine = cmd({ keys: ['tix'], id: 'u:tix', url: 'https://tix.test/' });
     const merged = mergeCommands(
       BUILTIN_COMMANDS,
-      overrides({ custom: [mine], keyOverrides: { gh: ['hub'] } }),
+      overrides({ custom: [mine], edits: { gh: { keys: ['hub'] } } }),
     );
     expect(merged.every((command) => (command.id ?? '') !== '')).toBe(true);
     expect(merged.find((command) => command.name === 'GitHub')?.id).toBe('gh');
@@ -309,7 +310,7 @@ describe('mergeCommands', () => {
   it('keeps a rebound builtin under its shipped id', () => {
     // The id is what the override maps are keyed by, so it must not follow the
     // keys the user just rebound.
-    const merged = mergeCommands(BUILTIN_COMMANDS, overrides({ keyOverrides: { gh: ['hub'] } }));
+    const merged = mergeCommands(BUILTIN_COMMANDS, overrides({ edits: { gh: { keys: ['hub'] } } }));
     const rebound = buildKeyMap(merged).get('hub');
     expect(rebound?.id).toBe('gh');
     expect(rebound?.keys).toEqual(['hub']);
@@ -327,6 +328,100 @@ describe('mergeCommands', () => {
     mergeCommands(BUILTIN_COMMANDS, overrides({ custom: [cmd({ keys: ['tix'] })] }));
     expect(BUILTIN_COMMANDS[0].id).toBeUndefined();
     expect(BUILTIN_COMMANDS.every((command) => command.id === undefined)).toBe(true);
+  });
+
+  it('hides a deleted builtin and every one of its aliases', () => {
+    const keys = buildKeyMap(mergeCommands(BUILTIN_COMMANDS, overrides({ deleted: ['gh'] })));
+    expect(keys.has('gh')).toBe(false);
+    expect(keys.has('github')).toBe(false);
+    expect(keys.has('npm')).toBe(true);
+  });
+
+  it('does not resurrect a deleted builtin through an edit', () => {
+    const merged = mergeCommands(
+      BUILTIN_COMMANDS,
+      overrides({ deleted: ['gh'], edits: { gh: { keys: ['hub'], name: 'Mine' } } }),
+    );
+    expect(buildKeyMap(merged).has('hub')).toBe(false);
+  });
+
+  it('hides a disabled custom command', () => {
+    const mine = cmd({ keys: ['tix'], id: 'u:tix', url: 'https://tix.test/' });
+    const merged = mergeCommands(BUILTIN_COMMANDS, overrides({ custom: [mine], disabled: ['u:tix'] }));
+    expect(buildKeyMap(merged).has('tix')).toBe(false);
+  });
+
+  it('composes an edit with the key replacement it carries', () => {
+    const merged = mergeCommands(
+      BUILTIN_COMMANDS,
+      overrides({ edits: { gh: { keys: ['hub'], name: 'Hub', description: 'Mine' } } }),
+    );
+    const rebound = buildKeyMap(merged).get('hub');
+    expect(rebound?.name).toBe('Hub');
+    expect(rebound?.description).toBe('Mine');
+    // Identity does not follow the keys, or the edit would orphan itself.
+    expect(rebound?.id).toBe('gh');
+  });
+
+  it('leaves an edit on a disabled builtin inert', () => {
+    const merged = mergeCommands(
+      BUILTIN_COMMANDS,
+      overrides({ disabled: ['gh'], edits: { gh: { keys: ['hub'] } } }),
+    );
+    expect(buildKeyMap(merged).has('hub')).toBe(false);
+    expect(buildKeyMap(merged).has('gh')).toBe(false);
+  });
+
+  it('applies an edit without touching the registry entry it edited', () => {
+    const before = structuredClone(BUILTIN_COMMANDS);
+    mergeCommands(BUILTIN_COMMANDS, overrides({ edits: { gh: { keys: ['hub'], name: 'Hub' } } }));
+    expect(BUILTIN_COMMANDS).toEqual(before);
+  });
+
+  // SECURITY: an edit is user data from an import file, and these four fields
+  // choose which handler runs (invariant 16).
+  it('lets an edit change none of handler, provider, builtin or id', () => {
+    const smuggled = {
+      handler: 'ai',
+      provider: 'chatgpt',
+      builtin: false,
+      id: 'evil',
+      name: 'Mine',
+    } as unknown as NonNullable<Overrides['edits']>[string];
+    const merged = mergeCommands(BUILTIN_COMMANDS, overrides({ edits: { gh: smuggled } }));
+    const gh = buildKeyMap(merged).get('gh');
+    expect(gh?.handler).toBe('github');
+    expect(gh?.provider).toBeUndefined();
+    expect(gh?.builtin).toBe(true);
+    expect(gh?.id).toBe('gh');
+    expect(gh?.name).toBe('Mine');
+  });
+
+  it('still resolves an edited builtin whose url the edit blanked', () => {
+    // Invariant 12: `rawDestination` hands `cmd.url` to the navigation, so an
+    // edit that empties it must inherit rather than produce a bare ''.
+    const merged = mergeCommands(
+      BUILTIN_COMMANDS,
+      overrides({ edits: { gh: { url: '   ', name: 'Hub' } } }),
+    );
+    const shipped = BUILTIN_COMMANDS.find((command) => command.keys[0] === 'gh');
+    expect(resolve('gh', merged, settings()).url).toBe(shipped?.url);
+    expect(buildKeyMap(merged).get('gh')?.name).toBe('Hub');
+  });
+
+  it('degrades rather than throwing on a searchUrl an edit left without {q}', () => {
+    // `validateUrlTemplate` accepts a placeholder-less URL — it is a legal
+    // destination, just one with nowhere to put the arguments — so the edit is
+    // stored and `expandTemplate` appends `?q=`. Documented rather than
+    // special-cased: a custom command written that way behaves identically, and
+    // invariant 12 only promises a navigable URL, not a useful one.
+    const merged = mergeCommands(
+      BUILTIN_COMMANDS,
+      overrides({ edits: { gfonts: { searchUrl: 'https://fonts.google.com/constant' } } }),
+    );
+    expect(resolve('gfonts inter', merged, settings()).url).toBe(
+      'https://fonts.google.com/constant?q=inter',
+    );
   });
 });
 
@@ -489,15 +584,29 @@ describe('passthrough marker', () => {
 describe('handler keyword', () => {
   const commands = mergeCommands(BUILTIN_COMMANDS, overrides());
 
+  // Derived from the registry, not named: a plain-search degrade reproduces
+  // exactly what the user typed, so an alias that no longer ships produces the
+  // very same URL through the no-command fallback and the assertions below go
+  // quietly vacuous. Finding the command by handler makes its removal a failure
+  // instead. `meet` is the one whose degrade is `plain`.
+  const plainDegrade = BUILTIN_COMMANDS.find((c) => c.handler === 'meet');
+  if (!plainDegrade || plainDegrade.keys.length < 2) {
+    throw new Error('no multi-alias command with a plain-search degrade to test against');
+  }
+  const [canonical, alias] = plainDegrade.keys;
+
   it('hands a handler the alias the user typed, not the canonical one', () => {
     // Both aliases belong to the same command; a degrade to a plain search has
-    // to reproduce the query the alias actually intercepted.
-    expect(resolve('lh surge meaning', commands, settings()).url).toBe(
-      `${GOOGLE}lh%20surge%20meaning&blpass=1`,
-    );
-    expect(resolve('localhost refused to connect fix', commands, settings()).url).toBe(
-      `${GOOGLE}localhost%20refused%20to%20connect%20fix&blpass=1`,
-    );
+    // to reproduce the query the alias actually intercepted. `fallback` is
+    // asserted because the fallback path would produce the same URL: without it
+    // these cases pass whether or not the keyword is a shortcut at all.
+    const first = resolve(`${canonical} surge meaning`, commands, settings());
+    expect(first.fallback).toBe(false);
+    expect(first.url).toBe(`${GOOGLE}${canonical}%20surge%20meaning&blpass=1`);
+
+    const second = resolve(`${alias} refused to connect fix`, commands, settings());
+    expect(second.fallback).toBe(false);
+    expect(second.url).toBe(`${GOOGLE}${alias}%20refused%20to%20connect%20fix&blpass=1`);
   });
 
   it('marks a handler-generated search so our own rules skip it', () => {
@@ -510,10 +619,15 @@ describe('handler keyword', () => {
   });
 
   it('follows a rebound alias into the plain-search degrade', () => {
-    const rebound = mergeCommands(BUILTIN_COMMANDS, overrides({ keyOverrides: { lh: ['local'] } }));
-    expect(resolve('local surge meaning', rebound, settings()).url).toBe(
-      `${GOOGLE}local%20surge%20meaning&blpass=1`,
-    );
+    const id = shortcutId(plainDegrade);
+    const rebound = mergeCommands(BUILTIN_COMMANDS, overrides({ edits: { [id]: { keys: ['huddle'] } } }));
+    const result = resolve('huddle surge meaning', rebound, settings());
+    // The rebound alias reaches the command — and the shipped one no longer
+    // does, which is what makes the URL below the handler's answer rather than
+    // the plain-search fallback's identical one.
+    expect(result.command?.id).toBe(id);
+    expect(resolve(`${canonical} surge meaning`, rebound, settings()).fallback).toBe(true);
+    expect(result.url).toBe(`${GOOGLE}huddle%20surge%20meaning&blpass=1`);
   });
 });
 

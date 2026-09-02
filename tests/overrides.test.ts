@@ -2,14 +2,20 @@ import { describe, expect, it } from 'vitest';
 import {
   MAX_ID_LENGTH,
   USER_ID_PREFIX,
+  applyEdit,
+  diffEdit,
+  editedFields,
+  foldLegacyKeyOverrides,
   isUserId,
   mintUserId,
   normalizeId,
+  restorableShipped,
   shortcutId,
 } from '../src/lib/overrides';
 import { BUILTIN_COMMANDS } from '../src/lib/commands';
 import { MAX_KEYWORD_LENGTH } from '../src/lib/validate';
-import type { Command } from '../src/lib/types';
+import { DEFAULT_OVERRIDES } from '../src/lib/types';
+import type { Command, Overrides, ShortcutEdit } from '../src/lib/types';
 
 function cmd(patch: Partial<Command>): Command {
   return {
@@ -169,5 +175,262 @@ describe('mintUserId', () => {
       taken.add(id);
     }
     expect(taken.size).toBe(50);
+  });
+});
+
+const SHIPPED: Command = {
+  keys: ['gh', 'github'],
+  name: 'GitHub',
+  description: 'Repositories',
+  url: 'https://github.com/',
+  searchUrl: 'https://github.com/search?q={q}',
+  handler: 'github',
+  category: 'dev',
+  builtin: true,
+  example: 'gh facebook/react',
+  id: 'gh',
+};
+
+describe('applyEdit', () => {
+  it('returns the command untouched when there is no edit', () => {
+    expect(applyEdit(SHIPPED, undefined)).toBe(SHIPPED);
+  });
+
+  it('replaces only the fields the edit names', () => {
+    const next = applyEdit(SHIPPED, {
+      name: 'Hub',
+      url: 'https://ghe.example/',
+      description: 'Ours',
+      category: 'custom',
+    });
+    expect(next.name).toBe('Hub');
+    expect(next.url).toBe('https://ghe.example/');
+    expect(next.description).toBe('Ours');
+    expect(next.category).toBe('custom');
+    // Everything it did not name still comes from the registry.
+    expect(next.keys).toEqual(['gh', 'github']);
+    expect(next.searchUrl).toBe(SHIPPED.searchUrl);
+    expect(next.example).toBe(SHIPPED.example);
+  });
+
+  // SECURITY: an edit arrives from an import file. These four fields choose
+  // which handler runs and which override entries the command owns.
+  it('ignores handler, provider, builtin and id', () => {
+    const next = applyEdit(SHIPPED, {
+      handler: 'ai',
+      provider: 'chatgpt',
+      builtin: false,
+      id: 'evil',
+      name: 'Mine',
+    } as unknown as ShortcutEdit);
+    expect(next.handler).toBe('github');
+    expect(next.provider).toBeUndefined();
+    expect(next.builtin).toBe(true);
+    expect(next.id).toBe('gh');
+    expect(next.name).toBe('Mine');
+  });
+
+  it('does not put undefined-valued keys on the result', () => {
+    // A spread of the edit would; copying field by field must not either, or
+    // every `toStrictEqual` against a registry entry starts failing.
+    expect(applyEdit(SHIPPED, { name: 'Hub' })).toStrictEqual({ ...SHIPPED, name: 'Hub' });
+  });
+
+  it('inherits the shipped url when the edit blanks or breaks it', () => {
+    // Invariant 12: `rawDestination` returns `cmd.url`, and '' is not a place.
+    expect(applyEdit(SHIPPED, { url: '   ' }).url).toBe(SHIPPED.url);
+    expect(applyEdit(SHIPPED, { url: 'not a url' }).url).toBe(SHIPPED.url);
+    expect(applyEdit(SHIPPED, { url: 'javascript:alert(1)' }).url).toBe(SHIPPED.url);
+    expect(applyEdit(SHIPPED, { url: undefined }).url).toBe(SHIPPED.url);
+  });
+
+  it('inherits the shipped name when the edit blanks it', () => {
+    // A nameless row is unreadable, so the one blankable field is description.
+    expect(applyEdit(SHIPPED, { name: '  ' }).name).toBe('GitHub');
+    expect(applyEdit(SHIPPED, { description: '  ' }).description).toBe('');
+  });
+
+  it('treats an empty keys list as no override', () => {
+    expect(applyEdit(SHIPPED, { keys: [] }).keys).toEqual(['gh', 'github']);
+    expect(applyEdit(SHIPPED, { keys: ['  ', ''] }).keys).toEqual(['gh', 'github']);
+  });
+
+  it('replaces every alias when the edit names keys', () => {
+    expect(applyEdit(SHIPPED, { keys: [' hub ', 'octo'] }).keys).toEqual(['hub', 'octo']);
+  });
+
+  it('ignores replacement keys the resolver could never match', () => {
+    // Through the one validation boundary (invariant 6): `resolve()` strips a
+    // leading `\` before the key map is consulted and takes the first token as
+    // the keyword, so a shortcut rebound to either of these answers to nothing.
+    // Keeping the shipped keys is the same "no override" answer an empty list
+    // gets, because an orphaned command is worse than an unapplied edit.
+    expect(applyEdit(SHIPPED, { keys: ['\\bad', 'foo bar'] }).keys).toEqual(['gh', 'github']);
+    // What survives is kept, lowercased and deduped like every other alias.
+    expect(applyEdit(SHIPPED, { keys: ['HUB', 'foo bar', 'hub'] }).keys).toEqual(['hub']);
+  });
+
+  it('separates a cleared optional field from an absent one', () => {
+    expect(applyEdit(SHIPPED, { searchUrl: null }).searchUrl).toBeUndefined();
+    expect('searchUrl' in applyEdit(SHIPPED, { searchUrl: null })).toBe(false);
+    expect(applyEdit(SHIPPED, { name: 'Hub' }).searchUrl).toBe(SHIPPED.searchUrl);
+    expect(applyEdit(SHIPPED, { example: null }).example).toBeUndefined();
+    expect(applyEdit(SHIPPED, { name: 'Hub' }).example).toBe(SHIPPED.example);
+  });
+
+  it('keeps a category only when this build has it', () => {
+    expect(applyEdit(SHIPPED, { category: ' AI ' }).category).toBe('ai');
+    // Dropped rather than coerced to `custom`: a shipped command must not
+    // silently relocate to "My shortcuts" because a section vanished.
+    expect(applyEdit(SHIPPED, { category: 'nonsense' }).category).toBe('dev');
+  });
+
+  it('does not mutate the command it was handed', () => {
+    const before = structuredClone(SHIPPED);
+    applyEdit(SHIPPED, { keys: ['hub'], name: 'Hub', searchUrl: null });
+    expect(SHIPPED).toEqual(before);
+  });
+});
+
+describe('diffEdit', () => {
+  it('is null when nothing differs', () => {
+    expect(diffEdit(SHIPPED, { ...SHIPPED })).toBeNull();
+  });
+
+  it('emits only the field that moved', () => {
+    expect(diffEdit(SHIPPED, { ...SHIPPED, name: 'Hub' })).toEqual({ name: 'Hub' });
+  });
+
+  it('emits null for an optional field the user removed', () => {
+    const cleared = { ...SHIPPED };
+    delete cleared.searchUrl;
+    expect(diffEdit(SHIPPED, cleared)).toEqual({ searchUrl: null });
+  });
+
+  it('says nothing about an optional field neither side has', () => {
+    const bare = { ...SHIPPED };
+    delete bare.searchUrl;
+    delete bare.example;
+    expect(diffEdit(bare, { ...bare })).toBeNull();
+  });
+
+  it('compares keys element-wise, order included', () => {
+    expect(diffEdit(SHIPPED, { ...SHIPPED, keys: ['github', 'gh'] })).toEqual({
+      keys: ['github', 'gh'],
+    });
+    expect(diffEdit(SHIPPED, { ...SHIPPED, keys: ['GH', 'GitHub'] })).toBeNull();
+  });
+
+  it('round trips through applyEdit', () => {
+    const next: Command = {
+      ...SHIPPED,
+      keys: ['hub'],
+      name: 'Hub',
+      description: '',
+      url: 'https://ghe.example/',
+      category: 'custom',
+      example: 'hub me',
+    };
+    delete next.searchUrl;
+    const edit = diffEdit(SHIPPED, next);
+    expect(edit).not.toBeNull();
+    expect(applyEdit(SHIPPED, edit ?? undefined)).toStrictEqual(next);
+  });
+
+  it('reports no change it could not carry back', () => {
+    // `applyEdit` inherits a blank name and an unusable url, so storing them
+    // would produce a diff that does not round trip.
+    expect(diffEdit(SHIPPED, { ...SHIPPED, name: '   ' })).toBeNull();
+    expect(diffEdit(SHIPPED, { ...SHIPPED, url: 'not a url' })).toBeNull();
+    expect(diffEdit(SHIPPED, { ...SHIPPED, keys: ['foo bar'] })).toBeNull();
+  });
+
+  it('does not turn an unusable searchUrl into a removal', () => {
+    // Derived from the registry: `null` here means "the user removed it", so
+    // this only says anything about a command that ships one, and `gh` does
+    // not. Recording garbage as `null` would delete a searchUrl the user never
+    // touched — the one field where "unusable" and "cleared" are different
+    // instructions.
+    const shipsSearch = BUILTIN_COMMANDS.find((cmd) => cmd.searchUrl);
+    if (!shipsSearch) throw new Error('no shipped command carries a searchUrl');
+    expect(diffEdit(shipsSearch, { ...shipsSearch, searchUrl: 'not a url' })).toBeNull();
+    expect(diffEdit(shipsSearch, { ...shipsSearch, searchUrl: 'javascript:alert(1)' })).toBeNull();
+    // A blank one is still the removal it has always been.
+    expect(diffEdit(shipsSearch, { ...shipsSearch, searchUrl: '  ' })).toEqual({ searchUrl: null });
+  });
+});
+
+describe('editedFields', () => {
+  it('names the fields in form order', () => {
+    expect(editedFields(SHIPPED, { name: 'Hub', keys: ['hub'], searchUrl: null })).toEqual([
+      'keys',
+      'name',
+      'searchUrl',
+    ]);
+  });
+
+  it('is empty for an absent edit and for one that changes nothing', () => {
+    expect(editedFields(SHIPPED, undefined)).toEqual([]);
+    expect(editedFields(SHIPPED, {})).toEqual([]);
+    // Named but identical, and an unusable url: neither is a modification, and
+    // a row badged "edited" sends the user looking for a difference that is not
+    // there.
+    expect(editedFields(SHIPPED, { name: 'GitHub' })).toEqual([]);
+    expect(editedFields(SHIPPED, { url: 'not a url' })).toEqual([]);
+  });
+});
+
+describe('foldLegacyKeyOverrides', () => {
+  it('turns a v1 rebinding into an edit', () => {
+    expect(foldLegacyKeyOverrides({}, { gh: ['hub'] })).toEqual({ gh: { keys: ['hub'] } });
+  });
+
+  it('lets an explicit edit win over the legacy entry', () => {
+    expect(foldLegacyKeyOverrides({ gh: { keys: ['octo'] } }, { gh: ['hub'] })).toEqual({
+      gh: { keys: ['octo'] },
+    });
+  });
+
+  it('keeps the rest of an edit that does not name keys', () => {
+    expect(foldLegacyKeyOverrides({ gh: { name: 'Mine' } }, { gh: ['hub'] })).toEqual({
+      gh: { name: 'Mine', keys: ['hub'] },
+    });
+  });
+
+  it('drops an entry that says nothing', () => {
+    expect(foldLegacyKeyOverrides({}, { gh: [], '  ': ['x'], 'bad key': ['y'] })).toEqual({});
+  });
+
+  it('drops a legacy entry keyed by a user id', () => {
+    // The v1 map predates user ids, so such a key is a hand edit — and edits
+    // are for shipped shortcuts only. Folding it would put back exactly the
+    // entry the storage boundary drops.
+    expect(foldLegacyKeyOverrides({}, { 'u:tix': ['ticket'] })).toEqual({});
+  });
+
+  it('does not mutate the edits it was handed', () => {
+    const edits = { gh: { name: 'Mine' } };
+    foldLegacyKeyOverrides(edits, { gh: ['hub'] });
+    expect(edits).toEqual({ gh: { name: 'Mine' } });
+  });
+});
+
+describe('restorableShipped', () => {
+  it('returns the deleted builtins in registry order and nothing else', () => {
+    const last = BUILTIN_COMMANDS[BUILTIN_COMMANDS.length - 1];
+    const overrides: Overrides = {
+      ...DEFAULT_OVERRIDES,
+      // Named out of registry order on purpose: the list the user sees is the
+      // registry's, not the order they happened to delete things in.
+      deleted: [shortcutId(last), ' GH ', 'u:tix', 'no-such-command'],
+    };
+    expect(restorableShipped(BUILTIN_COMMANDS, overrides).map(shortcutId)).toEqual([
+      'gh',
+      shortcutId(last),
+    ]);
+  });
+
+  it('is empty when nothing was deleted', () => {
+    expect(restorableShipped(BUILTIN_COMMANDS, DEFAULT_OVERRIDES)).toEqual([]);
   });
 });

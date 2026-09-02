@@ -165,13 +165,55 @@ export interface SearchEngine {
   urlPrefixPattern: string;
 }
 
+/**
+ * The fields of a shipped shortcut the user is allowed to change, as a diff
+ * against the shipped definition rather than a copy of it — so a corrected URL
+ * in a later build still reaches someone who only renamed the command.
+ *
+ * Absent means "inherit"; `null` on the two optional fields means "cleared",
+ * which is a different instruction and cannot be said with `undefined`.
+ *
+ * There is deliberately no `handler`, `provider`, `builtin` or `id` here.
+ * Those select behaviour and identity, and an import file is untrusted input:
+ * `applyEdit` copies this type field by field rather than spreading, so a
+ * hand-edited edit object has no path into any of them (invariant 16).
+ */
+export interface ShortcutEdit {
+  keys?: string[];
+  name?: string;
+  description?: string;
+  url?: string;
+  searchUrl?: string | null;
+  category?: string;
+  example?: string | null;
+}
+
+/**
+ * A group in the browse list. An entry whose `id` names a builtin category is
+ * not a collision — it is how a shipped category gets renamed.
+ */
+export interface Section {
+  id: string;
+  label: string;
+}
+
 /** The user's customization layer. Builtins are never mutated in place. */
 export interface Overrides {
-  /** Canonical keys of builtins the user turned off. */
+  /** Ids of shortcuts the user turned off. Shipped or custom. */
   disabled: string[];
-  /** Canonical key -> replacement alias list. */
-  keyOverrides: Record<string, string[]>;
-  /** User-created commands. Always `builtin: false`. */
+  /**
+   * Ids of SHIPPED shortcuts the user deleted, kept so they stay restorable. A
+   * custom command is deleted by removing it from `custom`.
+   */
+  deleted: string[];
+  /**
+   * Shortcut id -> the fields the user changed. Shipped shortcuts only: a
+   * custom command has nothing to diff against and is edited in place.
+   */
+  edits: Record<string, ShortcutEdit>;
+  /** User-created sections, plus renames of shipped ones. */
+  sections: Section[];
+  /** User-created commands. Always `builtin: false`, always a `u:` id. */
   custom: Command[];
 }
 
@@ -249,7 +291,9 @@ export const DEFAULT_SETTINGS: Settings = {
 
 export const DEFAULT_OVERRIDES: Overrides = {
   disabled: [],
-  keyOverrides: {},
+  deleted: [],
+  edits: {},
+  sections: [],
   custom: [],
 };
 

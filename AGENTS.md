@@ -37,7 +37,8 @@ src/lib/types.ts        The frozen contract. Everything imports it. No chrome.*,
 src/lib/commands.ts     91 builtin commands + SEARCH_ENGINES
 src/lib/handlers.ts     Smart argument handlers + AI_PROVIDERS
 src/lib/resolve.ts      resolve(query, commands, settings) -> ResolveResult. Pure. The brain.
-src/lib/validate.ts     The single validation boundary for aliases and URLs
+src/lib/validate.ts     The single validation boundary for aliases, URLs and section ids
+src/lib/overrides.ts    Shortcut identity (`shortcutId`, `u:` ids) + the edit/delete algebra
 src/lib/storage.ts      chrome.storage.local persistence, JSON import/export
 src/lib/dnr.ts          declarativeNetRequest rule generation + syncRules
 src/lib/url.ts          Small URL helpers
@@ -132,6 +133,19 @@ tests. **If a test in this list fails, do not "fix" the test.**
     syncs')`, which can only see the collision because `StubOptions.strictIds` reproduces Chrome's
     duplicate-id refusal — a burst against the unserialized path costs 7 writes and an empty rule
     table, and the naive chain-only ordering fails the sweep at arrival tick 105.
+
+16. **An edit may never change a shortcut's identity or behaviour selector.**
+    `Overrides.edits` carries only the seven fields the edit form shows; `applyEdit` copies them
+    one at a time rather than spreading, so a hand-edited import cannot set `handler`, `provider`,
+    `builtin` or `id` — the difference between renaming GitHub and pointing the `github` handler
+    at your own host. An edit whose `url` is blank or unparseable inherits the shipped one, because
+    `rawDestination` returns `cmd.url` and an empty string is not a destination (invariant 12).
+    Guarded by `tests/overrides.test.ts` and by the whole-path test in `tests/storage.test.ts`
+    `describe('an edit cannot smuggle behaviour through the import')`, which drives the JSON
+    through `importJson` → `applyImport` → `mergeCommands` rather than calling `applyEdit`
+    directly. Its last case hands `mergeCommands` an override object the parser never saw: the
+    storage boundary strips these fields too, so without it the whole block stays green even if
+    `applyEdit` went back to spreading.
 
 ## Verify by executing, not by reading
 

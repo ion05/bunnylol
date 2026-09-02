@@ -14,7 +14,7 @@ import { BUILTIN_COMMANDS, SEARCH_ENGINES, destinationOf } from '../lib/commands
 import type { Draft } from '../lib/draft';
 import { parseKeys, parsePrefill, splitKeys, withScheme } from '../lib/draft';
 import { AI_PROVIDERS } from '../lib/handlers';
-import { mintUserId, shortcutId } from '../lib/overrides';
+import { applyEdit, mintUserId, normalizeId, shortcutId } from '../lib/overrides';
 import { activeKeywords, mergeCommands, resolve, stripPassthrough, suggest } from '../lib/resolve';
 import {
   applyImport,
@@ -38,6 +38,7 @@ import type {
   RuleStatus,
   SearchEngineId,
   Settings,
+  ShortcutEdit,
   StoredState,
 } from '../lib/types';
 import {
@@ -520,23 +521,33 @@ function groupOrder(entries: Entry[]): Category[] {
   return hasCustom ? ['custom', ...rest] : rest;
 }
 
+/**
+ * What the browse list shows, in the same order and with the same overrides
+ * applied as `mergeCommands` — a row that claims a keyword the resolver does
+ * not answer to is worse than no row.
+ */
 function browseEntries(): Entry[] {
-  const disabled = new Set(stored.overrides.disabled.map((key) => key.trim().toLowerCase()));
-  const entries: Entry[] = stored.overrides.custom.map((cmd) => ({
-    id: shortcutId(cmd),
-    matchKey: firstKey(cmd),
-    cmd,
-    disabled: false,
-  }));
+  // Through `normalizeId`, the same reader `mergeCommands` uses: a row that
+  // disagrees with the resolver about which ids are off is the bug this page
+  // exists to prevent.
+  const disabled = new Set(stored.overrides.disabled.map(normalizeId).filter(Boolean));
+  const deleted = new Set(stored.overrides.deleted.map(normalizeId).filter(Boolean));
+  const entries: Entry[] = stored.overrides.custom.map((cmd) => {
+    const id = shortcutId(cmd);
+    return { id, matchKey: firstKey(cmd), cmd, disabled: disabled.has(id) };
+  });
 
   for (const cmd of BUILTIN_COMMANDS) {
     const id = shortcutId(cmd);
-    const override = stored.overrides.keyOverrides[id] ?? [];
-    const keys = override.length > 0 ? override : cmd.keys;
+    // A deleted shipped shortcut is not merged, so listing it here would offer
+    // a rebind for something no surface resolves. It comes back through
+    // Settings, not through this list.
+    if (deleted.has(id)) continue;
+    const edited = applyEdit({ ...cmd, id, keys: [...cmd.keys] }, stored.overrides.edits[id]);
     entries.push({
       id,
-      matchKey: (keys[0] ?? id).trim().toLowerCase(),
-      cmd: { ...cmd, keys },
+      matchKey: (edited.keys[0] ?? id).trim().toLowerCase(),
+      cmd: edited,
       disabled: disabled.has(id),
     });
   }
@@ -642,8 +653,8 @@ function renderRow(
   return row;
 }
 
-/** Rebinding a builtin writes `keyOverrides[canonical]`; the builtin itself is
- *  never mutated, so "Reset" is just dropping the entry. */
+/** Rebinding a builtin writes `edits[id].keys`; the builtin itself is never
+ *  mutated, so "Reset" is just dropping that one field. */
 function renderKeyEditor(
   entry: Entry,
   row: HTMLElement,
@@ -703,12 +714,15 @@ function renderKeyEditor(
       return fail(`“${clash}” is already taken by ${describeOwner(owners.get(clash) ?? '')}.`);
     }
 
-    const keyOverrides = { ...stored.overrides.keyOverrides, [entry.id]: keys };
+    const edits = {
+      ...stored.overrides.edits,
+      [entry.id]: { ...stored.overrides.edits[entry.id], keys },
+    };
     entry.cmd = { ...entry.cmd, keys };
     entry.matchKey = keys[0];
     paintKeys(keys);
     reset.hidden = false;
-    void commitOverrides({ ...stored.overrides, keyOverrides }).catch(reportFailure);
+    void commitOverrides({ ...stored.overrides, edits }).catch(reportFailure);
 
     // Non-blocking, and the same copy `validate()` uses: the rebind is saved
     // and the keyword resolves everywhere the resolver runs; it is only the
@@ -726,17 +740,21 @@ function renderKeyEditor(
   };
 
   const reset = button('Reset', () => {
-    const keyOverrides = { ...stored.overrides.keyOverrides };
-    delete keyOverrides[entry.id];
+    const edits = { ...stored.overrides.edits };
+    // Only the keys: this button restores the shipped keywords, and dropping
+    // the whole entry would silently discard edits to the other fields.
+    const { keys: _dropped, ...rest } = edits[entry.id] ?? {};
+    if (Object.keys(rest).length > 0) edits[entry.id] = rest;
+    else delete edits[entry.id];
     const original = BUILTIN_COMMANDS.find((cmd) => shortcutId(cmd) === entry.id)?.keys ?? entry.cmd.keys;
     entry.cmd = { ...entry.cmd, keys: original };
     entry.matchKey = (original[0] ?? entry.id).toLowerCase();
     input.value = original.join(', ');
     paintKeys(original);
-    void commitOverrides({ ...stored.overrides, keyOverrides }).catch(reportFailure);
+    void commitOverrides({ ...stored.overrides, edits }).catch(reportFailure);
     close();
   }, 'btn btn-sm');
-  reset.hidden = !(stored.overrides.keyOverrides[entry.id]?.length);
+  reset.hidden = !stored.overrides.edits[entry.id]?.keys?.length;
 
   input.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
@@ -1654,13 +1672,29 @@ function renderData(): HTMLElement {
         `turns off ${n} built-in ${n === 1 ? 'shortcut' : 'shortcuts'} (${nameList(plan.disables)})`,
       );
     }
+    if (plan.deletes.length > 0) {
+      const n = plan.deletes.length;
+      also.push(
+        `deletes ${n} built-in ${n === 1 ? 'shortcut' : 'shortcuts'} (${nameList(plan.deletes)})`,
+      );
+    }
     if (plan.rebinds.length > 0) {
       const n = plan.rebinds.length;
       also.push(
         `rebinds ${n} built-in ${n === 1 ? 'keyword' : 'keywords'} (${nameList(plan.rebinds)})`,
       );
     }
-    if (also.length > 0) lines.push(`Merge also ${also.join(' and ')}.`);
+    if (plan.edited.length > 0) {
+      const n = plan.edited.length;
+      also.push(
+        `changes ${n} built-in ${n === 1 ? 'shortcut' : 'shortcuts'} (${nameList(plan.edited)})`,
+      );
+    }
+    if (also.length > 0) {
+      const last = also[also.length - 1];
+      const clauses = also.length > 1 ? `${also.slice(0, -1).join(', ')} and ${last}` : last;
+      lines.push(`Merge also ${clauses}.`);
+    }
     lines.push('Either way, your current setup is exported to your downloads folder first.');
 
     const done = (text: string): void => {
@@ -1782,8 +1816,13 @@ interface MergePlan {
   duplicates: string[];
   /** Built-ins the file turns off that are still on here. */
   disables: string[];
+  /** Shipped shortcuts the file removes that are still here. */
+  deletes: string[];
   /** Built-ins the file rebinds that carry no rebinding of yours. */
   rebinds: string[];
+  /** Built-ins the file changes some other way — a repointed url, a rename —
+   *  in a field we do not already edit ourselves. */
+  edited: string[];
 }
 
 /**
@@ -1805,13 +1844,36 @@ function mergeOverrides(current: Overrides, incoming: Overrides): MergePlan {
   const added: Command[] = [];
   const renames: { from: string; to: string }[] = [];
   const duplicates: string[] = [];
-  // What the two non-`custom` halves of the merge below actually change, so the
-  // confirmation can name it instead of promising nothing else moves.
+  // What the non-`custom` halves of the merge below actually change, so the
+  // confirmation can name it instead of promising nothing else moves. Every one
+  // of them is computed from the merge itself rather than from the incoming
+  // file, so the dialog cannot name a change the merge then throws away.
   const disabled = new Set(current.disabled);
-  const disables = incoming.disabled.filter((key) => !disabled.has(key));
-  const rebinds = Object.keys(incoming.keyOverrides).filter(
-    (key) => !(key in current.keyOverrides),
-  );
+  const disables = incoming.disabled.filter((id) => !disabled.has(id));
+  const removed = new Set(current.deleted);
+  const deletes = incoming.deleted.filter((id) => !removed.has(id));
+
+  // Edits merge FIELD by field, not entry by entry: ours win per field, and an
+  // incoming rebind of a shortcut we renamed survives instead of being dropped
+  // whole because our entry happened to exist.
+  // Null-prototype for the same reason the storage boundary uses one: an id is
+  // a key off an import file, and `edits['__proto__']` on a plain object is
+  // swallowed by the inherited setter.
+  const edits: Record<string, ShortcutEdit> = Object.create(null);
+  const rebinds: string[] = [];
+  const edited: string[] = [];
+  for (const id of new Set([...Object.keys(current.edits), ...Object.keys(incoming.edits)])) {
+    const theirs = incoming.edits[id];
+    const ours = current.edits[id];
+    edits[id] = { ...theirs, ...ours };
+    // Exactly the fields the incoming entry contributes: what `{...theirs,
+    // ...ours}` kept from theirs.
+    const carried = Object.keys(theirs ?? {}).filter((field) => !(field in (ours ?? {})));
+    if (carried.includes('keys')) rebinds.push(id);
+    // Rebinds get their own sentence, so this one counts the rest — otherwise a
+    // single incoming edit is announced twice.
+    if (carried.some((field) => field !== 'keys')) edited.push(id);
+  }
 
   for (const cmd of incoming.custom) {
     const twin = mine.get(firstKey(cmd));
@@ -1838,14 +1900,25 @@ function mergeOverrides(current: Overrides, incoming: Overrides): MergePlan {
     overrides: {
       // Ours win on every collision; the import only fills the gaps.
       disabled: [...new Set([...current.disabled, ...incoming.disabled])],
-      keyOverrides: { ...incoming.keyOverrides, ...current.keyOverrides },
+      deleted: [...new Set([...current.deleted, ...incoming.deleted])],
+      edits,
+      // Ours keep their labels; an incoming section we do not have is added, so
+      // an imported shortcut's category still names a group that exists.
+      sections: [
+        ...current.sections,
+        ...incoming.sections.filter(
+          (section) => !current.sections.some((mine) => mine.id === section.id),
+        ),
+      ],
       custom: [...current.custom, ...added],
     },
     added,
     renames,
     duplicates,
     disables,
+    deletes,
     rebinds,
+    edited,
   };
 }
 

@@ -12,16 +12,49 @@
  * page waiting to read the message.
  */
 
-import type { Category, Command, HandlerId, Overrides, SearchEngineId, Settings, StoredState } from './types';
+import type {
+  Category,
+  Command,
+  HandlerId,
+  Overrides,
+  SearchEngineId,
+  Section,
+  Settings,
+  ShortcutEdit,
+  StoredState,
+} from './types';
 import { CATEGORIES, DEFAULT_OVERRIDES, DEFAULT_SETTINGS, DEFAULT_STOP_LIST, STORAGE_KEY } from './types';
 import { BUILTIN_COMMANDS, SEARCH_ENGINES } from './commands';
-import { MAX_ID_LENGTH, USER_ID_PREFIX, isUserId, mintUserId, normalizeId } from './overrides';
+import {
+  MAX_ID_LENGTH,
+  USER_ID_PREFIX,
+  foldLegacyKeyOverrides,
+  isUserId,
+  mintUserId,
+  normalizeId,
+  shortcutId,
+} from './overrides';
 import { mergeCommands } from './resolve';
 import { clone } from './text';
-import { validateAlias, validateUrlTemplate } from './validate';
+import { validateAlias, validateSectionId, validateSectionLabel, validateUrlTemplate } from './validate';
 
-/** Bumped only when the export file's shape changes incompatibly. */
-const EXPORT_VERSION = 1;
+/**
+ * Bumped only when the export file's shape changes incompatibly. Format 2
+ * replaced `keyOverrides` with the `edits` layer; format 1 files still load,
+ * through `foldLegacyKeyOverrides`.
+ */
+const EXPORT_VERSION = 2;
+
+/**
+ * Ids this build actually ships, used to prune `deleted`: an entry naming a
+ * command that no longer exists is a shortcut nobody can restore, and keeping
+ * it would let one removed in v1.0 come back as a tombstone forever. `edits`
+ * for a vanished id are left alone — they are inert and cost nothing.
+ */
+const SHIPPED_IDS = new Set(BUILTIN_COMMANDS.map(shortcutId));
+
+/** An import file may not fill the browse list with junk sections. */
+const MAX_SECTIONS = 64;
 
 const ENGINE_IDS = new Set<string>(SEARCH_ENGINES.map((engine) => engine.id));
 
@@ -128,7 +161,9 @@ export function importJson(text: string): ImportedState {
   }
 
   if (root.overrides !== undefined && !asRecord(root.overrides)) {
-    throw new Error('"overrides" must be an object with "disabled", "keyOverrides" and "custom".');
+    throw new Error(
+      '"overrides" must be an object with "disabled", "deleted", "edits", "sections" and "custom".',
+    );
   }
   if (root.settings !== undefined && !asRecord(root.settings)) {
     throw new Error('"settings" must be an object.');
@@ -273,12 +308,132 @@ function normalizeOverrides(raw: unknown): Overrides {
   const source = asRecord(raw);
   if (!source) return clone(DEFAULT_OVERRIDES);
   return {
-    disabled: normalizeAliases(source.disabled),
-    keyOverrides: normalizeKeyOverrides(source.keyOverrides),
+    disabled: normalizeIdList(source.disabled),
+    // Pruned, not kept: see `SHIPPED_IDS`.
+    deleted: normalizeIdList(source.deleted).filter((id) => SHIPPED_IDS.has(id)),
+    // The v1 migration, on the stored blob. Its strict twin in `parseOverrides`
+    // is the v1 *file* reader; one implementation, two callers.
+    edits: foldLegacyKeyOverrides(normalizeEdits(source.edits), normalizeKeyOverrides(source.keyOverrides)),
+    sections: normalizeSections(source.sections),
     custom: normalizeCustom(source.custom),
   };
 }
 
+/**
+ * Shortcut ids off a stored blob: trimmed, lowercased, deduped, and dropping
+ * anything that could never name a shortcut.
+ *
+ * Not `normalizeAliases`: an id is not an alias. `u:tix` is a legal id and a
+ * `\`-prefixed one is not an alias at all, so routing ids through the keyword
+ * rules would quietly drop half the user's own shortcuts from `disabled`.
+ */
+function normalizeIdList(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const ids: string[] = [];
+  for (const entry of raw) {
+    const id = normalizeId(entry);
+    if (id && !ids.includes(id)) ids.push(id);
+  }
+  return ids;
+}
+
+/**
+ * The edit layer, field by field. Never reads `handler`, `provider`, `builtin`
+ * or `id` — an edit that names them is not a shortcut definition, it is an
+ * attempt to become one (invariant 16).
+ *
+ * An entry that ends up with no fields is dropped entirely, so "reset to
+ * shipped" is representable as the absence of an entry and the stored blob
+ * stays canonical.
+ */
+function normalizeEdits(raw: unknown): Record<string, ShortcutEdit> {
+  const source = asRecord(raw);
+  // Null-prototype: see `parseEdits`. A stored blob is untrusted for the same
+  // reason a file is — it is where an import file ends up.
+  const out: Record<string, ShortcutEdit> = Object.create(null);
+  if (!source) return out;
+  for (const [key, value] of Object.entries(source)) {
+    const id = normalizeId(key);
+    const entry = asRecord(value);
+    // Edits are for SHIPPED shortcuts: a custom command has nothing to diff
+    // against and is edited in place, so an entry under a `u:` id is a second
+    // writer for fields storage already owns.
+    if (!id || !entry || isUserId(id)) continue;
+    const edit = normalizeEdit(entry);
+    if (edit) out[id] = edit;
+  }
+  return out;
+}
+
+/** Returns null when nothing usable is left, which is what makes an empty edit
+ *  unrepresentable in the stored blob. */
+function normalizeEdit(source: Record<string, unknown>): ShortcutEdit | null {
+  const edit: ShortcutEdit = {};
+
+  const keys = normalizeAliases(source.keys);
+  if (keys.length > 0) edit.keys = keys;
+
+  const name = trimmed(source.name);
+  if (name) edit.name = name;
+  // A cleared description is a real instruction, unlike a cleared name.
+  if (typeof source.description === 'string') edit.description = source.description.trim();
+
+  // This is where a blank or unparseable edited url dies, rather than at the
+  // merge layer: `applyEdit` would inherit the shipped one anyway, and keeping
+  // the string would show the user a saved edit that does nothing.
+  const url = safeUrl(source.url);
+  if (url) edit.url = url;
+
+  // `null` survives normalization on both optional fields: it says "the user
+  // removed this", which absence cannot say.
+  if (source.searchUrl === null) edit.searchUrl = null;
+  else {
+    const searchUrl = safeUrl(source.searchUrl);
+    if (searchUrl) edit.searchUrl = searchUrl;
+  }
+
+  // Kept as written rather than narrowed to `CATEGORIES` here: a section this
+  // build does not know about may be one the user is about to create, and
+  // `applyEdit` refuses to file a command under an unknown id anyway.
+  const category = trimmed(source.category).toLowerCase();
+  if (category) edit.category = category;
+
+  if (source.example === null) edit.example = null;
+  else {
+    const example = trimmed(source.example);
+    if (example) edit.example = example;
+  }
+
+  return Object.keys(edit).length > 0 ? edit : null;
+}
+
+/** Sections are data here; the algebra that resolves a command's category
+ *  against them lands with the section editor. */
+function normalizeSections(raw: unknown): Section[] {
+  if (!Array.isArray(raw)) return [];
+  const sections: Section[] = [];
+  const seen = new Set<string>();
+  for (const entry of raw) {
+    const source = asRecord(entry);
+    if (!source) continue;
+    const id = validateSectionId(trimmed(source.id));
+    const label = validateSectionLabel(typeof source.label === 'string' ? source.label : '');
+    if (!id.ok || !label.ok || seen.has(id.id)) continue;
+    seen.add(id.id);
+    sections.push({ id: id.id, label: label.label });
+    // The cap counts sections the user ends up with, so it is applied to what
+    // survived validation: capping the input first would let a corrupt blob
+    // spend the whole budget on entries that were going to be dropped anyway.
+    if (sections.length >= MAX_SECTIONS) break;
+  }
+  return sections;
+}
+
+/**
+ * Reads the format-1 `keyOverrides` map. Kept, not deleted: it is the only
+ * thing standing between a v1.0 profile and a silently un-rebound `gh`. Its
+ * result is folded into `edits[id].keys` by `normalizeOverrides`.
+ */
 function normalizeKeyOverrides(raw: unknown): Record<string, string[]> {
   const source = asRecord(raw);
   const out: Record<string, string[]> = {};
@@ -422,10 +577,19 @@ function normalizeAliases(raw: unknown): string[] {
 function parseOverrides(source: Record<string, unknown> | null): Overrides {
   if (!source) return clone(DEFAULT_OVERRIDES);
   if (source.disabled !== undefined && !Array.isArray(source.disabled)) {
-    throw new Error('"disabled" must be an array of shortcut keywords.');
+    throw new Error('"disabled" must be an array of shortcut ids.');
+  }
+  if (source.deleted !== undefined && !Array.isArray(source.deleted)) {
+    throw new Error('"deleted" must be an array of shortcut ids.');
   }
   if (source.keyOverrides !== undefined && !asRecord(source.keyOverrides)) {
     throw new Error('"keyOverrides" must be an object mapping a keyword to its replacements.');
+  }
+  if (source.edits !== undefined && !asRecord(source.edits)) {
+    throw new Error('"edits" must be an object mapping a shortcut id to the fields it changes.');
+  }
+  if (source.sections !== undefined && !Array.isArray(source.sections)) {
+    throw new Error('"sections" must be an array of {id, label} objects.');
   }
   if (source.custom !== undefined && !Array.isArray(source.custom)) {
     throw new Error('"custom" must be an array of shortcuts.');
@@ -438,19 +602,116 @@ function parseOverrides(source: Record<string, unknown> | null): Overrides {
     true,
   );
   return {
-    // `disabled` stays lenient: its entries name builtins the user turned off,
-    // so an unmatchable one costs nothing but a dead line in the file.
-    disabled: normalizeAliases(source.disabled),
-    keyOverrides: parseKeyOverrides(source.keyOverrides),
+    // `disabled` and `deleted` stay lenient: their entries name shortcuts the
+    // user turned off or removed, so an unmatchable one costs nothing but a
+    // dead line in the file. `deleted` is pruned for the reason in
+    // `SHIPPED_IDS`, and pruning here too keeps import and export agreeing on
+    // what the file means.
+    disabled: normalizeIdList(source.disabled),
+    deleted: normalizeIdList(source.deleted).filter((id) => SHIPPED_IDS.has(id)),
+    edits: foldLegacyKeyOverrides(parseEdits(source.edits), parseKeyOverrides(source.keyOverrides)),
+    sections: parseSections(source.sections),
     custom,
   };
 }
 
 /**
- * Strict counterpart to `normalizeKeyOverrides`. A rebinding to `"foo bar"` is
- * the same silent death as a custom command with a space in its keyword — the
- * user rebinds `gh`, sees the file import cleanly, and their keyword answers to
- * nothing.
+ * Strict counterpart to `normalizeEdits`. Only the fields whose silence is
+ * fatal are refused — a rebinding to `"foo bar"` never matches anything, and a
+ * destination that is not a URL cannot be opened. The rest degrade exactly as
+ * they do on the stored path, including `category`: an id this build does not
+ * know is kept in the file and ignored when the edit is folded, because it may
+ * be a section the user is about to create.
+ */
+function parseEdits(raw: unknown): Record<string, ShortcutEdit> {
+  const source = asRecord(raw);
+  // Null-prototype: the keys come straight off untrusted JSON, and
+  // `out['__proto__']` on a plain object would be swallowed by the setter it
+  // inherits rather than stored as an edit.
+  const out: Record<string, ShortcutEdit> = Object.create(null);
+  const seen = new Set<string>();
+  if (!source) return out;
+  for (const [key, value] of Object.entries(source)) {
+    // A blank key carries no instruction at all; only a key that says something
+    // unusable is worth refusing the file over.
+    if (!key.trim()) continue;
+    const id = normalizeId(key);
+    if (!id) {
+      throw new Error(
+        `"edits" has a shortcut id BunnyLol cannot use ("${key.trim()}") — an id has no spaces and is at most ${MAX_ID_LENGTH} characters.`,
+      );
+    }
+    // Edits are for shipped shortcuts; a `u:` entry is dropped rather than
+    // refused, because it is inert rather than wrong. Dropped BEFORE its fields
+    // are checked, or an entry we were never going to read could still refuse
+    // the whole file.
+    if (isUserId(id)) continue;
+    // Two keys that normalize to one id are two answers to the same question,
+    // and taking the last one silently applies an edit the user cannot see in
+    // their file.
+    if (seen.has(id)) {
+      throw new Error(
+        `"edits" names the shortcut "${id}" twice (ids are compared lowercased), so BunnyLol cannot tell which edit you meant.`,
+      );
+    }
+    seen.add(id);
+    const entry = asRecord(value);
+    if (!entry) {
+      throw new Error(`"edits.${id}" must be an object of the fields the edit changes.`);
+    }
+    if (entry.keys !== undefined && !Array.isArray(entry.keys)) {
+      throw new Error(`"edits.${id}.keys" must be an array of replacement keywords.`);
+    }
+    if (Array.isArray(entry.keys)) parseAliasList(entry.keys, `"edits.${id}.keys"`);
+    parseEditUrl(entry.url, `"edits.${id}.url"`);
+    parseEditUrl(entry.searchUrl, `"edits.${id}.searchUrl"`);
+    const edit = normalizeEdit(entry);
+    if (edit) out[id] = edit;
+  }
+  return out;
+}
+
+/** `null` is "the user cleared this" and absent is "inherit"; only a written
+ *  destination is checked. */
+function parseEditUrl(value: unknown, label: string): void {
+  if (value === undefined || value === null) return;
+  const url = trimmed(value);
+  if (!url) return;
+  const check = validateUrlTemplate(url);
+  if (!check.ok) throw new Error(`${label} BunnyLol will not open: it ${check.reason}.`);
+}
+
+/** Strict counterpart to `normalizeSections`. A section whose id is not a slug
+ *  is a group nothing can ever be filed under. */
+function parseSections(raw: unknown): Section[] {
+  if (!Array.isArray(raw)) return [];
+  // Refused rather than truncated: dropping the tail of a file the user chose
+  // to import loses sections silently, and every category filed under one of
+  // them would land back in "My shortcuts" with no explanation.
+  if (raw.length > MAX_SECTIONS) {
+    throw new Error(
+      `"sections" has ${raw.length} entries — BunnyLol keeps at most ${MAX_SECTIONS}.`,
+    );
+  }
+  for (const entry of raw) {
+    const source = asRecord(entry);
+    if (!source) throw new Error('"sections" has an entry that is not a JSON object.');
+    const id = validateSectionId(trimmed(source.id));
+    if (!id.ok) throw new Error(`"sections" has an id that ${id.reason}.`);
+    const label = validateSectionLabel(typeof source.label === 'string' ? source.label : '');
+    if (!label.ok) throw new Error(`"sections.${id.id}.label" ${label.reason}.`);
+  }
+  return normalizeSections(raw);
+}
+
+/**
+ * Strict counterpart to `normalizeKeyOverrides`, and THE v1 export reader: a
+ * format-1 file has its rebindings here and nowhere else, so this runs on every
+ * import and its result is folded into `edits` (see `EXPORT_VERSION`).
+ *
+ * A rebinding to `"foo bar"` is the same silent death as a custom command with
+ * a space in its keyword — the user rebinds `gh`, sees the file import cleanly,
+ * and their keyword answers to nothing.
  */
 function parseKeyOverrides(raw: unknown): Record<string, string[]> {
   const source = asRecord(raw);
@@ -533,7 +794,15 @@ function parseCustomCommand(raw: unknown, index: number): Command {
 }
 
 function looksLikeOverrides(root: Record<string, unknown>): boolean {
-  return 'custom' in root || 'disabled' in root || 'keyOverrides' in root;
+  return (
+    'custom' in root ||
+    'disabled' in root ||
+    'deleted' in root ||
+    'edits' in root ||
+    'sections' in root ||
+    // Format 1's name for `edits`, so a bare v1 snippet is still recognized.
+    'keyOverrides' in root
+  );
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

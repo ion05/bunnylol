@@ -12,9 +12,10 @@ import { DEFAULT_SETTINGS, FORCE_SEARCH_PREFIXES, PASSTHROUGH_PARAM } from './ty
 // engine hosts have exactly one definition.
 import { SEARCH_ENGINES } from './commands';
 import { expandTemplate, HANDLERS } from './handlers';
-// Identity lives in one module so the resolver, storage and the options page
-// cannot disagree about which shortcut an override entry names.
-import { shortcutId } from './overrides';
+// Identity and the edit algebra live in one module so the resolver, storage and
+// the options page cannot disagree about which shortcut an override entry names
+// or about what it is allowed to change.
+import { applyEdit, normalizeId, shortcutId } from './overrides';
 // Which aliases a DNR rule can carry is decided in one place; `activeKeywords`
 // and the storage boundary must not drift apart on it.
 import { isInterceptableAlias } from './validate';
@@ -67,30 +68,31 @@ export function buildKeyMap(commands: Command[]): Map<string, Command> {
  * `buildKeyMap`.
  */
 export function mergeCommands(builtins: Command[], overrides: Overrides): Command[] {
-  const disabled = new Set((overrides?.disabled ?? []).map((key) => key.trim().toLowerCase()));
-  const keyOverrides = overrides?.keyOverrides ?? {};
-  // Every emitted command carries its resolved id: the browse rows, the override
-  // maps and the resolver then key off one string, and no surface has to know
-  // whether the command came from the registry or from storage.
-  const merged: Command[] = (overrides?.custom ?? []).map((cmd) => ({
-    ...cmd,
-    id: shortcutId(cmd),
-    keys: [...(cmd.keys ?? [])],
-  }));
+  // Read through `normalizeId`, the one reader of an id off untrusted storage:
+  // a second normalisation here is how a blob's `GH ` stops matching the `gh`
+  // the rest of the extension resolved it to.
+  const disabled = new Set((overrides?.disabled ?? []).map(normalizeId).filter(Boolean));
+  const deleted = new Set((overrides?.deleted ?? []).map(normalizeId).filter(Boolean));
+  const edits = overrides?.edits ?? {};
+  const merged: Command[] = [];
+
+  // Custom first: `buildKeyMap` is first-writer-wins, so a user's own `gh`
+  // shadows the builtin rather than being ignored (invariant 10).
+  for (const cmd of overrides?.custom ?? []) {
+    // Every emitted command carries its resolved id: the browse rows, the
+    // override maps and the resolver then key off one string, and no surface
+    // has to know whether the command came from the registry or from storage.
+    const id = shortcutId(cmd);
+    if (disabled.has(id)) continue;
+    merged.push({ ...cmd, id, keys: [...(cmd.keys ?? [])] });
+  }
 
   for (const cmd of builtins) {
-    const canonical = shortcutId(cmd);
-    if (disabled.has(canonical)) continue;
-    const replacement = (keyOverrides[canonical] ?? [])
-      .map((key) => key.trim())
-      .filter((key) => key.length > 0);
-    // An empty replacement list means "no override" rather than "no aliases",
-    // otherwise a half-finished edit in the options page would orphan a command.
-    merged.push({
-      ...cmd,
-      id: canonical,
-      keys: replacement.length > 0 ? replacement : [...(cmd.keys ?? [])],
-    });
+    const id = shortcutId(cmd);
+    if (deleted.has(id) || disabled.has(id)) continue;
+    // AFTER the id and the keys copy: an edit's `keys` replaces the shipped
+    // ones, and it must land on the copy rather than on the registry entry.
+    merged.push(applyEdit({ ...cmd, id, keys: [...(cmd.keys ?? [])] }, edits[id]));
   }
   return merged;
 }
