@@ -334,8 +334,8 @@ describe('buildRules', () => {
       'r+kelly',
       'help+me+write+a+resume',
       'add+to+cart',
-      'b+complex+vitamins',
-      'learn+to+code',
+      'w+hotel+chicago',
+      'map+of+france',
       'word+for+happy',
       'x+ray',
     ];
@@ -358,7 +358,7 @@ describe('buildRules', () => {
         if (!alternation) continue;
         for (const alias of alternation[1].split('|')) covered.add(alias.replace(/\\/g, ''));
       }
-      expect(intercepted.length).toBeGreaterThan(300);
+      expect(intercepted.length).toBeGreaterThan(150);
       expect(intercepted.filter((alias) => !covered.has(alias))).toEqual([]);
     });
   });
@@ -368,7 +368,7 @@ describe('buildRules', () => {
    * and only in the address bar.
    */
   describe('a keyword the user exempted', () => {
-    const exempted = activeKeywords(BUILTIN_COMMANDS, ['maps', 'news']);
+    const exempted = activeKeywords(BUILTIN_COMMANDS, ['maps', 'map']);
 
     it('gets no rule, on any engine', () => {
       for (const engine of SEARCH_ENGINES) {
@@ -376,13 +376,13 @@ describe('buildRules', () => {
         expect(capture(url, engine, exempted)).toBeNull();
       }
       expect(exempted).not.toContain('maps');
-      expect(exempted).not.toContain('news');
+      expect(exempted).not.toContain('map');
       expect(exempted).toContain('gh');
     });
 
     it('still resolves through the omnibox and the popup', () => {
       const commands = mergeCommands(BUILTIN_COMMANDS, DEFAULT_OVERRIDES);
-      for (const alias of ['maps', 'news']) {
+      for (const alias of ['maps', 'map']) {
         const result = resolve(`${alias} thing`, commands, { ...DEFAULT_SETTINGS });
         expect(result.fallback, `${alias} fell through to the search engine`).toBe(false);
         expect(result.command?.keys).toContain(alias);

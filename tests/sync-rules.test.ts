@@ -125,7 +125,7 @@ describe('the status syncRules reports matches the rules it registered', () => {
     const keywords = eligible(stored);
 
     expect(DEFAULT_STOP_LIST).toEqual([]);
-    expect(keywords.length).toBeGreaterThan(300);
+    expect(keywords.length).toBeGreaterThan(150);
     expect(status.suppressed).toBe(0);
     expect(status.dropped).toBe(0);
     expect(status.keywords).toBe(keywords.length);
@@ -135,7 +135,10 @@ describe('the status syncRules reports matches the rules it registered', () => {
   });
 
   it('counts a user exemption as suppressed, not dropped', async () => {
-    const stored = state({ interceptStopList: ['maps', 'news'] });
+    // Taken from the registry rather than named, so pruning a command cannot
+    // silently turn this into a one-keyword test.
+    const exempt = activeKeywords(mergeCommands(BUILTIN_COMMANDS, DEFAULT_OVERRIDES)).slice(0, 2);
+    const stored = state({ interceptStopList: exempt });
     const { status } = await sync({ state: stored });
     const all = activeKeywords(mergeCommands(BUILTIN_COMMANDS, stored.overrides));
     expect(status.suppressed).toBe(all.length - eligible(stored).length);
@@ -176,7 +179,7 @@ describe('a Chrome that rejects the rule update', () => {
       rejectUpdate: (call) => (call === 2 ? 'Dynamic rule quota exceeded.' : null),
     });
     const first = await syncRules();
-    expect(first.keywords).toBeGreaterThan(300);
+    expect(first.keywords).toBeGreaterThan(150);
     expect(stub.rules().length).toBeGreaterThan(0);
 
     const failed = await syncRules();
@@ -350,7 +353,7 @@ describe('a profile with several hundred custom shortcuts', () => {
     const { status, rules } = await sync({ state: stored });
 
     const keywords = eligible(stored);
-    expect(keywords.length).toBeGreaterThan(800);
+    expect(keywords.length).toBeGreaterThan(600);
     const covered = new Set(coverage(rules, keywords, SEARCH_ENGINES));
     expect(covered.size).toBe(keywords.length);
     expect(status.keywords).toBe(covered.size);
@@ -399,9 +402,9 @@ describe('the first word is always a command', () => {
 
   it.each([
     ['map of france', 'https://www.google.com/maps'],
-    ['news today', 'https://news.google.com'],
-    ['stock market today', 'finance.yahoo.com'],
-    ['office space movie', 'https://m365.cloud.microsoft'],
+    ['w hotel chicago', 'https://en.wikipedia.org'],
+    ['x men', 'https://x.com'],
+    ['teams that never won a super bowl', 'microsoft.com'],
   ])('intercepts %j and routes it to the command', async (query, destination) => {
     const { rules } = await sync({ state: state() });
     const url = resultsUrl(SEARCH_ENGINES[0], query.replace(/ /g, '+'));
@@ -414,7 +417,7 @@ describe('the first word is always a command', () => {
     for (const engine of SEARCH_ENGINES) {
       expect(claim(rules, resultsUrl(engine, 'map+of+france'))).toBeNull();
       // Only the exempted alias: its neighbours are still intercepted.
-      expect(claim(rules, resultsUrl(engine, 'news+today'))).toBe('redirect');
+      expect(claim(rules, resultsUrl(engine, 'w+hotel+chicago'))).toBe('redirect');
     }
     // Exempted for interception only.
     expect(resolve('map of france', commands, { ...DEFAULT_SETTINGS }).fallback).toBe(false);

@@ -66,23 +66,16 @@ export type HandlerId =
   | 'onedrive'
   | 'teams'
   | 'ai'
-  | 'gsite'
   | 'brightspace'
   | 'gradescope'
   | 'youtube'
-  | 'localhost'
   | 'meta'
   | 'zoom'
   | 'meet'
   | 'tracking'
   | 'instagram'
-  | 'telegram'
   | 'whatsapp'
-  | 'ticker'
-  | 'wayback'
-  | 'pkg'
-  | 'word'
-  | 'unindexed';
+  | 'word';
 
 export interface Command {
   /** Aliases. `keys[0]` is canonical and is the stable identity of the command. */

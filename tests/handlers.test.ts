@@ -18,23 +18,16 @@ const ALL_HANDLER_IDS: HandlerId[] = [
   'onedrive',
   'teams',
   'ai',
-  'gsite',
   'brightspace',
   'gradescope',
   'youtube',
-  'localhost',
   'meta',
   'zoom',
   'meet',
   'tracking',
   'instagram',
-  'telegram',
   'whatsapp',
-  'ticker',
-  'wayback',
-  'pkg',
   'word',
-  'unindexed',
 ];
 
 function settings(patch: Partial<Settings> = {}): Settings {
@@ -356,91 +349,6 @@ describe('youtube', () => {
   });
 });
 
-describe('gsite', () => {
-  const SITE = cmd(['gsite', 'site'], 'https://www.google.com/', 'gsite');
-
-  it('builds a site: query from the first word', () => {
-    expect(HANDLERS.gsite('react.dev hooks', SITE, settings())).toBe(
-      'https://www.google.com/search?q=site%3Areact.dev+hooks',
-    );
-  });
-
-  it('accepts a pasted origin as the domain', () => {
-    expect(HANDLERS.gsite('https://react.dev/ hooks', SITE, settings())).toBe(
-      'https://www.google.com/search?q=site%3Areact.dev+hooks',
-    );
-  });
-
-  it('scopes with no query when only a domain is given', () => {
-    expect(HANDLERS.gsite('react.dev', SITE, settings())).toBe('https://www.google.com/search?q=site%3Areact.dev');
-  });
-
-  it('opens the command home when bare', () => {
-    expect(HANDLERS.gsite('', SITE, settings())).toBe('https://www.google.com/');
-  });
-
-  it('encodes the rest of the query with + for spaces', () => {
-    expect(HANDLERS.gsite('react.dev use effect & memo', SITE, settings())).toBe(
-      'https://www.google.com/search?q=site%3Areact.dev+use+effect+%26+memo',
-    );
-  });
-});
-
-describe('localhost', () => {
-  const LH = cmd(['lh', 'localhost'], 'http://localhost:3000', 'localhost');
-  const localhost = HANDLERS.localhost;
-
-  it('uses the command default port when bare', () => {
-    expect(localhost('', LH, settings())).toBe('http://localhost:3000');
-  });
-
-  it('accepts a bare port', () => {
-    expect(localhost('8080', LH, settings())).toBe('http://localhost:8080');
-  });
-
-  it('accepts a port plus a path, query or hash', () => {
-    expect(localhost('8080/api/health', LH, settings())).toBe('http://localhost:8080/api/health');
-    expect(localhost('5173/?debug=1', LH, settings())).toBe('http://localhost:5173/?debug=1');
-    expect(localhost('4000#top', LH, settings())).toBe('http://localhost:4000#top');
-  });
-
-  it('strips a typed localhost prefix', () => {
-    expect(localhost('localhost:8080', LH, settings())).toBe('http://localhost:8080');
-    expect(localhost('http://localhost:8080/api', LH, settings())).toBe('http://localhost:8080/api');
-    expect(localhost('127.0.0.1:9000', LH, settings())).toBe('http://localhost:9000');
-  });
-
-  it('treats a rooted path as a path on port 80', () => {
-    expect(localhost('/admin/users', LH, settings())).toBe('http://localhost/admin/users');
-    expect(localhost('localhost/admin panel', LH, settings())).toBe('http://localhost/admin%20panel');
-  });
-
-  it('searches instead of aiming an ordinary query at this machine', () => {
-    expect(localhost('surge meaning', LH, settings(), 'lh')).toBe(
-      'https://www.google.com/search?q=lh%20surge%20meaning',
-    );
-    expect(localhost('refused to connect fix', LH, settings(), 'localhost')).toBe(
-      'https://www.google.com/search?q=localhost%20refused%20to%20connect%20fix',
-    );
-    // A bare word is a search too: dev servers live on ports, and
-    // `http://localhost/admin` only ever dead-ends on a refused connection.
-    expect(localhost('admin', LH, settings(), 'lh')).toBe('https://www.google.com/search?q=lh%20admin');
-  });
-
-  it('searches rather than inventing an out-of-range port', () => {
-    expect(localhost('99999', LH, settings(), 'lh')).toBe('https://www.google.com/search?q=lh%2099999');
-  });
-
-  it('honours a custom default engine when it degrades to a search', () => {
-    const kagi = settings({ defaultEngine: 'https://kagi.com/search?q={q}' });
-    expect(localhost('surge meaning', LH, kagi, 'lh')).toBe('https://kagi.com/search?q=lh%20surge%20meaning');
-  });
-
-  it('drops traversal segments from a path', () => {
-    expect(localhost('3000/../admin', LH, settings())).toBe('http://localhost:3000/admin');
-  });
-});
-
 describe('meta', () => {
   it('opens the relative options route when bare', () => {
     const bl = cmd(['bl'], 'options.html#help', 'meta');
@@ -577,11 +485,7 @@ describe('shape-guarded slots', () => {
     'tracking',
   );
   const IG = slotCmd('ig', 'https://www.instagram.com/', 'https://www.instagram.com/{q}/', 'instagram');
-  const TG = slotCmd('tg', 'https://web.telegram.org/', 'https://t.me/{q}', 'telegram');
   const WA = slotCmd('whatsapp', 'https://web.whatsapp.com/', 'https://wa.me/{q}', 'whatsapp');
-  const STOCK = slotCmd('stock', 'https://finance.yahoo.com/', 'https://finance.yahoo.com/quote/{q}', 'ticker');
-  const WB = slotCmd('wayback', 'https://web.archive.org/', 'https://web.archive.org/web/2/{q}', 'wayback');
-  const BP = slotCmd('bundlephobia', 'https://bundlephobia.com/', 'https://bundlephobia.com/package/{q}', 'pkg');
   const DEF = slotCmd(
     'def',
     'https://www.merriam-webster.com/',
@@ -590,7 +494,7 @@ describe('shape-guarded slots', () => {
   );
 
   it('opens the command home when bare', () => {
-    for (const target of [ZOOM, MEET, FEDEX, IG, TG, WA, STOCK, WB, BP, DEF]) {
+    for (const target of [ZOOM, MEET, FEDEX, IG, WA, DEF]) {
       expect(HANDLERS[target.handler as HandlerId]('', target, settings())).toBe(target.url);
     }
   });
@@ -629,45 +533,10 @@ describe('shape-guarded slots', () => {
     );
   });
 
-  it('opens a profile only for a handle', () => {
-    expect(HANDLERS.instagram('nasa', IG, settings())).toBe('https://www.instagram.com/nasa/');
-    expect(HANDLERS.instagram('@nasa', IG, settings())).toBe('https://www.instagram.com/nasa/');
-    expect(HANDLERS.instagram('photos of dogs', IG, settings())).toBe(
-      'https://www.google.com/search?q=site%3Ainstagram.com+photos%20of%20dogs',
-    );
-    expect(HANDLERS.telegram('durov', TG, settings())).toBe('https://t.me/durov');
-    expect(HANDLERS.telegram('how to leave a group', TG, settings(), 'tg')).toBe(
-      'https://www.google.com/search?q=tg%20how%20to%20leave%20a%20group',
-    );
-  });
-
   it('starts a whatsapp chat only for a phone number', () => {
     expect(HANDLERS.whatsapp('+1 (555) 123-4567', WA, settings())).toBe('https://wa.me/15551234567');
     expect(HANDLERS.whatsapp('web login qr code', WA, settings())).toBe(
       'https://www.google.com/search?q=site%3Awhatsapp.com+web%20login%20qr%20code',
-    );
-  });
-
-  it('quotes only a ticker symbol', () => {
-    expect(HANDLERS.ticker('NVDA', STOCK, settings())).toBe('https://finance.yahoo.com/quote/NVDA');
-    expect(HANDLERS.ticker('^GSPC', STOCK, settings())).toBe('https://finance.yahoo.com/quote/%5EGSPC');
-    expect(HANDLERS.ticker('market today', STOCK, settings())).toBe(
-      'https://www.google.com/search?q=site%3Afinance.yahoo.com+market%20today',
-    );
-  });
-
-  it('archives only something with a host in it', () => {
-    expect(HANDLERS.wayback('nytimes.com', WB, settings())).toBe('https://web.archive.org/web/2/nytimes.com');
-    expect(HANDLERS.wayback('of our own', WB, settings(), 'archive')).toBe(
-      'https://www.google.com/search?q=archive%20of%20our%20own',
-    );
-  });
-
-  it('opens a package page only for a package name', () => {
-    expect(HANDLERS.pkg('lodash', BP, settings())).toBe('https://bundlephobia.com/package/lodash');
-    expect(HANDLERS.pkg('@types/node', BP, settings())).toBe('https://bundlephobia.com/package/@types/node');
-    expect(HANDLERS.pkg('how big is react', BP, settings(), 'bundlephobia')).toBe(
-      'https://www.google.com/search?q=bundlephobia%20how%20big%20is%20react',
     );
   });
 
@@ -688,16 +557,98 @@ describe('shape-guarded slots', () => {
   });
 });
 
-describe('unindexed', () => {
-  const CI = cmd(['ci'], 'https://sswis.mypurdue.purdue.edu/CourseInsights/', 'unindexed');
 
-  it('opens the app when bare', () => {
-    expect(HANDLERS.unindexed('', CI, settings())).toBe('https://sswis.mypurdue.purdue.edu/CourseInsights/');
+describe('github repo sub-commands', () => {
+  const GH = {
+    keys: ['gh'],
+    name: 'GitHub',
+    description: '',
+    url: 'https://github.com/',
+    handler: 'github' as HandlerId,
+    category: 'dev' as const,
+    builtin: true,
+  };
+  const gh = (args: string, githubUser = '') =>
+    HANDLERS.github(args, GH, { ...DEFAULT_SETTINGS, githubUser });
+
+  it('opens the list for a flag with no number', () => {
+    expect(gh('facebook/react pr')).toBe('https://github.com/facebook/react/pulls');
+    expect(gh('facebook/react i')).toBe('https://github.com/facebook/react/issues');
+    expect(gh('facebook/react issues')).toBe('https://github.com/facebook/react/issues');
   });
 
-  it('reproduces the whole query, keyword included, when it cannot use the words', () => {
-    expect(HANDLERS.unindexed('pay scale 2026', CI, settings(), 'ci')).toBe(
-      'https://www.google.com/search?q=ci%20pay%20scale%202026',
+  it('opens a numbered item, using the path segment that item actually has', () => {
+    // GitHub lists at /pulls but addresses one at /pull/123 — the mapping
+    // cannot just append the number to the tab.
+    expect(gh('facebook/react pr 123')).toBe('https://github.com/facebook/react/pull/123');
+    expect(gh('facebook/react i 456')).toBe('https://github.com/facebook/react/issues/456');
+    expect(gh('facebook/react pr #123')).toBe('https://github.com/facebook/react/pull/123');
+  });
+
+  it('searches within the tab rather than dropping trailing words', () => {
+    expect(gh('facebook/react pr auth bug')).toBe(
+      'https://github.com/facebook/react/pulls?q=auth%20bug',
+    );
+    expect(gh('facebook/react i 12 34')).toBe('https://github.com/facebook/react/issues?q=12%2034');
+  });
+
+  it('leaves the existing behaviour alone', () => {
+    expect(gh('facebook/react')).toBe('https://github.com/facebook/react');
+    expect(gh('me', 'octocat')).toBe('https://github.com/octocat');
+    expect(gh('')).toBe('https://github.com/');
+  });
+});
+
+describe('google account index', () => {
+  const mk = (keys: string[], url: string, handler: HandlerId) => ({
+    keys,
+    name: '',
+    description: '',
+    url,
+    handler,
+    category: 'google' as const,
+    builtin: true,
+  });
+  const DOCS = mk(['docs'], 'https://docs.google.com/document/u/0/', 'googleApp');
+  const MAIL = mk(['gmail'], 'https://mail.google.com/', 'gmail');
+  const DRIVE = mk(['gdrive'], 'https://drive.google.com/', 'gdrive');
+  const CAL = mk(['gcal'], 'https://calendar.google.com/', 'gcal');
+
+  it('takes a leading number as the account index', () => {
+    expect(HANDLERS.googleApp('1', DOCS, DEFAULT_SETTINGS)).toBe(
+      'https://docs.google.com/document/u/1/',
+    );
+    expect(HANDLERS.gmail('2', MAIL, DEFAULT_SETTINGS)).toBe('https://mail.google.com/mail/u/2/');
+  });
+
+  it('applies the index to a search too', () => {
+    expect(HANDLERS.gmail('1 from:mom', MAIL, DEFAULT_SETTINGS)).toBe(
+      'https://mail.google.com/mail/u/1/#search/from%3Amom',
+    );
+    expect(HANDLERS.gdrive('3 budget', DRIVE, DEFAULT_SETTINGS)).toBe(
+      'https://drive.google.com/drive/u/3/search?q=budget',
+    );
+    expect(HANDLERS.gcal('1 standup', CAL, DEFAULT_SETTINGS)).toBe(
+      'https://calendar.google.com/calendar/u/1/r/search?q=standup',
+    );
+  });
+
+  it('falls back to the configured account when no number leads', () => {
+    const settings = { ...DEFAULT_SETTINGS, googleAccount: 2 };
+    expect(HANDLERS.gmail('', MAIL, settings)).toBe('https://mail.google.com/mail/u/2/');
+    expect(HANDLERS.gmail('from:mom', MAIL, settings)).toBe(
+      'https://mail.google.com/mail/u/2/#search/from%3Amom',
+    );
+  });
+
+  it('only treats a leading bare integer as an index', () => {
+    // Three or more digits is a year, not an account: only 1-2 digits are
+    // peeled off, so `2024 taxes` searches for the whole phrase.
+    expect(HANDLERS.gdrive('2024 taxes', DRIVE, DEFAULT_SETTINGS)).toBe(
+      'https://drive.google.com/drive/u/0/search?q=2024%20taxes',
+    );
+    expect(HANDLERS.gdrive('q1 report', DRIVE, DEFAULT_SETTINGS)).toBe(
+      'https://drive.google.com/drive/u/0/search?q=q1%20report',
     );
   });
 });

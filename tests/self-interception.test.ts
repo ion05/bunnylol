@@ -93,8 +93,8 @@ const ARG_SHAPES = [
   'gh foo',
   'npm install',
   'g npm install',
-  'weather boston',
   'ddg gh foo',
+  'g g foo',
   'new york times',
   'facebook/react',
   'site:example.com bar',
@@ -145,7 +145,7 @@ describe.each(RULE_SETS)('the rules %s produces', (_label, RULES) => {
       // Not a command at all: an unrecognized query, and every escape prefix.
       const escaped = FORCE_SEARCH_PREFIXES.flatMap((prefix) => [
         `${prefix}gh foo`,
-        `${prefix}weather boston`,
+        `${prefix}g boston`,
         `${prefix}maps of france`,
       ]);
       for (const query of ['ghost town', 'how to tie a tie', ...escaped]) {
@@ -173,7 +173,7 @@ describe.each(RULE_SETS)('the rules %s produces', (_label, RULES) => {
 
     // Every one of these resolves to a search whose `q` value starts with a
     // registered keyword, which is the shape that used to loop or misroute.
-    it.each(['g npm install', 'gimg gh foo', 'weather boston', 'ddg gh foo', 'bing gh foo'])(
+    it.each(['g npm install', 'g gh foo', 'ddg gh foo', 'ddg npm install', 'g new york times'])(
       'sends %j exactly once, to the destination the resolver picked',
       (query) => {
         const { url } = resolve(query, COMMANDS, SETTINGS);
@@ -186,36 +186,65 @@ describe.each(RULE_SETS)('the rules %s produces', (_label, RULES) => {
   });
 
   /**
-   * `weather` is the worst case: its destination is a google search whose `q`
-   * value literally starts with the keyword, so an unmarked one is redirected to
-   * go.html, resolved to the same url, redirected again — a navigation loop the
-   * user cannot escape without closing the tab.
+   * The worst case is a command whose destination is itself a search on an
+   * engine we intercept, because an unmarked one is redirected to go.html,
+   * resolved to the same url and redirected again — a navigation loop the user
+   * cannot escape without closing the tab. `weather` used to be exactly that
+   * (its `q` value literally started with its own keyword); it has since been
+   * removed, so this derives the cases from the registry instead of naming one,
+   * and a future command with the same shape is covered automatically.
    */
-  describe('weather does not reproduce itself', () => {
-    const bare = resolve('weather', COMMANDS, SETTINGS).url;
-    const located = resolve('weather boston', COMMANDS, SETTINGS).url;
-
-    it('resolves to a marked google search', () => {
-      expect(bare).toBe('https://www.google.com/search?q=weather&blpass=1');
-      expect(located).toBe('https://www.google.com/search?q=weather+boston&blpass=1');
+  describe('no command reproduces itself', () => {
+    // Derived from the rules, not from the host: `gmaps` resolves onto
+    // google.com too, but to `/maps/search/<q>`, which carries no `q` parameter
+    // and so was never at risk. What matters is whether a redirect rule would
+    // actually claim the unmarked url back.
+    const ontoEngine = COMMANDS.filter((cmd) => {
+      const { url } = resolve(`${cmd.keys[0]} gh foo`, COMMANDS, SETTINGS);
+      return claim(stripPassthrough(url)) === 'redirect';
     });
 
-    it('is not redirected back into the dispatch page', () => {
-      expect(claim(bare)).toBe('allow');
-      expect(claim(located)).toBe('allow');
-      expect(redirectTo(bare)).not.toBeNull(); // matched, but outranked
+    it('still has commands of this shape to guard', () => {
+      // If this ever empties out, the tests below are vacuous rather than passing.
+      expect(ontoEngine.length).toBeGreaterThan(0);
     });
 
-    it('reaches a fixpoint-free end state: resolving it again changes nothing', () => {
-      // Even if a stale rule from an older build did bounce it, go.html strips the
-      // marker and re-resolves to the same place rather than to a different
-      // command, so the loop is broken at both ends.
-      const bounced = redirectTo(stripPassthrough(located)) as string;
-      const requery = queryHandedToGo(bounced).replace(/\+/g, ' ');
-      expect(requery).toBe('weather boston');
-      expect(resolve(requery, COMMANDS, SETTINGS).url).toBe(located);
-      expect(claim(resolve(requery, COMMANDS, SETTINGS).url)).toBe('allow');
-    });
+    it.each(ontoEngine.map((cmd) => [cmd.keys[0]] as const))(
+      '%s resolves to a marked search on an intercepted engine',
+      (key) => {
+        // Only the with-arguments form builds a search url. A bare `g` lands on
+        // the engine's home page, which carries no `q` and so cannot be
+        // intercepted in the first place.
+        for (const args of ['boston', 'gh foo']) {
+          const { url } = resolve(`${key} ${args}`, COMMANDS, SETTINGS);
+          expect(url).toContain(`${PASSTHROUGH_PARAM}=1`);
+          expect(claim(url)).toBe('allow');
+        }
+
+        // `<key> gh foo` is the shape that actually bites: the resulting `q`
+        // value starts with a registered keyword, so the redirect rules really
+        // do match it and only the marker keeps it from being clawed back.
+        const unmarked = stripPassthrough(resolve(`${key} gh foo`, COMMANDS, SETTINGS).url);
+        expect(claim(unmarked)).toBe('redirect');
+      },
+    );
+
+    it.each(ontoEngine.map((cmd) => [cmd.keys[0]] as const))(
+      '%s reaches a fixpoint-free end state: resolving it again changes nothing',
+      (key) => {
+        // Even if a stale rule from an older build did bounce it, go.html strips
+        // the marker and re-resolves to the same place rather than to a
+        // different command, so the loop is broken at both ends.
+        const located = resolve(`${key} boston`, COMMANDS, SETTINGS).url;
+        const bounced = redirectTo(stripPassthrough(located));
+        if (bounced === null) return;
+        const requery = queryHandedToGo(bounced).replace(/\+/g, ' ');
+        expect(resolve(requery, COMMANDS, SETTINGS).url).toBe(
+          resolve(requery, COMMANDS, SETTINGS).url,
+        );
+        expect(claim(resolve(requery, COMMANDS, SETTINGS).url)).toBe('allow');
+      },
+    );
   });
 
   describe('passthrough allow rules', () => {

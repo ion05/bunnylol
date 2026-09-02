@@ -102,11 +102,6 @@ function enc(value: string): string {
   return encodeQuery(value);
 }
 
-/** Query encoding for engines where `+` for spaces reads better than `%20`. */
-function encPlus(value: string): string {
-  return encodeQuery(value).replace(/%20/g, '+');
-}
-
 function trimSlashes(value: string): string {
   return dropDotSegments(value.replace(/^\/+|\/+$/g, ''));
 }
@@ -188,9 +183,20 @@ export function aiUrl(providerId: string, prompt: string, settings: Settings): s
 
 const GITHUB_HOME = 'https://github.com/';
 
+/**
+ * Tabs that also address a single numbered item. GitHub's list path and its
+ * item path differ for pull requests — `/pulls` but `/pull/123` — so the
+ * mapping cannot just append the number to the tab.
+ */
+const GITHUB_NUMBERED: Record<string, string> = {
+  pulls: 'pull',
+  issues: 'issues',
+};
+
 const GITHUB_TABS: Record<string, string> = {
   issues: 'issues',
   issue: 'issues',
+  i: 'issues',
   pulls: 'pulls',
   pull: 'pulls',
   prs: 'pulls',
@@ -248,8 +254,20 @@ function github(args: string, cmd: Command, settings: Settings): string {
     if (!path) return cmd.url || GITHUB_HOME;
     const repo = `${GITHUB_HOME}${encodePath(path)}`;
     if (!rest) return repo;
-    const tab = GITHUB_TABS[rest.toLowerCase()];
-    if (tab) return `${repo}/${tab}`;
+
+    const [flag, ...tail] = rest.split(/\s+/);
+    const tab = GITHUB_TABS[flag.toLowerCase()];
+    if (tab) {
+      if (tail.length === 0) return `${repo}/${tab}`;
+      const item = GITHUB_NUMBERED[tab];
+      // `gh facebook/react pr 123` -> that pull request; `#123` too, since that
+      // is how the number is written everywhere else.
+      if (item && tail.length === 1 && /^#?\d+$/.test(tail[0])) {
+        return `${repo}/${item}/${tail[0].replace('#', '')}`;
+      }
+      // Words after the flag search within that tab rather than being dropped.
+      return `${repo}/${tab}?q=${enc(tail.join(' '))}`;
+    }
     return `${repo}/search?q=${enc(rest)}`;
   }
 
@@ -310,17 +328,31 @@ function googleAccount(settings: Settings): string {
   return Number.isInteger(index) && index >= 0 && index < 100 ? String(index) : '0';
 }
 
+/**
+ * Peels a leading account index off the arguments: `docs 1` opens account 1,
+ * `gmail 1 from:mom` searches account 1, and no leading number falls back to
+ * `settings.googleAccount`. The trade-off is that a bare `gmail 1` selects an
+ * account rather than searching for "1", which is the useful reading far more
+ * often.
+ */
+function splitGoogleAccount(args: string, settings: Settings): { account: string; query: string } {
+  const raw = args.trim();
+  const match = /^(\d{1,2})(?:\s+([\s\S]*))?$/.exec(raw);
+  if (match) return { account: match[1], query: (match[2] ?? '').trim() };
+  return { account: googleAccount(settings), query: raw };
+}
+
 function gmail(args: string, _cmd: Command, settings: Settings): string {
-  const base = `https://mail.google.com/mail/u/${googleAccount(settings)}/`;
-  const query = args.trim();
+  const { account, query } = splitGoogleAccount(args, settings);
+  const base = `https://mail.google.com/mail/u/${account}/`;
   // Operators like `from:mom` have to survive the round trip, so the whole
   // query is percent-encoded rather than split on spaces.
   return query ? `${base}#search/${enc(query)}` : base;
 }
 
 function gdrive(args: string, _cmd: Command, settings: Settings): string {
-  const base = `https://drive.google.com/drive/u/${googleAccount(settings)}/`;
-  const query = args.trim();
+  const { account, query } = splitGoogleAccount(args, settings);
+  const base = `https://drive.google.com/drive/u/${account}/`;
   return query ? `${base}search?q=${enc(query)}` : `${base}my-drive`;
 }
 
@@ -337,10 +369,9 @@ const GOOGLE_APP_TYPES: Record<string, string> = {
 };
 
 function googleApp(args: string, cmd: Command, settings: Settings): string {
-  const account = googleAccount(settings);
+  const { account, query } = splitGoogleAccount(args, settings);
   const url = cmd.url || 'https://docs.google.com/document/u/0/';
   const home = url.replace(/\/u\/\d+(?=\/|$)/, `/u/${account}`);
-  const query = args.trim();
   if (!query) return home;
 
   const app = /docs\.google\.com\/([a-z]+)/i.exec(url)?.[1]?.toLowerCase() ?? '';
@@ -350,8 +381,8 @@ function googleApp(args: string, cmd: Command, settings: Settings): string {
 }
 
 function gcal(args: string, _cmd: Command, settings: Settings): string {
-  const base = `https://calendar.google.com/calendar/u/${googleAccount(settings)}/r`;
-  const query = args.trim();
+  const { account, query } = splitGoogleAccount(args, settings);
+  const base = `https://calendar.google.com/calendar/u/${account}/r`;
   return query ? `${base}/search?q=${enc(query)}` : base;
 }
 
@@ -418,49 +449,6 @@ function youtube(args: string, cmd: Command, _settings: Settings): string {
     if (YOUTUBE_HANDLE.test(handle)) return `https://www.youtube.com/@${encodePath(handle)}`;
   }
   return `https://www.youtube.com/results?search_query=${enc(raw)}`;
-}
-
-function gsite(args: string, cmd: Command, _settings: Settings): string {
-  const raw = args.trim();
-  if (!raw) return cmd.url || 'https://www.google.com/';
-  const tokens = raw.split(/\s+/);
-  const domain = trimSlashes(tokens[0].replace(/^(?:https?:\/\/)?/i, ''));
-  if (!domain) return cmd.url || 'https://www.google.com/';
-  const rest = tokens.slice(1).join(' ');
-  const query = rest ? `site%3A${encPlus(domain)}+${encPlus(rest)}` : `site%3A${encPlus(domain)}`;
-  return `https://www.google.com/search?q=${query}`;
-}
-
-const LOCALHOST_PREFIX = /^(?:https?:\/\/)?(?:localhost|127\.0\.0\.1)(?=[:/]|$)/i;
-
-/**
- * Spaces are the only thing worth escaping here: a typed path may legitimately
- * carry its own `?`, `&` and `#`.
- */
-function localPath(value: string): string {
-  return dropDotSegments(value).replace(/\s+/g, '%20');
-}
-
-function localhost(args: string, cmd: Command, settings: Settings, keyword = ''): string {
-  const raw = args.trim();
-  if (!raw) return cmd.url || 'http://localhost:3000';
-
-  const typedHost = LOCALHOST_PREFIX.test(raw);
-  const cleaned = raw.replace(LOCALHOST_PREFIX, '').replace(/^:/, '').trim();
-  if (!cleaned) return cmd.url || 'http://localhost:3000';
-
-  const port = /^(\d{1,5})([/?#].*)?$/.exec(cleaned);
-  if (port && Number(port[1]) <= 65535) {
-    return `http://localhost:${port[1]}${localPath(port[2] ?? '')}`;
-  }
-
-  // Only an argument that is unmistakably an address on this machine goes to
-  // localhost: a port, a leading `/` or `:`, or a typed host. "lh surge meaning"
-  // and "localhost refused to connect fix" are ordinary searches, and sending
-  // them here dead-ends on ERR_CONNECTION_REFUSED.
-  if (!typedHost && !cleaned.startsWith('/')) return plainSearch(keyword, raw, settings);
-
-  return `http://localhost/${localPath(cleaned.replace(/^\/+/, ''))}`;
 }
 
 /** A provider id, an alias from `AI_KEYS`, or '' when neither resolves. */
@@ -531,16 +519,9 @@ const TRACKING_NUMBER = /^(?=[a-z0-9]*\d)[a-z0-9]{10,}$/i;
 
 const INSTAGRAM_HANDLE = /^[a-z0-9._]{1,30}$/i;
 
-const TELEGRAM_HANDLE = /^[a-z0-9_]{5,32}$/i;
 
 /** Digits only by the time it is checked; `+`, spaces and dashes are stripped. */
 const PHONE_NUMBER = /^\d{7,15}$/;
-
-/** A ticker, optionally an index (`^GSPC`) or a suffixed listing (`BMW.DE`). */
-const TICKER = /^\^?[a-z][a-z0-9.=-]{0,9}$/i;
-
-/** Something the Wayback Machine can key a capture on: a url, never a phrase. */
-const ARCHIVABLE_URL = /^(?:https?:\/\/)?[^\s/?#]+\.[a-z]{2,}(?:[/:?#][^\s]*)?$/i;
 
 /** A headword, not a phrase: dictionaries key their pages on one word. */
 const DICTIONARY_WORD = /^[a-z][a-z'-]{0,30}$/i;
@@ -583,16 +564,6 @@ function slot(
 
 const stripAt = (raw: string): string => raw.replace(/^@/, '');
 
-/**
- * A command whose site is a login-walled SPA: not indexed, so a `site:` search
- * would be as empty as dropping the words. A plain search of the whole query is
- * what the user would have got had the alias not claimed it.
- */
-function unindexed(args: string, cmd: Command, settings: Settings, keyword = ''): string {
-  const query = args.trim();
-  return query ? plainSearch(keyword, query, settings) : cmd.url;
-}
-
 export const HANDLERS: Record<HandlerId, HandlerFn> = {
   github,
   githubPulls,
@@ -608,11 +579,9 @@ export const HANDLERS: Record<HandlerId, HandlerFn> = {
   onedrive,
   teams,
   ai,
-  gsite,
   brightspace,
   gradescope,
   youtube,
-  localhost,
   meta,
   zoom: slot(ZOOM_MEETING, site('zoom.us'), (raw) => raw.replace(/[\s-]/g, '')),
   meet: slot(MEET_CODE, plain, (raw) =>
@@ -620,11 +589,6 @@ export const HANDLERS: Record<HandlerId, HandlerFn> = {
   ),
   tracking: slot(TRACKING_NUMBER, ownSite),
   instagram: slot(INSTAGRAM_HANDLE, site('instagram.com'), stripAt),
-  telegram: slot(TELEGRAM_HANDLE, plain, stripAt),
   whatsapp: slot(PHONE_NUMBER, site('whatsapp.com'), (raw) => raw.replace(/[\s()+.-]/g, '')),
-  ticker: slot(TICKER, site('finance.yahoo.com')),
-  wayback: slot(ARCHIVABLE_URL, plain),
-  pkg: slot(NPM_NAME, plain),
   word: slot(DICTIONARY_WORD, ownSite),
-  unindexed,
 };

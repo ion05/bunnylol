@@ -106,10 +106,10 @@ describe('resolve', () => {
   });
 
   it('collapses whitespace around the keyword but keeps internal spacing', () => {
-    const result = resolve('  so   foo   bar  ', commands, settings());
-    expect(result.command?.keys[0]).toBe('so');
+    const result = resolve('  wiki   foo   bar  ', commands, settings());
+    expect(result.command?.keys[0]).toBe('wiki');
     expect(result.args).toBe('foo   bar');
-    expect(result.url).toBe('https://stackoverflow.com/search?q=foo%20%20%20bar');
+    expect(result.url).toBe('https://en.wikipedia.org/w/index.php?search=foo%20%20%20bar');
   });
 
   it('sends a whitespace-only query to the engine home, not a search for ""', () => {
@@ -123,10 +123,12 @@ describe('resolve', () => {
   });
 
   it('encodes arguments containing url metacharacters and unicode', () => {
-    const result = resolve('so a&b#c+d/e%f 日本語', commands, settings());
-    expect(result.url).toBe('https://stackoverflow.com/search?q=a%26b%23c%2Bd%2Fe%25f%20%E6%97%A5%E6%9C%AC%E8%AA%9E');
+    const result = resolve('wiki a&b#c+d/e%f 日本語', commands, settings());
+    expect(result.url).toBe(
+      'https://en.wikipedia.org/w/index.php?search=a%26b%23c%2Bd%2Fe%25f%20%E6%97%A5%E6%9C%AC%E8%AA%9E',
+    );
     // The encoded value must not leak a second parameter into the url.
-    expect(new URL(result.url).searchParams.get('q')).toBe('a&b#c+d/e%f 日本語');
+    expect(new URL(result.url).searchParams.get('search')).toBe('a&b#c+d/e%f 日本語');
   });
 
   it('drops arguments for a command that has no searchUrl and no handler', () => {
@@ -193,7 +195,7 @@ describe('resolve', () => {
     '%%%',
     '%zz',
     'gh %',
-    'so 100%',
+    'wiki 100%',
     '#',
     '&&&',
     '{q}',
@@ -206,14 +208,14 @@ describe('resolve', () => {
     'undefined',
     'javascript:alert(1)',
     'data:text/html,<script>',
-    'lh 99999999999999999999',
+    'wiki 99999999999999999999',
     'r/',
     '@',
     'gh me',
     '日本語 テスト',
     '🐰 bunny lol',
     '\uD800',
-    'so \uD800\uD800',
+    'wiki \uD800\uD800',
     'gh \uD800',
     '? \uDFFF',
     'a'.repeat(5000),
@@ -465,12 +467,12 @@ describe('handler keyword', () => {
   });
 
   it('marks a handler-generated search so our own rules skip it', () => {
-    expect(hasPassthrough(resolve('ci pay scale 2026', commands, settings()).url)).toBe(true);
+    expect(hasPassthrough(resolve('gs pay scale 2026', commands, settings()).url)).toBe(true);
   });
 
   it('leaves a shape-matched destination alone', () => {
-    expect(resolve('lh 3000/api/health', commands, settings()).url).toBe('http://localhost:3000/api/health');
     expect(resolve('zoom 1234567890', commands, settings()).url).toBe('https://zoom.us/j/1234567890');
+    expect(resolve('wa +1 (555) 123-4567', commands, settings()).url).toBe('https://wa.me/15551234567');
   });
 
   it('follows a rebound alias into the plain-search degrade', () => {

@@ -157,7 +157,13 @@ describe('argument slots', () => {
       // `set` is the exception: the settings route has no field that reads an
       // argument, so `meta` leaves the parameter off rather than building a url
       // the options page ignores.
-      if (key === 'set') return;
+      //
+      // The cloud consoles are a deliberate second exception: their `site:`
+      // doc search was removed on request, so they are pure jumps now and
+      // arguments have nowhere to go. Listed explicitly so adding a third is a
+      // decision someone has to make, not a test that quietly stopped caring.
+      const JUMP_ONLY = ['set', 'aws', 'gcp', 'vercel', 'netlify', 'cf'];
+      if (JUMP_ONLY.includes(key)) return;
       expect(resolved(cmd).toLowerCase()).toContain(PROBE_WORDS[0]);
     },
   );
