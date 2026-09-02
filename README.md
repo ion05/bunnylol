@@ -18,6 +18,10 @@ Then load the built extension:
 2. Turn on **Developer mode** (top right).
 3. Click **Load unpacked** and select the `dist/` folder in this repo.
 
+**Chrome 123 or newer.** The UI's colour tokens are declared with CSS `light-dark()`, which
+Chrome added in 123; on anything older every themed colour falls back to `unset` and the pages are
+unreadable. `minimum_chrome_version` in the manifest records the same floor.
+
 Works the same in **Brave** (`brave://extensions`) and **Dia** — both are Chromium, so the MV3
 manifest, the service worker and the redirect rules behave identically. Rebuild with `pnpm build`
 after pulling changes, then hit the reload arrow on the extension card.

@@ -1,72 +1,7 @@
-:root {
-  color-scheme: light dark;
-
-  --bg: #ffffff;
-  --bg-soft: #f5f6f8;
-  --surface: #ffffff;
-  --surface-2: #fafbfc;
-  --chip: #f1f3f7;
-  --border: #e3e6ec;
-  --border-strong: #cdd3dd;
-  /* Borders and off-state fills of interactive controls, which WCAG 1.4.11
-     holds to 3:1 against what surrounds them — `--border-strong` is 1.5:1.
-     Verified against the darkest thing they ever sit on, `--chip` (3.01:1),
-     not just `--surface`: a hovered button swaps its fill for `--chip`. */
-  --control-border: #838d9f;
-  --switch-off: #838d9f;
-  --text: #13161c;
-  --text-dim: #576070;
-  --text-faint: #6b7280;
-  /* Purely decorative marks (dots, arrows) that carry no text. */
-  --text-decor: #8992a1;
-  --accent: #5250d8;
-  --accent-hover: #4341c0;
-  --accent-fg: #ffffff;
-  --accent-soft: #eeeefc;
-  --ok: #10794a;
-  --ok-soft: #e6f5ed;
-  --warn: #8a5d09;
-  --warn-soft: #fdf3e0;
-  --danger: #b83228;
-  --danger-soft: #fdeceb;
-  --danger-fg: #ffffff;
-  --ring: #7c7af0;
-
-  --radius: 12px;
-  --radius-sm: 8px;
-  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
-  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, system-ui, sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0d1015;
-    --bg-soft: #11151c;
-    --surface: #141922;
-    --surface-2: #181e28;
-    --chip: #1b2029;
-    --border: #232935;
-    --border-strong: #333c4b;
-    --control-border: #6b7484;
-    --switch-off: #6b7484;
-    --text: #e7eaf0;
-    --text-dim: #98a2b3;
-    --text-faint: #8b95a6;
-    --text-decor: #6d7686;
-    --accent: #8b8bf6;
-    --accent-hover: #a3a3f9;
-    --accent-fg: #0d1015;
-    --accent-soft: #1e1f3d;
-    --ok: #4cc38a;
-    --ok-soft: #10251c;
-    --warn: #d9a441;
-    --warn-soft: #2a2114;
-    --danger: #f0796b;
-    --danger-soft: #2c1614;
-    --danger-fg: #1b0f0d;
-    --ring: #8b8bf6;
-  }
-}
+/* The palette, type scale and metrics live in design/tokens.css — the file the
+ * design system was approved as. Vite inlines this @import at build, so the page
+ * still emits one stylesheet. CSS requires @import before any rule. */
+@import '../../design/tokens.css';
 
 * {
   box-sizing: border-box;
@@ -79,14 +14,14 @@
 }
 
 html {
-  background: var(--bg-soft);
+  background: var(--bg);
 }
 
 body {
   margin: 0;
-  background: var(--bg-soft);
+  background: var(--bg);
   color: var(--text);
-  font: 15px/1.55 var(--sans);
+  font: var(--fs-13)/var(--lh-body) var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -103,7 +38,7 @@ p {
 }
 
 a {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 :focus-visible {
@@ -120,7 +55,7 @@ a {
 }
 
 .mono {
-  font-family: var(--mono);
+  font-family: var(--font-mono);
 }
 
 .visually-hidden {
@@ -165,13 +100,13 @@ a {
 }
 
 .brand-name {
-  font-size: 17px;
+  font-size: var(--fs-14);
   font-weight: 650;
   letter-spacing: -0.02em;
 }
 
 .brand-tag {
-  font-size: 13px;
+  font-size: var(--fs-13);
   color: var(--text-faint);
 }
 
@@ -189,8 +124,8 @@ a {
   padding: 5px 11px 5px 9px;
   border: 1px solid var(--border-strong);
   border-radius: 999px;
-  background: var(--surface);
-  font-size: 13px;
+  background: var(--bg);
+  font-size: var(--fs-13);
   line-height: 1.35;
   color: var(--text-dim);
 }
@@ -205,9 +140,7 @@ a {
 
 .pill-ok {
   color: var(--ok);
-  background: var(--ok-soft);
-  border-color: var(--ok-soft);
-  border-color: color-mix(in srgb, var(--ok) 34%, transparent);
+  border-color: var(--ok);
 }
 
 .pill-ok .pill-dot {
@@ -216,9 +149,7 @@ a {
 
 .pill-bad {
   color: var(--danger);
-  background: var(--danger-soft);
-  border-color: var(--danger-soft);
-  border-color: color-mix(in srgb, var(--danger) 34%, transparent);
+  border-color: var(--danger);
 }
 
 .pill-bad .pill-dot {
@@ -227,9 +158,7 @@ a {
 
 .pill-warn {
   color: var(--warn);
-  background: var(--warn-soft);
-  border-color: var(--warn-soft);
-  border-color: color-mix(in srgb, var(--warn) 34%, transparent);
+  border-color: var(--warn);
 }
 
 .pill-warn .pill-dot {
@@ -253,21 +182,21 @@ a {
 
 .nav-link {
   padding: 7px 12px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-2);
   color: var(--text-dim);
-  font-size: 14px;
+  font-size: var(--fs-14);
   font-weight: 500;
   text-decoration: none;
 }
 
 .nav-link:hover {
-  background: var(--chip);
+  background: var(--bg-sunken);
   color: var(--text);
 }
 
 .nav-link[aria-current='page'] {
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--bg-sunken);
+  color: var(--accent-text);
 }
 
 /* -------------------------------------------------------------- shell -- */
@@ -282,9 +211,9 @@ a {
 }
 
 .panel {
-  background: var(--surface);
+  background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-2);
   overflow: hidden;
 }
 
@@ -301,12 +230,12 @@ a {
 }
 
 .panel-title {
-  font-size: 15px;
+  font-size: var(--fs-14);
 }
 
 .panel-sub {
   margin-top: 3px;
-  font-size: 13px;
+  font-size: var(--fs-13);
   color: var(--text-dim);
   max-width: 62ch;
 }
@@ -319,7 +248,7 @@ a {
 }
 
 .saved {
-  font-size: 12.5px;
+  font-size: var(--fs-12);
   color: var(--ok);
   opacity: 0;
   transition: opacity 140ms ease;
@@ -339,17 +268,17 @@ a {
   gap: 6px;
   padding: 7px 13px;
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
+  border-radius: var(--radius-2);
+  background: var(--bg);
   color: var(--text);
   font: inherit;
-  font-size: 13.5px;
+  font-size: var(--fs-13);
   font-weight: 500;
   cursor: pointer;
 }
 
 .btn:hover {
-  background: var(--chip);
+  background: var(--bg-raised);
 }
 
 .btn:disabled {
@@ -376,7 +305,7 @@ a {
 
 .btn-sm {
   padding: 4px 9px;
-  font-size: 12.5px;
+  font-size: var(--fs-12);
 }
 
 .btn-danger {
@@ -384,11 +313,11 @@ a {
   border-color: var(--control-border);
   /* Blended against the button's own fill, not `transparent`: a 40% tint over
      whatever happened to be behind it came out at 1.94:1. */
-  border-color: color-mix(in srgb, var(--danger) 75%, var(--surface));
+  border-color: color-mix(in srgb, var(--danger) 75%, var(--bg));
 }
 
 .btn-danger:hover {
-  background: var(--danger-soft);
+  background: var(--bg-raised);
 }
 
 .btn-armed {
@@ -416,7 +345,7 @@ a {
   gap: 12px;
   padding: 14px 20px;
   border-bottom: 1px solid var(--border);
-  background: var(--surface-2);
+  background: var(--bg-raised);
 }
 
 .search-field {
@@ -426,7 +355,7 @@ a {
 
 .count {
   flex: none;
-  font-size: 13px;
+  font-size: var(--fs-13);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
@@ -452,7 +381,7 @@ a {
 }
 
 .group-title {
-  font-size: 12px;
+  font-size: var(--fs-12);
   font-weight: 650;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -460,7 +389,7 @@ a {
 }
 
 .group-count {
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--text-faint);
   font-variant-numeric: tabular-nums;
 }
@@ -481,7 +410,7 @@ a {
 }
 
 .row:hover {
-  background: var(--surface-2);
+  background: var(--bg-raised);
 }
 
 /* Dimmed by colour rather than `opacity: 0.45`, which took this text to
@@ -506,14 +435,14 @@ a {
   padding: 1px 6px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--chip);
-  font-family: var(--mono);
-  font-size: 12px;
+  background: var(--bg-sunken);
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
   color: var(--text);
 }
 
 .row-name {
-  font-size: 14px;
+  font-size: var(--fs-14);
   font-weight: 550;
 }
 
@@ -521,9 +450,9 @@ a {
   margin-left: 7px;
   padding: 1px 6px;
   border-radius: 5px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 11px;
+  background: var(--bg-sunken);
+  color: var(--accent-text);
+  font-size: var(--fs-11);
   font-weight: 600;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -531,21 +460,21 @@ a {
 }
 
 .row-desc {
-  font-size: 13.5px;
+  font-size: var(--fs-13);
   color: var(--text-dim);
 }
 
 /* A marker, not a status: it sits next to the name without claiming its weight. */
 .badge-quiet {
-  background: var(--chip);
+  background: var(--bg-sunken);
   color: var(--text-dim);
   border: 1px solid var(--border);
 }
 
 .row-url {
   margin-top: 3px;
-  font-family: var(--mono);
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
   color: var(--text-dim);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -554,8 +483,8 @@ a {
 
 .row-example {
   margin-top: 3px;
-  font-family: var(--mono);
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
   color: var(--text-faint);
   overflow-wrap: anywhere;
 }
@@ -576,8 +505,8 @@ a {
   margin-top: 8px;
   padding: 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
+  border-radius: var(--radius-2);
+  background: var(--bg-raised);
 }
 
 .row-editor .input {
@@ -591,7 +520,7 @@ a {
   gap: 12px;
   padding: 40px 20px;
   color: var(--text-dim);
-  font-size: 14px;
+  font-size: var(--fs-14);
   text-align: center;
 }
 
@@ -602,7 +531,7 @@ a {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  font-size: 12.5px;
+  font-size: var(--fs-12);
   color: var(--text-dim);
 }
 
@@ -614,7 +543,7 @@ a {
   height: 20px;
   margin: 0;
   border-radius: 999px;
-  background: var(--switch-off);
+  background: var(--control-border);
   cursor: pointer;
   transition: background 120ms ease;
 }
@@ -627,7 +556,7 @@ a {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--bg);
   /* The knob has to read as an object on both track colours; a ring gives it an
      edge that does not depend on the track behind it. */
   box-shadow: 0 0 0 1px rgb(0 0 0 / 35%), 0 1px 2px rgb(0 0 0 / 25%);
@@ -662,12 +591,12 @@ a {
 }
 
 .field-label {
-  font-size: 13px;
+  font-size: var(--fs-13);
   font-weight: 550;
 }
 
 .field-hint {
-  font-size: 12.5px;
+  font-size: var(--fs-12);
   color: var(--text-faint);
 }
 
@@ -676,11 +605,11 @@ a {
   width: 100%;
   padding: 8px 11px;
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-2);
   background: var(--bg);
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-14);
 }
 
 .input::placeholder {
@@ -688,21 +617,26 @@ a {
 }
 
 .input.mono {
-  font-family: var(--mono);
-  font-size: 13px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-13);
 }
 
 .input.bad {
   border-color: var(--danger);
 }
 
+/* One SVG chevron, not two stacked gradients. A data URI cannot resolve
+   `currentColor` and `light-dark()` takes colours rather than images, so the
+   stroke is a single mid grey instead of a light/dark pair: #8a8a82 is 3.10:1
+   on the light --bg-sunken and 5.07:1 on the dark one, clearing the 3:1 WCAG
+   1.4.11 asks of a control's affordance in both schemes. This is the one place
+   the palette is inlined outside tokens.css; tests/tokens.test.ts pins it. */
 .select {
   appearance: none;
-  padding-right: 30px;
-  background-image: linear-gradient(45deg, transparent 50%, currentcolor 50%),
-    linear-gradient(135deg, currentcolor 50%, transparent 50%);
-  background-position: right 15px top 55%, right 10px top 55%;
-  background-size: 5px 5px, 5px 5px;
+  padding-right: var(--sp-8);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%238a8a82' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: right var(--sp-4) center;
+  background-size: 8px 5px;
   background-repeat: no-repeat;
   cursor: pointer;
 }
@@ -710,8 +644,8 @@ a {
 .msg {
   display: flex;
   gap: 7px;
-  font-size: 12.5px;
-  line-height: 1.45;
+  font-size: var(--fs-12);
+  line-height: var(--lh-body);
 }
 
 .msg::before {
@@ -760,8 +694,8 @@ a {
 
 .preview {
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
+  border-radius: var(--radius-2);
+  background: var(--bg-raised);
   overflow: hidden;
 }
 
@@ -774,7 +708,7 @@ a {
 }
 
 .preview-head h3 {
-  font-size: 12px;
+  font-size: var(--fs-12);
   font-weight: 650;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -786,14 +720,14 @@ a {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: var(--fs-12);
   color: var(--text-dim);
 }
 
 .preview-sample .input {
   width: 210px;
   padding: 4px 8px;
-  font-size: 12.5px;
+  font-size: var(--fs-12);
 }
 
 .preview-rows {
@@ -809,8 +743,8 @@ a {
   padding: 10px 14px;
   border-top: 1px solid var(--border);
   border-top-color: color-mix(in srgb, var(--border) 60%, transparent);
-  font-family: var(--mono);
-  font-size: 12.5px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
 }
 
 .preview-row:first-child {
@@ -853,7 +787,7 @@ a {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--fs-14);
   cursor: pointer;
 }
 
@@ -861,6 +795,9 @@ a {
   width: 16px;
   height: 16px;
   margin: 0;
+  /* A fill, not a mark: accent-color paints the box and the browser draws the
+     check in a contrasting colour itself, so --accent applies. Per
+     design/components.css. */
   accent-color: var(--accent);
   cursor: pointer;
 }
@@ -887,13 +824,13 @@ a {
   background: transparent;
   color: var(--text-dim);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-13);
   line-height: 1.2;
   cursor: pointer;
 }
 
 .chip-x:hover {
-  background: var(--danger-soft);
+  background: var(--bg-raised);
   color: var(--danger);
 }
 
@@ -918,18 +855,17 @@ a {
   flex-direction: column;
   gap: 8px;
   padding: 14px;
-  border: 1px solid var(--border);
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-2);
+  background: var(--bg-raised);
 }
 
 .import-title {
-  font-size: 14px;
+  font-size: var(--fs-14);
 }
 
 .import-line {
-  font-size: 13px;
+  font-size: var(--fs-13);
   color: var(--text-dim);
   max-width: 66ch;
 }
@@ -946,22 +882,22 @@ a {
   gap: 10px;
   padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-soft);
+  border-radius: var(--radius-2);
+  background: var(--bg-sunken);
 }
 
 .code-block code {
   flex: 1;
   min-width: 0;
-  font-family: var(--mono);
-  font-size: 12.5px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
   overflow-wrap: anywhere;
 }
 
 .steps {
   margin: 0;
   padding-left: 18px;
-  font-size: 13.5px;
+  font-size: var(--fs-13);
   color: var(--text-dim);
   display: flex;
   flex-direction: column;
@@ -975,14 +911,13 @@ a {
   gap: 10px;
   padding: 14px;
   border: 1px solid var(--border);
-  border-color: color-mix(in srgb, var(--danger) 26%, var(--border));
-  border-radius: var(--radius-sm);
-  background: var(--danger-soft);
+  border-radius: var(--radius-2);
+  background: none;
 }
 
 .danger-zone p {
   margin-right: auto;
-  font-size: 13px;
+  font-size: var(--fs-13);
   color: var(--text-dim);
   max-width: 52ch;
 }
