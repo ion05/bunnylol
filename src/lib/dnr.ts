@@ -17,6 +17,7 @@
 import { BUILTIN_COMMANDS, SEARCH_ENGINES } from './commands';
 import { activeKeywords } from './resolve';
 import { loadResolveContext } from './storage';
+import { errorText } from './text';
 import { DEFAULT_STOP_LIST, FORCE_SEARCH_PREFIXES, PASSTHROUGH_PARAM } from './types';
 import type { RuleStatus, SearchEngine, SearchEngineId } from './types';
 
@@ -420,7 +421,7 @@ async function runSync(): Promise<RuleStatus> {
       keywords: live,
       suppressed,
       dropped: Math.max(eligible - live, 0),
-      error: describeError(err),
+      error: errorText(err),
       warning: null,
       extensionId,
     });
@@ -446,7 +447,7 @@ async function failClosed(
   suppressed: number,
   eligible: number,
 ): Promise<RuleStatus> {
-  const reason = describeError(err);
+  const reason = errorText(err);
   // Read before the teardown: it describes the rules that are live right now.
   const stale = await lastRuleStatus();
 
@@ -463,7 +464,7 @@ async function failClosed(
       keywords: live,
       suppressed,
       dropped: Math.max(eligible - live, 0),
-      error: `Rule sync failed (${reason}) and the rules from the last sync could not be removed either (${describeError(removeErr)}). Address-bar interception is still running on those older rules, so a shortcut you just changed may still go to its old destination — reload the extension.`,
+      error: `Rule sync failed (${reason}) and the rules from the last sync could not be removed either (${errorText(removeErr)}). Address-bar interception is still running on those older rules, so a shortcut you just changed may still go to its old destination — reload the extension.`,
       warning: null,
       extensionId,
     };
@@ -793,9 +794,4 @@ async function countDynamicRules(): Promise<number> {
   } catch {
     return 0;
   }
-}
-
-function describeError(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  return String(err);
 }

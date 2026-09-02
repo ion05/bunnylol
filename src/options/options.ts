@@ -11,6 +11,8 @@
  */
 
 import { BUILTIN_COMMANDS, SEARCH_ENGINES, destinationOf } from '../lib/commands';
+import type { Draft } from '../lib/draft';
+import { parseKeys, parsePrefill, splitKeys, withScheme } from '../lib/draft';
 import { AI_PROVIDERS } from '../lib/handlers';
 import { activeKeywords, mergeCommands, resolve, stripPassthrough, suggest } from '../lib/resolve';
 import {
@@ -18,13 +20,15 @@ import {
   exportJson,
   importJson,
   loadState,
+  normalizeCategory,
   onStateChanged,
   saveOverrides,
   saveSettings,
   saveState,
 } from '../lib/storage';
 import type { ImportedState } from '../lib/storage';
-import { isInterceptableAlias, validateAlias } from '../lib/validate';
+import { clone, errorText, stripScheme } from '../lib/text';
+import { isInterceptableAlias } from '../lib/validate';
 import type {
   BgMessage,
   Category,
@@ -41,6 +45,7 @@ import {
   DEFAULT_OVERRIDES,
   DEFAULT_SETTINGS,
 } from '../lib/types';
+import { el, nextId } from '../ui/dom';
 import { PILL_CLASS, pillView, statusCount } from './status';
 
 type RouteName = 'help' | 'new' | 'edit' | 'settings';
@@ -59,15 +64,6 @@ interface Entry {
   matchKey: string;
   cmd: Command;
   disabled: boolean;
-}
-
-interface Draft {
-  keys: string;
-  name: string;
-  description: string;
-  url: string;
-  searchUrl: string;
-  category: Category;
 }
 
 type FormField = 'keys' | 'url' | 'searchUrl';
@@ -556,10 +552,6 @@ function stopSet(): Set<string> {
   return new Set((stored.settings.interceptStopList ?? []).map((key) => key.trim().toLowerCase()));
 }
 
-function shortUrl(url: string): string {
-  return url.replace(/^https?:\/\//, '');
-}
-
 /** Persisted examples win; the rest are derived so a sample argument typed into
  *  the preview never becomes permanent label text. */
 function exampleOf(cmd: Command): string {
@@ -604,7 +596,7 @@ function renderRow(
   });
   const destination = destinationOf(entry.cmd);
   body.append(
-    el('div', { class: 'row-url', text: shortUrl(destination), title: destination }),
+    el('div', { class: 'row-url', text: stripScheme(destination), title: destination }),
   );
   const example = exampleOf(entry.cmd);
   if (example) body.append(el('div', { class: 'row-example', text: example }));
@@ -804,6 +796,8 @@ function renderForm(): HTMLElement {
         url: existing.url,
         searchUrl: existing.searchUrl ?? '',
         category: existing.category,
+        example: '',
+        newSectionLabel: '',
       }
     : parsePrefill(route.params.get('prefill') ?? '');
 
@@ -943,7 +937,9 @@ function renderForm(): HTMLElement {
       description: descInput.value,
       url: urlInput.value,
       searchUrl: searchInput.value,
-      category: categorySelect.value as Category,
+      category: categorySelect.value,
+      example: '',
+      newSectionLabel: '',
     };
   }
 
@@ -1084,7 +1080,9 @@ function buildCommand(draft: Draft): Command {
     name: draft.name.trim() || keys[0] || 'Untitled',
     description: draft.description.trim(),
     url: withScheme(draft.url),
-    category: draft.category,
+    // `Draft.category` is an open id; the registry's is not. Narrow it through
+    // the same check storage applies to a stored blob rather than casting.
+    category: normalizeCategory(draft.category),
     builtin: false,
   };
   const searchUrl = draft.searchUrl.trim();
@@ -1186,55 +1184,6 @@ function urlProblem(value: string, label: string, field: FormField): Problem | n
 }
 
 /**
- * `add tix https://example.com/search?q={q}` arrives here as the prefill: the
- * first token is the keyword, a token with `{q}` is the search URL, and a bare
- * URL is the destination. Anything left over becomes the name.
- */
-function parsePrefill(raw: string): Draft {
-  const draft: Draft = {
-    keys: '',
-    name: '',
-    description: '',
-    url: '',
-    searchUrl: '',
-    category: 'custom',
-  };
-  const tokens = raw.trim().split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) return draft;
-
-  if (!looksLikeUrl(tokens[0])) draft.keys = splitKeys(tokens.shift() ?? '').join(', ');
-
-  const urls: string[] = [];
-  const words: string[] = [];
-  for (const token of tokens) {
-    if (looksLikeUrl(token)) urls.push(token);
-    else words.push(token);
-  }
-
-  const templated = urls.find((url) => url.includes('{q}') || url.includes('%s'));
-  const plain = urls.find((url) => url !== templated);
-  if (templated) {
-    draft.searchUrl = withScheme(templated);
-    draft.url = plain ? withScheme(plain) : originOf(withScheme(templated));
-  } else if (plain) {
-    draft.url = withScheme(plain);
-  }
-  draft.name = words.join(' ');
-  return draft;
-}
-
-function looksLikeUrl(token: string): boolean {
-  if (/^https?:\/\//i.test(token)) return true;
-  return /^[a-z0-9-]+(\.[a-z0-9-]+)+([/?#]|$)/i.test(token);
-}
-
-function withScheme(value: string): string {
-  const url = value.trim();
-  if (!url || /^[a-z][a-z0-9+.-]*:/i.test(url)) return url;
-  return `https://${url}`;
-}
-
-/**
  * Stricter than `urlProblem`, because this one field swallows every unmatched
  * search on all three surfaces: `gogle/search?q={q}` parses as a URL with the
  * host `gogle`, and no scheme is added for the user here — silently rewriting
@@ -1270,14 +1219,6 @@ function engineProblem(value: string): Problem | null {
     };
   }
   return null;
-}
-
-function originOf(value: string): string {
-  try {
-    return `${new URL(value).origin}/`;
-  } catch {
-    return value;
-  }
 }
 
 // ---------------------------------------------------------------- settings ----
@@ -1926,29 +1867,6 @@ async function commitState(next: StoredState): Promise<void> {
 
 // ----------------------------------------------------------------- helpers ----
 
-interface ElOptions {
-  class?: string;
-  id?: string;
-  text?: string;
-  title?: string;
-  attrs?: Record<string, string>;
-  children?: (Node | string)[];
-}
-
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  options: ElOptions = {},
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  if (options.class) node.className = options.class;
-  if (options.id) node.id = options.id;
-  if (options.title) node.title = options.title;
-  if (options.text !== undefined) node.textContent = options.text;
-  for (const [name, value] of Object.entries(options.attrs ?? {})) node.setAttribute(name, value);
-  if (options.children) node.append(...options.children);
-  return node;
-}
-
 function button(label: string, onClick: () => void, className = 'btn'): HTMLButtonElement {
   const node = el('button', { class: className, text: label, attrs: { type: 'button' } });
   node.addEventListener('click', onClick);
@@ -2147,57 +2065,10 @@ function flash(node: HTMLElement, text = 'Saved'): void {
   flashTimers.set(node, window.setTimeout(() => node.classList.remove('show'), 1800));
 }
 
-let uid = 0;
-
-function nextId(prefix: string): string {
-  uid += 1;
-  return `${prefix}-${uid}`;
-}
-
 function canonical(cmd: Command): string {
   return (cmd.keys[0] ?? '').trim().toLowerCase();
 }
 
-/**
- * Splits a comma-separated keyword list through the shared alias validator, so
- * the new-shortcut form, the builtin key editor and the import path all reject
- * the same aliases. An alias the resolver cannot read as a keyword — one with a
- * space in it, say — works on no surface at all, so it has to fail here rather
- * than save and quietly fall through to a search.
- */
-function parseKeys(value: string): { ok: true; keys: string[] } | { ok: false; reason: string } {
-  const keys: string[] = [];
-  for (const part of value.split(',')) {
-    if (!part.trim()) continue;
-    const result = validateAlias(part);
-    if (!result.ok) {
-      return { ok: false, reason: `That keyword ${result.reason}. Separate keywords with commas.` };
-    }
-    if (!keys.includes(result.alias)) keys.push(result.alias);
-  }
-  return { ok: true, keys };
-}
-
-/** The lenient split, for the live preview and the `add …` prefill: it keeps
- *  whatever was typed so a half-finished keyword still renders. */
-function splitKeys(value: string): string[] {
-  const keys: string[] = [];
-  for (const part of value.split(',')) {
-    const key = part.trim().toLowerCase();
-    if (key && !keys.includes(key)) keys.push(key);
-  }
-  return keys;
-}
-
 function reportFailure(err: unknown): void {
   console.error('[bunnylol] could not save', err);
-}
-
-function errorText(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  return String(err);
-}
-
-function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
 }

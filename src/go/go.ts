@@ -6,9 +6,11 @@
 
 import { expandTemplate, isBouncedUrl, resolve, stripPassthrough, withPassthrough } from '../lib/resolve';
 import { loadResolveContext } from '../lib/storage';
+import { errorText, firstToken } from '../lib/text';
 import { toNavigableUrl } from '../lib/url';
 import type { Settings } from '../lib/types';
 import { DEFAULT_SETTINGS } from '../lib/types';
+import { el } from '../ui/dom';
 
 /** Both what we will navigate to and what we will render as a link. */
 const SAFE_PROTOCOLS = new Set(['http:', 'https:', 'chrome-extension:']);
@@ -102,28 +104,16 @@ function announce(query: string, target: URL): Promise<void> {
     });
 
     host.replaceChildren(
-      el('strong', firstWord(query)),
-      el('span', ' \u2192 '),
-      el('span', destinationLabel(target)),
-      el('span', ' \u00b7 '),
+      // The alias that fired: a command matched, so the first token is that alias.
+      el('strong', { text: firstToken(query) }),
+      el('span', { text: ' \u2192 ' }),
+      el('span', { text: destinationLabel(target) }),
+      el('span', { text: ' \u00b7 ' }),
       search,
       dismiss,
     );
     host.hidden = false;
   });
-}
-
-function el(tag: 'strong' | 'span', text: string): HTMLElement {
-  const node = document.createElement(tag);
-  node.textContent = text;
-  return node;
-}
-
-/** The alias that fired. A command matched, so the first token is that alias. */
-function firstWord(query: string): string {
-  const trimmed = query.trim();
-  const boundary = trimmed.search(/\s/);
-  return boundary < 0 ? trimmed : trimmed.slice(0, boundary);
 }
 
 function destinationLabel(target: URL): string {
@@ -150,7 +140,7 @@ function fail(query: string, error: unknown): void {
 
   const why = document.createElement('p');
   why.style.cssText = 'margin:0 0 20px;opacity:.65';
-  why.textContent = (error instanceof Error ? error.message : String(error)) || 'Unknown error.';
+  why.textContent = errorText(error) || 'Unknown error.';
 
   const actions = document.createElement('p');
   actions.style.cssText = 'margin:0';

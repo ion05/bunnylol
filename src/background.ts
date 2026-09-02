@@ -9,8 +9,9 @@
  */
 
 import { lastRuleStatus, syncRules } from './lib/dnr';
-import { activeKeywords, resolve, stripPassthrough, suggest } from './lib/resolve';
+import { activeKeywords, resolve, suggest } from './lib/resolve';
 import { loadResolveContext, onStateChanged } from './lib/storage';
+import { errorText, firstToken, prettyUrl, restOfLine } from './lib/text';
 import { toNavigableUrl } from './lib/url';
 import type { BgMessage, Command, ResolveResult, RuleStatus, Settings } from './lib/types';
 
@@ -89,8 +90,8 @@ async function offerSuggestions(
   const result = resolve(text, commands, settings);
   chrome.omnibox.setDefaultSuggestion({ description: describeDefault(text, result) });
 
-  const args = splitArgs(text);
-  const keyword = splitKeyword(text);
+  const args = restOfLine(text);
+  const keyword = firstToken(text);
   const results: chrome.omnibox.SuggestResult[] = [];
 
   // One extra candidate, because the command shown in the default row is
@@ -170,7 +171,7 @@ function failedStatus(err: unknown): RuleStatus {
     keywords: 0,
     suppressed: 0,
     dropped: 0,
-    error: describeError(err),
+    error: errorText(err),
     warning: null,
     extensionId: chrome.runtime.id,
   };
@@ -221,30 +222,7 @@ function pickAlias(cmd: Command, keyword: string): string {
   return matched ?? aliases[0] ?? '';
 }
 
-function splitKeyword(text: string): string {
-  const trimmed = text.trim();
-  const boundary = trimmed.search(/\s/);
-  return boundary < 0 ? trimmed : trimmed.slice(0, boundary);
-}
-
-function splitArgs(text: string): string {
-  const trimmed = text.trim();
-  const boundary = trimmed.search(/\s/);
-  return boundary < 0 ? '' : trimmed.slice(boundary + 1).trim();
-}
-
-function prettyUrl(url: string): string {
-  // The passthrough marker is plumbing; showing `&blpass=1` in every fallback
-  // preview would just look like a bug to the user.
-  return stripPassthrough(url).replace(/^https?:\/\//, '');
-}
-
 /** Chrome silently drops a suggestion whose description is not well-formed XML. */
 function escapeXml(text: string): string {
   return text.replace(/[&<>"']/g, (char) => XML_ESCAPES[char]);
-}
-
-function describeError(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  return String(err);
 }

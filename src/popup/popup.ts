@@ -6,11 +6,13 @@
  * the pure resolver and `chrome.tabs`.
  */
 
-import { resolve, stripPassthrough, suggest } from '../lib/resolve';
+import { resolve, suggest } from '../lib/resolve';
 import { loadResolveContext } from '../lib/storage';
+import { errorText, firstToken, prettyUrl, restOfLine } from '../lib/text';
 import { toNavigableUrl } from '../lib/url';
 import type { Command, Settings } from '../lib/types';
 import { DEFAULT_SETTINGS } from '../lib/types';
+import { el, mark } from '../ui/dom';
 
 /** More rows than fit; the list scrolls inside a fixed-height box. */
 const SUGGESTION_LIMIT = 12;
@@ -43,7 +45,7 @@ let launching = false;
 
 const root = document.getElementById('app') as HTMLDivElement;
 
-const input = el('input', 'query');
+const input = el('input', { class: 'query' });
 input.type = 'text';
 input.placeholder = 'gh facebook/react';
 input.spellcheck = false;
@@ -56,23 +58,26 @@ input.setAttribute('aria-autocomplete', 'list');
 input.setAttribute('aria-expanded', 'false');
 input.setAttribute('aria-controls', 'results');
 
-const destArrow = el('span', 'dest-arrow', '→');
-const destUrl = el('span', 'dest-url');
-const dest = el('div', 'dest');
+const destArrow = el('span', { class: 'dest-arrow', text: '→' });
+const destUrl = el('span', { class: 'dest-url' });
+const dest = el('div', { class: 'dest' });
 dest.append(destArrow, destUrl);
 
-const list = el('ul', 'results');
+const list = el('ul', { class: 'results' });
 list.id = 'results';
 list.setAttribute('role', 'listbox');
 list.setAttribute('aria-label', 'Matching shortcuts');
 
-const optionsButton = el('button', 'link', 'Manage shortcuts');
+const optionsButton = el('button', { class: 'link', text: 'Manage shortcuts' });
 optionsButton.type = 'button';
 
-const footer = el('footer', 'footer');
-footer.append(optionsButton, el('span', 'hint', 'Tab completes · ⌘/Ctrl+Enter new tab'));
+const footer = el('footer', { class: 'footer' });
+footer.append(
+  optionsButton,
+  el('span', { class: 'hint', text: 'Tab completes · ⌘/Ctrl+Enter new tab' }),
+);
 
-const bar = el('div', 'bar');
+const bar = el('div', { class: 'bar' });
 bar.append(input);
 root.append(bar, dest, list, footer);
 
@@ -90,7 +95,9 @@ function render(): void {
   if (rowNodes.length > 0) {
     list.replaceChildren(...rowNodes);
   } else {
-    list.replaceChildren(el('li', 'empty', 'No shortcut matches. Enter searches for it instead.'));
+    list.replaceChildren(
+      el('li', { class: 'empty', text: 'No shortcut matches. Enter searches for it instead.' }),
+    );
   }
   list.scrollTop = 0;
   input.setAttribute('aria-expanded', matches.length > 0 ? 'true' : 'false');
@@ -98,16 +105,19 @@ function render(): void {
 }
 
 function buildRow(cmd: Command, keyword: string, index: number): HTMLLIElement {
-  const item = el('li', 'row');
+  const item = el('li', { class: 'row' });
   item.id = `row-${index}`;
   item.setAttribute('role', 'option');
   item.setAttribute('aria-selected', 'false');
 
-  const key = el('span', 'row-key');
+  const key = el('span', { class: 'row-key' });
   key.append(...highlight(aliasFor(cmd, keyword), keyword));
 
-  const text = el('span', 'row-text');
-  text.append(el('span', 'row-name', cmd.name), el('span', 'row-desc', cmd.description));
+  const text = el('span', { class: 'row-text' });
+  text.append(
+    el('span', { class: 'row-name', text: cmd.name }),
+    el('span', { class: 'row-desc', text: cmd.description }),
+  );
 
   item.append(key, text);
 
@@ -217,28 +227,6 @@ function aliasFor(cmd: Command, keyword: string): string {
   const typed = keyword.toLowerCase();
   const matched = typed ? aliases.find((key) => key.toLowerCase().startsWith(typed)) : undefined;
   return matched ?? aliases[0] ?? '';
-}
-
-function firstToken(text: string): string {
-  const trimmed = text.trim();
-  const boundary = trimmed.search(/\s/);
-  return boundary < 0 ? trimmed : trimmed.slice(0, boundary);
-}
-
-function restOfLine(text: string): string {
-  const trimmed = text.trim();
-  const boundary = trimmed.search(/\s/);
-  return boundary < 0 ? '' : trimmed.slice(boundary + 1).trim();
-}
-
-function prettyUrl(url: string): string {
-  // The passthrough marker is plumbing, and the omnibox preview already hides
-  // it; showing `&blpass=1` on every fallback row here would just look broken.
-  return stripPassthrough(url).replace(/^https?:\/\//, '');
-}
-
-function errorText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
 }
 
 // --------------------------------------------------------------- matching --
@@ -351,23 +339,6 @@ optionsButton.addEventListener('click', () => {
 
 // ------------------------------------------------------------------ boot ---
 
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  className: string,
-  text?: string,
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
-
-function mark(text: string): HTMLElement {
-  const node = document.createElement('mark');
-  node.textContent = text;
-  return node;
-}
-
 input.focus();
 
 /** Everything that navigates awaits this; see `navigate`. */
@@ -383,5 +354,7 @@ const readyPromise = loadResolveContext().then((context) => {
 // surfaces the failure on the destination line instead of searching blindly.
 readyPromise.catch((err: unknown) => {
   input.setAttribute('aria-expanded', 'false');
-  list.replaceChildren(el('li', 'empty', `Could not load your shortcuts: ${errorText(err)}`));
+  list.replaceChildren(
+    el('li', { class: 'empty', text: `Could not load your shortcuts: ${errorText(err)}` }),
+  );
 });

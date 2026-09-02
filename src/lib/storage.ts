@@ -16,6 +16,7 @@ import type { Category, Command, HandlerId, Overrides, SearchEngineId, Settings,
 import { CATEGORIES, DEFAULT_OVERRIDES, DEFAULT_SETTINGS, DEFAULT_STOP_LIST, STORAGE_KEY } from './types';
 import { BUILTIN_COMMANDS, SEARCH_ENGINES } from './commands';
 import { mergeCommands } from './resolve';
+import { clone } from './text';
 import { validateAlias, validateUrlTemplate } from './validate';
 
 /** Bumped only when the export file's shape changes incompatibly. */
@@ -331,7 +332,9 @@ function normalizeCommand(raw: unknown): Command | null {
   return cmd;
 }
 
-function normalizeCategory(raw: unknown): Category {
+/** Exported so the options form narrows an open `Draft.category` the same way a
+ *  stored blob is narrowed: an id nobody ships files under "custom". */
+export function normalizeCategory(raw: unknown): Category {
   const value = trimmed(raw).toLowerCase() as Category;
   return CATEGORIES.includes(value) ? value : 'custom';
 }
@@ -478,8 +481,4 @@ function trimmed(value: unknown): string {
 function safeUrl(value: unknown): string {
   const check = validateUrlTemplate(trimmed(value));
   return check.ok ? check.url : '';
-}
-
-function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
 }
