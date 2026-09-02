@@ -139,9 +139,10 @@ export function renderBrowse(): Node[] {
 
     const countNode = el('span', { class: 'group-count', text: String(inGroup.length) });
     const rows = el('div', { class: 'rows', id: nextId('rows') });
-    // The contract's shape: `.group-head` is the h2 that carries the layout —
-    // the groups are this page's outline — and `.group-toggle` is the button
-    // inside it. The whole heading strip folds the group rather than a chevron
+    // The contract's shape: `.group-head` is the heading that carries the
+    // layout — the groups are this page's outline — and `.group-toggle` is the
+    // button inside it. An h3, because the panel's own h2 is its parent in the
+    // outline. The whole heading strip folds the group rather than a chevron
     // beside it: a 12px triangle is not a target, and the label is what the
     // user aims at.
     const toggle = el('button', {
@@ -158,7 +159,7 @@ export function renderBrowse(): Node[] {
     });
     const group = el('section', {
       class: 'group',
-      children: [el('h2', { class: 'group-head', children: [toggle] }), rows],
+      children: [el('h3', { class: 'group-head', children: [toggle] }), rows],
     });
 
     toggle.addEventListener('click', () => {
@@ -226,15 +227,46 @@ export function renderBrowse(): Node[] {
     ],
   });
 
+  // The head the approved artboard gives this route. It is written out here
+  // rather than built with `panelCard()` because this panel has nothing to
+  // flash "Saved" into: every write it makes leaves through the notice above.
+  const head = el('div', {
+    class: 'panel-head',
+    children: [
+      // `.panel-head-text` is the same wrapper `panelCard()` builds, so both
+      // heads are one element tree and one rule styles them.
+      el('div', {
+        class: 'panel-head-text',
+        children: [
+          el('h2', { class: 'panel-title', text: 'Shortcuts' }),
+          el('p', {
+            class: 'panel-sub',
+            text: 'Type a keyword in the address bar. Anything after it is passed along as a query. Every shortcut here can be edited, moved to another section, switched off or deleted.',
+          }),
+        ],
+      }),
+    ],
+  });
+
   const panel = el('section', {
     class: 'panel',
     children: [
+      head,
       el('div', {
-        class: 'toolbar',
-        children: [el('div', { class: 'search-field', children: [filter] }), count, toolbarActions],
+        class: 'panel-body',
+        children: [
+          el('div', {
+            class: 'toolbar',
+            children: [
+              el('div', { class: 'search-field', children: [filter] }),
+              count,
+              toolbarActions,
+            ],
+          }),
+          groups,
+          empty,
+        ],
       }),
-      groups,
-      empty,
     ],
   });
 
@@ -343,7 +375,7 @@ function renderRow(
   if (entry.modified) {
     name.append(
       el('span', {
-        class: 'badge badge-quiet badge-mod',
+        class: 'badge badge-quiet',
         text: 'modified',
         title:
           'Changed from the shipped definition. Open Edit, press Reset, then Save to put it back.',
@@ -377,7 +409,7 @@ function renderRow(
   const actions = el('div', { class: 'row-actions' });
   row.append(keys, body, actions);
 
-  const remove = confirmButton('Delete', 'Click again to confirm', 'btn btn-sm btn-danger', () => {
+  const remove = confirmButton('Delete', 'Click again to confirm', 'btn btn-sm btn-ghost', () => {
     const overrides = getState().overrides;
     // A deleted shortcut is gone, not off, so it leaves `disabled` either way.
     const disabled = overrides.disabled.filter((id) => id !== entry.id);
@@ -398,7 +430,7 @@ function renderRow(
   if (entry.cmd.handler === 'meta') remove.title = META_DELETE_TITLE;
 
   actions.append(
-    button('Edit', () => go(`#edit?id=${encodeURIComponent(entry.id)}`), 'btn btn-sm'),
+    button('Edit', () => go(`#edit?id=${encodeURIComponent(entry.id)}`), 'btn btn-sm btn-ghost'),
     switchControl(`Enable ${entry.cmd.name}`, !entry.disabled, (on) => {
       const next = getState().overrides.disabled.filter((id) => id !== entry.id);
       if (!on) next.push(entry.id);

@@ -99,7 +99,7 @@ export function reportFailure(err: unknown): void {
 
 // A commit's caller does not know, and should not have to know, what needs to
 // refresh afterwards — that would make every commit site responsible for
-// wiring the rule-status pill. `setAfterCommit` lets `boot()` supply that hook
+// wiring the rule status. `setAfterCommit` lets `boot()` supply that hook
 // once, breaking what would otherwise be a store -> rule-status -> store
 // import cycle.
 let afterCommit: (() => void) | null = null;
@@ -108,9 +108,9 @@ export function setAfterCommit(fn: () => void): void {
   afterCommit = fn;
 }
 
-// `commitSettings` alone also repaints the status pill synchronously (a
+// `commitSettings` alone also repaints the rule status synchronously (a
 // settings change, e.g. which engines are intercepted, can change what the
-// pill should say before the async re-sync below even starts). That paint is
+// status should say before the async re-sync below even starts). That paint is
 // owned by rule-status.ts too, so it is threaded through the same way.
 let paintStatusHook: (() => void) | null = null;
 

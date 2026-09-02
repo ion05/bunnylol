@@ -31,3 +31,41 @@ export function tokenValue(css: string, name: string, scheme: 'light' | 'dark'):
 export function ruleBodies(css: string): string[] {
   return [...stripComments(css).matchAll(/\{([^{}]*)\}/g)].map((m) => m[1]);
 }
+
+/**
+ * Every rule as a selector list plus its body. `[^{}]` never crosses a brace, so
+ * a capture is exactly the text between the previous rule's `}` and this rule's
+ * `{` — which is the selector, whether or not it sits inside an `@media` block.
+ */
+export function rules(css: string): { selector: string; body: string }[] {
+  return [...stripComments(css).matchAll(/([^{}]*)\{([^{}]*)\}/g)].map((m) => ({
+    selector: m[1].trim().replace(/\s+/g, ' '),
+    body: m[2],
+  }));
+}
+
+/**
+ * The source-order position of the first rule whose selector list contains
+ * `selector`, or -1 when the sheet has none.
+ *
+ * Order is load-bearing wherever two rules are equally specific: `.btn:disabled`
+ * only beats `.btn-ghost:hover` because it is declared after it, and nothing
+ * about either rule's text records that. A test that pins a cascade has to be
+ * able to ask where a rule sits, not just what it says.
+ */
+export function ruleIndex(css: string, selector: string): number {
+  return rules(css).findIndex((rule) =>
+    rule.selector.split(',').some((one) => one.trim() === selector),
+  );
+}
+
+/**
+ * The bodies of every rule whose selector list contains `selector`, in source
+ * order. An `@media` override is a second entry rather than a different rule,
+ * so a caller that expects one has to say so.
+ */
+export function rulesFor(css: string, selector: string): string[] {
+  return rules(css)
+    .filter((rule) => rule.selector.split(',').some((one) => one.trim() === selector))
+    .map((rule) => rule.body);
+}

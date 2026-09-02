@@ -129,8 +129,13 @@ describe('pillView', () => {
     expect(view.tone).toBe('ok');
   });
 
-  it('maps every tone to a pill class', () => {
+  it('maps every tone to a status class', () => {
     expect(Object.keys(PILL_CLASS).sort()).toEqual(['bad', 'busy', 'ok', 'warn']);
-    expect(PILL_CLASS.warn).toBe('pill pill-warn');
+    // The capsule is gone: every tone is the `.status` component, and only the
+    // three that have something to report add a modifier.
+    expect(PILL_CLASS.busy).toBe('status');
+    expect(PILL_CLASS.ok).toBe('status status-ok');
+    expect(PILL_CLASS.warn).toBe('status status-warn');
+    expect(PILL_CLASS.bad).toBe('status status-bad');
   });
 });

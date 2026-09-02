@@ -53,10 +53,15 @@ export function paintStatus(): void {
 
   host.textContent = '';
   host.className = PILL_CLASS[view.tone];
-  host.append(el('span', { class: 'pill-dot' }), el('span', { text: view.text }));
+  // The detail is nested inside the message rather than beside it, so it takes
+  // its own line under the text and truncates there instead of competing with
+  // it for the one the dot is on. `.status > span { min-width: 0 }` is what
+  // lets that line shrink far enough to ellipsise.
+  const message = el('span', { text: view.text });
   if (view.detail) {
-    host.append(el('span', { class: 'pill-detail muted', text: view.detail, title: view.detail }));
+    message.append(el('span', { class: 'status-detail', text: view.detail, title: view.detail }));
   }
+  host.append(el('span', { class: 'status-dot' }), message);
 
   if (resyncButton) resyncButton.disabled = statusBusy;
 }
@@ -101,7 +106,7 @@ export function runtimeId(): string {
 
 export function scheduleStatusRefresh(): void {
   // The worker re-syncs on the storage change we just wrote; give it a beat so
-  // the pill reports the new rule count rather than the old one.
+  // the status reports the new rule count rather than the old one.
   window.clearTimeout(statusTimer);
   statusTimer = window.setTimeout(() => void refreshStatus(), 500);
 }

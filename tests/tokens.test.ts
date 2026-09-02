@@ -1,9 +1,11 @@
 /// <reference types="vite/client" />
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { ruleBodies, stripComments, tokenValue } from './helpers/tokens';
+import { ruleBodies, ruleIndex, rules, rulesFor, stripComments, tokenValue } from './helpers/tokens';
+import { PILL_CLASS } from '../src/options/status';
 import tokens from '../design/tokens.css?raw';
 import optionsCss from '../src/options/options.css?raw';
+import optionsTs from '../src/options/options.ts?raw';
 import popupCss from '../src/popup/popup.css?raw';
 import goHtml from '../go.html?raw';
 import manifestJson from '../public/manifest.json?raw';
@@ -26,6 +28,7 @@ const SHEETS: Array<[string, string]> = [
 const RAW_IMPORTS: Array<[string, string]> = [
   ['design/tokens.css', tokens],
   ['src/options/options.css', optionsCss],
+  ['src/options/options.ts', optionsTs],
   ['src/popup/popup.css', popupCss],
   ['go.html', goHtml],
   ['public/manifest.json', manifestJson],
@@ -33,6 +36,16 @@ const RAW_IMPORTS: Array<[string, string]> = [
   ['design/fonts/Inter-OFL.txt', designLicence],
   ['public/fonts/Inter-OFL.txt', shippedLicence],
 ];
+
+/**
+ * Every module that renders a class name, read as text. A glob rather than a
+ * list: a new view added under src/options is swept the day it is written, and
+ * src/ui/dom.ts is the shared element helper the options page builds through.
+ */
+const CLASS_SOURCES: Record<string, string> = {
+  ...import.meta.glob('/src/options/**/*.ts', { query: '?raw', import: 'default', eager: true }),
+  ...import.meta.glob('/src/ui/dom.ts', { query: '?raw', import: 'default', eager: true }),
+};
 
 describe('the fixtures the rest of this file asserts on', () => {
   it.each(RAW_IMPORTS)('%s loaded as text', (_name, raw) => {
@@ -186,6 +199,158 @@ describe('the stylesheets are wired to the tokens', () => {
 
   it.each(SHEETS)('%s no longer redeclares the palette in a media query', (_name, css) => {
     expect(css).not.toMatch(/@media\s*\(prefers-color-scheme/);
+  });
+});
+
+describe('the options page implements the approved component contract', () => {
+  const options = stripComments(optionsCss);
+  const selectors = new Set(
+    rules(optionsCss).flatMap((rule) => rule.selector.split(',').map((one) => one.trim())),
+  );
+
+  it('leaves the surfaces flat: nothing sticky, blurred or blended', () => {
+    // The topbar was a glass bar pinned to the top of the scroll; the design
+    // separates surfaces with a border or a sunken fill and nothing else.
+    expect(options).not.toMatch(/position:\s*sticky/);
+    expect(options).not.toMatch(/backdrop-filter/);
+    // color-mix() hairlines are the other half of the same tell, and a blended
+    // border cannot be measured against the thing it sits on.
+    expect(options).not.toMatch(/color-mix\(/);
+  });
+
+  it('renders the rule status as text plus a dot, with no capsule left behind', () => {
+    for (const selector of [
+      '.status',
+      '.status-dot',
+      '.status-ok .status-dot',
+      '.status-warn',
+      '.status-bad',
+      '.status-detail',
+    ]) {
+      expect(selectors).toContain(selector);
+    }
+    expect(rulesFor(optionsCss, '.status-dot')).toEqual([expect.stringMatching(/width:\s*6px/)]);
+    // The detail only ellipsises if the flex item holding it may shrink: its
+    // `min-width: auto` otherwise floors at the width of a `nowrap` line, and
+    // the 48ch cap on .status is overflowed rather than applied.
+    expect(rulesFor(optionsCss, '.status > span')).toEqual([
+      expect.stringMatching(/min-width:\s*0/),
+    ]);
+    expect(rulesFor(optionsCss, '.status-detail')).toEqual([
+      expect.stringMatching(/max-width:\s*100%/),
+    ]);
+    // Every trace of the tinted pill, in the sheet and in the seam that names
+    // the classes for it.
+    expect(options).not.toMatch(/\.pill/);
+    expect(Object.values(PILL_CLASS).join(' ')).not.toContain('pill');
+  });
+
+  it('takes the row height from the token rather than from padding', () => {
+    // Two entries: the rule and the narrow-viewport override that only reshapes
+    // the grid. The height belongs to the first.
+    const [row, narrow] = rulesFor(optionsCss, '.row');
+    expect(row).toMatch(/min-height:\s*var\(--row-h\)/);
+    expect(row).not.toMatch(/height:\s*\d/);
+    expect(narrow).not.toMatch(/height:/);
+  });
+
+  it('dims a disabled button by colour, never by opacity', () => {
+    // A fraction of whatever happens to be behind the control is not a colour
+    // anyone can measure or theme; --text-faint on --border-strong is.
+    const [disabled, ...more] = rulesFor(optionsCss, '.btn:disabled');
+    expect(more).toEqual([]);
+    expect(disabled).toMatch(/color:\s*var\(--text-faint\)/);
+    expect(disabled).toMatch(/border-color:\s*var\(--border-strong\)/);
+    expect(disabled).toMatch(/opacity:\s*1/);
+  });
+
+  it('reveals a row’s actions without taking them out of the tab order', () => {
+    // `visibility` and `display` would drop the buttons from the tab order, so
+    // a keyboard user could reach a row and find nothing on it.
+    const [hidden, coarse] = rulesFor(optionsCss, '.row-actions .btn');
+    expect(hidden).toMatch(/opacity:\s*0;/);
+    expect(selectors).toContain('.row:focus-within .row-actions .btn');
+    // A coarse pointer has nothing to hover with, so there is nothing to reveal.
+    expect(options).toMatch(/@media \(hover: none\)/);
+    expect(coarse).toMatch(/opacity:\s*1/);
+    // The cards whose only reason to exist is their buttons opt back out.
+    expect(rulesFor(optionsCss, '.section-row .row-actions .btn')).toEqual([
+      expect.stringMatching(/opacity:\s*1/),
+    ]);
+    expect(rulesFor(optionsCss, '.restore-rows .row-actions .btn')).toEqual([
+      expect.stringMatching(/opacity:\s*1/),
+    ]);
+  });
+
+  it('has a rule for every class the options TypeScript renders', () => {
+    // The classes the page paints itself with are only in the TypeScript, so a
+    // rule deleted from this sheet leaves no trace at all in it — `.panel-head`
+    // lost its `.panel-head-text` companion that way, and seven panel heads
+    // silently stacked their title, sub-line and Saved chip with no gap.
+    const CLASS_LITERAL = /(?:\bclass|\bclassName)\s*[:=]\s*'([^']*)'/g;
+    // Tokens rendered for something other than a rule of their own. Each entry
+    // needs a reason here; anything else missing is a bug.
+    const NO_RULE_OF_ITS_OWN = [
+      // The section wrapper a `.group-head` and its `.rows` sit in. It is a
+      // grouping box and a `hidden` target, and the flex column that spaces it
+      // belongs to `.groups`; the contract's `border-bottom: 0` on it was
+      // undoing a border this sheet no longer draws.
+      'group',
+    ];
+
+    expect(Object.keys(CLASS_SOURCES).length).toBeGreaterThan(8);
+    const rendered = new Map<string, string>();
+    for (const [file, source] of Object.entries(CLASS_SOURCES)) {
+      for (const [, list] of source.matchAll(CLASS_LITERAL)) {
+        for (const token of list.trim().split(/\s+/)) if (token) rendered.set(token, file);
+      }
+    }
+    expect(rendered.size).toBeGreaterThan(50);
+    expect([...rendered.keys()]).toContain('panel-head-text');
+
+    const styled = new Set(
+      [...selectors].flatMap((one) =>
+        [...one.matchAll(/\.([A-Za-z0-9_-]+)/g)].map((match) => match[1]),
+      ),
+    );
+    const orphans = [...rendered]
+      .filter(([token]) => !styled.has(token) && !NO_RULE_OF_ITS_OWN.includes(token))
+      .map(([token, file]) => `.${token} (${file})`);
+    expect(orphans).toEqual([]);
+  });
+
+  it('declares the button rules in the order their cascade depends on', () => {
+    // Every one of these is exactly as specific as the next, so the sheet's
+    // order is the whole of the resolution: `.btn:disabled` last, or a disabled
+    // Reset lights up under the pointer; `.btn-armed:hover` after the ghost and
+    // danger hovers, or the red confirm fill is washed away by the pointer that
+    // is about to click it.
+    const hovers = [...selectors].filter((one) => /^\.btn(?:-[a-z]+)?:hover$/.test(one));
+    expect(hovers).toEqual(
+      expect.arrayContaining(['.btn:hover', '.btn-ghost:hover', '.btn-danger:hover', '.btn-armed:hover']),
+    );
+
+    const disabled = ruleIndex(optionsCss, '.btn:disabled');
+    expect(disabled).toBeGreaterThan(-1);
+    for (const hover of hovers) {
+      expect([hover, disabled > ruleIndex(optionsCss, hover)]).toEqual([hover, true]);
+    }
+
+    const armed = ruleIndex(optionsCss, '.btn-armed:hover');
+    expect(armed).toBeGreaterThan(ruleIndex(optionsCss, '.btn-ghost:hover'));
+    expect(armed).toBeGreaterThan(ruleIndex(optionsCss, '.btn-danger:hover'));
+  });
+
+  it('has no shim or dead rule left from the pre-contract vocabulary', () => {
+    // `.badge-mod` existed only to undo the old uppercase `.badge`; `.brand-tag`
+    // was the lowercase tagline under the wordmark.
+    for (const gone of ['.badge-mod', '.brand-tag']) {
+      expect(options).not.toContain(gone);
+    }
+    expect(optionsTs).not.toContain('brand-tag');
+    // The -soft companions were the tinted status backgrounds; the design has
+    // no tinted surface at all.
+    expect(options).not.toMatch(/--(?:accent|ok|warn|danger|bg)-soft/);
   });
 });
 

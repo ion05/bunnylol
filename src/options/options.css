@@ -41,13 +41,11 @@ a {
   color: var(--accent-text);
 }
 
+/* One global ring. --ring is --accent-text, so it is 6.26:1 in light and
+   9.11:1 in dark; the raw sand would have been 2.04:1 and illegal. */
 :focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
-}
-
-.muted {
-  color: var(--text-dim);
 }
 
 .faint {
@@ -72,100 +70,85 @@ a {
 
 /* ------------------------------------------------------------- topbar -- */
 
+/* Flat, and deliberately not sticky: no `position: sticky`, no
+   `backdrop-filter`, no `color-mix()` wash. A bar that floats over the list is
+   a bar that has to be told apart from it. */
 .topbar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
   background: var(--bg);
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: saturate(140%) blur(10px);
   border-bottom: 1px solid var(--border);
 }
 
 .topbar-inner {
-  max-width: 960px;
+  max-width: var(--layout-max);
   margin: 0 auto;
-  padding: 14px 24px;
+  padding: var(--sp-5) var(--sp-7) 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
-}
-
-.brand {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-right: auto;
+  gap: var(--sp-5);
 }
 
 .brand-name {
   font-size: var(--fs-14);
-  font-weight: 650;
-  letter-spacing: -0.02em;
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.01em;
 }
 
-.brand-tag {
-  font-size: var(--fs-13);
-  color: var(--text-faint);
-}
+/* ------------------------------------------------------------- status -- */
 
+/* Text plus a dot. No capsule: the text already names the state, so a tinted
+   pill only repeats it louder. */
 .status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.pill {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  max-width: 46ch;
-  padding: 5px 11px 5px 9px;
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  background: var(--bg);
-  font-size: var(--fs-13);
-  line-height: 1.35;
+  gap: var(--sp-3);
+  max-width: 48ch;
+  font-size: var(--fs-12);
   color: var(--text-dim);
 }
 
-.pill-dot {
+/* A flex item's `min-width: auto` floors at its content's minimum, and the
+   detail below is `nowrap` — so without this the message cannot shrink and the
+   48ch cap above never applies. */
+.status > span {
+  min-width: 0;
+}
+
+/* The dot is the non-textual signal. It carries no text of its own, so
+   --text-decor is legal for the neutral case. */
+.status-dot {
   flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
   background: var(--text-decor);
 }
 
-.pill-ok {
-  color: var(--ok);
-  border-color: var(--ok);
-}
-
-.pill-ok .pill-dot {
+.status-ok .status-dot {
   background: var(--ok);
 }
 
-.pill-bad {
-  color: var(--danger);
-  border-color: var(--danger);
-}
-
-.pill-bad .pill-dot {
-  background: var(--danger);
-}
-
-.pill-warn {
+/* Colour and weight move together, so the tone is never carried by colour
+   alone. */
+.status-warn {
   color: var(--warn);
-  border-color: var(--warn);
+  font-weight: var(--fw-medium);
 }
 
-.pill-warn .pill-dot {
+.status-warn .status-dot {
   background: var(--warn);
 }
 
-.pill-detail {
+.status-bad {
+  color: var(--danger);
+  font-weight: var(--fw-medium);
+}
+
+.status-bad .status-dot {
+  background: var(--danger);
+}
+
+.status-detail {
   display: block;
   max-width: 100%;
   overflow: hidden;
@@ -173,80 +156,106 @@ a {
   white-space: nowrap;
 }
 
+/* ---------------------------------------------------------------- nav -- */
+
 .nav {
   display: flex;
-  gap: 2px;
+  gap: var(--sp-6);
   width: 100%;
-  padding-top: 2px;
+  padding-top: var(--sp-5);
 }
 
 .nav-link {
-  padding: 7px 12px;
-  border-radius: var(--radius-2);
+  padding: 0 0 var(--sp-4);
+  border-radius: 0;
   color: var(--text-dim);
-  font-size: var(--fs-14);
-  font-weight: 500;
+  font-size: var(--fs-13);
+  font-weight: var(--fw-medium);
   text-decoration: none;
+  box-shadow: inset 0 -1px 0 transparent;
 }
 
 .nav-link:hover {
-  background: var(--bg-sunken);
+  background: none;
   color: var(--text);
 }
 
+/* The underline uses --accent-text because a selection indicator is bound by
+   1.4.11's 3:1, and the weight changes with it so the current route is never
+   marked by colour alone. */
 .nav-link[aria-current='page'] {
-  background: var(--bg-sunken);
-  color: var(--accent-text);
+  color: var(--text);
+  font-weight: var(--fw-semibold);
+  box-shadow: inset 0 -2px 0 var(--accent-text);
 }
 
 /* -------------------------------------------------------------- shell -- */
 
 .shell {
-  max-width: 960px;
+  max-width: var(--layout-max);
   margin: 0 auto;
-  padding: 28px 24px 120px;
+  padding: var(--sp-8) var(--sp-7) 96px;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 0;
 }
 
+/* Flat sections separated by a hairline, not stacked cards: no fill, no border
+   box, no radius. */
 .panel {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-2);
-  overflow: hidden;
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
 }
 
+.panel:first-child {
+  border-top: 0;
+}
+
+/* One head shape for both callers: browse writes its own title and sub, while
+   `panelCard()` adds the "Saved" chip beside them. The text is a column so the
+   chip can sit on its baseline rather than under the sub-line reserving an
+   empty row for itself. */
 .panel-head {
   display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 18px 20px;
-  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2) var(--sp-5);
+  padding: var(--sp-7) 0 var(--sp-4);
+  border-bottom: 0;
 }
 
+/* design/components.css leaves the space between the title and its sub-line to
+   the UA heading and paragraph margins, which this sheet resets globally, so
+   the gap is declared instead. */
 .panel-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
   margin-right: auto;
 }
 
 .panel-title {
   font-size: var(--fs-14);
+  font-weight: var(--fw-semibold);
 }
 
 .panel-sub {
-  margin-top: 3px;
-  font-size: var(--fs-13);
+  font-size: var(--fs-12);
   color: var(--text-dim);
-  max-width: 62ch;
+  max-width: 64ch;
 }
 
 .panel-body {
-  padding: 18px 20px;
+  padding: 0 0 var(--sp-7);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--sp-5);
 }
 
+/* A transient announcement, not a dimmed control — the opacity transition
+   stays. */
 .saved {
   font-size: var(--fs-12);
   color: var(--ok);
@@ -262,28 +271,24 @@ a {
 /* ------------------------------------------------------------ buttons -- */
 
 .btn {
-  appearance: none;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 13px;
+  justify-content: center;
+  height: var(--btn-h);
+  padding: 0 var(--sp-4);
+  gap: var(--sp-3);
   border: 1px solid var(--control-border);
   border-radius: var(--radius-2);
-  background: var(--bg);
+  background: none;
   color: var(--text);
-  font: inherit;
+  font-family: inherit;
   font-size: var(--fs-13);
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   cursor: pointer;
 }
 
 .btn:hover {
   background: var(--bg-raised);
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .btn-primary {
@@ -299,21 +304,20 @@ a {
 
 .btn-ghost {
   border-color: transparent;
-  background: transparent;
   color: var(--text-dim);
 }
 
-.btn-sm {
-  padding: 4px 9px;
-  font-size: var(--fs-12);
+.btn-ghost:hover {
+  background: var(--bg-raised);
+  color: var(--text);
 }
 
+/* No tinted border and no red hover wash: the old
+   `color-mix(in srgb, var(--danger) 40%, …)` border measured 1.94:1. */
 .btn-danger {
   color: var(--danger);
   border-color: var(--control-border);
-  /* Blended against the button's own fill, not `transparent`: a 40% tint over
-     whatever happened to be behind it came out at 1.94:1. */
-  border-color: color-mix(in srgb, var(--danger) 75%, var(--bg));
+  background: none;
 }
 
 .btn-danger:hover {
@@ -326,45 +330,78 @@ a {
   color: var(--danger-fg);
 }
 
+/* The armed button is the one under the pointer when the confirming click
+   lands, and a bare `.btn-armed` loses to `.btn-ghost:hover` on specificity —
+   which would wash the red fill away at exactly the moment it is the message. */
 .btn-armed:hover {
   background: var(--danger);
+  border-color: var(--danger);
+  color: var(--danger-fg);
+}
+
+.btn-sm {
+  height: var(--btn-h-sm);
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-12);
+}
+
+/* Colour, not opacity — the same discipline the rows use, and the only way a
+   disabled control's edge stays a measurable pair of colours instead of a
+   fraction of whatever is behind it. Declared after the family rules rather
+   than beside `.btn:hover` where design/components.css puts it: the hovers are
+   equally specific, so a disabled Reset or Save would otherwise light up under
+   the pointer. */
+.btn:disabled {
+  color: var(--text-faint);
+  border-color: var(--border-strong);
+  background: none;
+  cursor: not-allowed;
+  opacity: 1;
 }
 
 .btn-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-4);
 }
 
 /* ------------------------------------------------------------- browse -- */
 
+/* The filter strip is a sunken block inside the panel body, not a bar welded to
+   the top of a card. */
 .toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-raised);
+  padding: var(--sp-4) var(--sp-5);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2);
+  gap: var(--sp-5);
 }
 
 .search-field {
-  flex: 1;
+  flex: 1 1 240px;
   min-width: 0;
 }
 
+/* tabular-nums stops the count jittering as the filter types. */
 .count {
   flex: none;
-  font-size: var(--fs-13);
+  font-size: var(--fs-12);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
 
+/* No contract class of its own: `margin-left: auto` is the spacer the approved
+   pattern draws as a flexing element between the count and the two buttons. */
 .toolbar-actions {
   display: flex;
   flex: none;
   align-items: center;
   gap: var(--sp-3);
+  margin-left: auto;
 }
 
 .groups {
@@ -372,23 +409,15 @@ a {
   flex-direction: column;
 }
 
-.group {
-  border-bottom: 1px solid var(--border);
-}
-
-.group:last-child {
-  border-bottom: 0;
-}
-
-/* The layout wrapper, per design/components.css. It is an h2 here — the groups
-   are the document's outline — so it also has to drop the UA heading margin and
-   type. */
+/* The layout wrapper, per design/components.css. It is an h3 here — the groups
+   are the document's outline, under the panel's own h2 — so it also has to drop
+   the UA heading margin and type. */
 .group-head {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  align-items: center;
+  gap: var(--sp-3);
   margin: 0;
-  padding: 14px 20px 8px;
+  padding: var(--sp-7) 0 var(--sp-2);
   font: inherit;
 }
 
@@ -398,7 +427,7 @@ a {
 .group-toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-3);
   width: 100%;
   padding: 0;
   border: 0;
@@ -436,11 +465,13 @@ a {
   transform: rotate(90deg);
 }
 
+/* Sentence case: an uppercased, letter-spaced group label is a heading shouting
+   at a list it is only naming. */
 .group-title {
   font-size: var(--fs-12);
-  font-weight: 650;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--text-dim);
 }
 
@@ -457,12 +488,12 @@ a {
 
 .row {
   display: grid;
-  grid-template-columns: minmax(96px, 168px) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(88px, 150px) minmax(0, 1fr) auto;
   align-items: baseline;
-  gap: 8px 16px;
-  padding: 9px 20px;
+  gap: var(--sp-2) var(--sp-5);
+  min-height: var(--row-h);
+  padding: var(--sp-4) var(--sp-3);
   border-top: 1px solid var(--border);
-  border-top-color: color-mix(in srgb, var(--border) 60%, transparent);
 }
 
 .row:hover {
@@ -484,98 +515,121 @@ a {
 .row-keys {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--sp-2);
 }
 
+/* 1px outlined mono, no fill: the keyword is a quotation of what the user
+   types, not a tag. */
 .chip {
-  padding: 1px 6px;
+  display: inline-block;
+  padding: 0 var(--sp-2);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg-sunken);
+  border-radius: var(--radius-1);
+  background: none;
   font-family: var(--font-mono);
   font-size: var(--fs-12);
+  line-height: 18px;
   color: var(--text);
 }
 
-.row-name {
-  font-size: var(--fs-14);
-  font-weight: 550;
+.row-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
 }
 
-.badge {
-  margin-left: 7px;
-  padding: 1px 6px;
-  border-radius: 5px;
-  background: var(--bg-sunken);
-  color: var(--accent-text);
-  font-size: var(--fs-11);
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  vertical-align: 1px;
+.row-name {
+  font-size: var(--fs-13);
+  font-weight: var(--fw-medium);
 }
 
 .row-desc {
-  font-size: var(--fs-13);
+  font-size: var(--fs-12);
   color: var(--text-dim);
-}
-
-/* A marker, not a status: it sits next to the name without claiming its weight. */
-.badge-quiet {
-  background: var(--bg-sunken);
-  color: var(--text-dim);
-  border: 1px solid var(--border);
-}
-
-/* A shim against the pre-redesign `.badge`'s uppercase: "modified" is a
-   sentence about this shortcut, not a label. Delete when `design/components.css`
-   lands and the badge vocabulary comes from there (PR 10). */
-.badge-mod {
-  letter-spacing: 0;
-  text-transform: none;
 }
 
 .row-url {
-  margin-top: 3px;
   font-family: var(--font-mono);
-  font-size: var(--fs-12);
-  color: var(--text-dim);
+  font-size: var(--fs-11);
+  color: var(--text-faint);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .row-example {
-  margin-top: 3px;
-  font-family: var(--font-mono);
-  font-size: var(--fs-12);
+  font-size: var(--fs-11);
   color: var(--text-faint);
-  overflow-wrap: anywhere;
+}
+
+/* Lowercase and untinted: "yours" is a note about the row, not a status. */
+.badge {
+  margin-left: var(--sp-3);
+  font-size: var(--fs-11);
+  font-weight: var(--fw-regular);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-dim);
+  background: none;
+  padding: 0;
+  vertical-align: baseline;
+}
+
+/* Outlined so "off" and "omnibox only" stay visible non-colour markers. */
+.badge-quiet {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-1);
+  padding: 0 var(--sp-2);
+  background: none;
+  color: var(--text-dim);
 }
 
 .row-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
-  justify-self: end;
+  gap: var(--sp-2);
+}
+
+/* `opacity`, never `visibility` or `display`, so the buttons stay in the tab
+   order; `:focus-within` reveals them the moment a keyboard reaches them. The
+   switch is excluded — it conveys state and must always be visible. */
+.row-actions .btn {
+  opacity: 0;
+  transition: opacity 90ms ease;
+}
+
+.row:hover .row-actions .btn,
+.row:focus-within .row-actions .btn {
+  opacity: 1;
+}
+
+/* There is no pointer to hover with, so there is nothing to reveal. */
+@media (hover: none) {
+  .row-actions .btn {
+    opacity: 1;
+  }
 }
 
 .empty {
-  display: grid;
-  justify-items: center;
-  gap: 12px;
-  padding: 40px 20px;
-  color: var(--text-dim);
-  font-size: var(--fs-14);
-  text-align: center;
+  padding: var(--sp-9) var(--sp-7);
+  font-size: var(--fs-13);
+  color: var(--text-faint);
+}
+
+.empty .btn-row {
+  padding-top: var(--sp-5);
 }
 
 /* ------------------------------------------------------------ switch --- */
 
+/* A switch means "this thing is on or off" (a shortcut). A checkbox means
+   "include this in a set" (which engines to intercept, which packs to enable).
+   Do not swap one for the other. */
 .switch {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-3);
   cursor: pointer;
   font-size: var(--fs-12);
   color: var(--text-dim);
@@ -585,10 +639,10 @@ a {
   appearance: none;
   position: relative;
   flex: none;
-  width: 34px;
-  height: 20px;
+  width: 28px;
+  height: 16px;
   margin: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--control-border);
   cursor: pointer;
   transition: background 120ms ease;
@@ -599,13 +653,15 @@ a {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-full);
   background: var(--bg);
   /* The knob has to read as an object on both track colours; a ring gives it an
-     edge that does not depend on the track behind it. */
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 35%), 0 1px 2px rgb(0 0 0 / 25%);
+     edge that does not depend on the track behind it. It is --bg on a
+     --control-border track (3.48:1 light) but only 2.4:1 against the sand when
+     checked. */
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 35%);
   transition: transform 120ms ease;
 }
 
@@ -614,7 +670,7 @@ a {
 }
 
 .switch input:checked::after {
-  transform: translateX(14px);
+  transform: translateX(12px);
 }
 
 /* -------------------------------------------------------------- forms -- */
@@ -648,14 +704,17 @@ a {
 
 .input,
 .select {
+  height: var(--control-h);
+  /* The contract's specimens set `width: 100%` inline on every input; the
+     product has no inline styles, so it is declared once here. */
   width: 100%;
-  padding: 8px 11px;
+  padding: 0 var(--sp-4);
   border: 1px solid var(--control-border);
   border-radius: var(--radius-2);
-  background: var(--bg);
+  background: var(--bg-sunken);
   color: var(--text);
-  font: inherit;
-  font-size: var(--fs-14);
+  font-family: inherit;
+  font-size: var(--fs-13);
 }
 
 .input::placeholder {
@@ -664,7 +723,7 @@ a {
 
 .input.mono {
   font-family: var(--font-mono);
-  font-size: var(--fs-13);
+  font-size: var(--fs-12);
 }
 
 .input.bad {
@@ -794,7 +853,6 @@ a {
   gap: 10px;
   padding: 10px 14px;
   border-top: 1px solid var(--border);
-  border-top-color: color-mix(in srgb, var(--border) 60%, transparent);
   font-family: var(--font-mono);
   font-size: var(--fs-12);
 }
@@ -969,6 +1027,13 @@ a {
   border-top: 0;
 }
 
+/* Exempt from the browse row's hover reveal: Restore is the only thing this
+   card does, and a list whose buttons appear under the pointer reads as a list
+   with no buttons. */
+.restore-rows .row-actions .btn {
+  opacity: 1;
+}
+
 .restore-all {
   display: flex;
   justify-content: flex-end;
@@ -981,18 +1046,19 @@ a {
    one: a section row has no keyword column and carries an inline rename field,
    so the grid drops to name + actions and the card's own padding supplies the
    gutters. Everything else here is `.row`, `.row-body`, `.row-name`,
-   `.row-desc`, `.row-actions` and `.count`.
-
-   Note for PR 10: when design/components.css lands, `.row-actions .btn
-   { opacity: 0 }` reveals a row's buttons on hover. These rows must be
-   EXEMPTED — Restore default name, Delete and Add section are why the card
-   exists, and a card whose only controls appear under the pointer reads as a
-   card with no controls. */
+   `.row-desc`, `.row-actions` and `.count`. */
 .section-row {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   padding-left: 0;
   padding-right: 0;
+}
+
+/* Exempt from the browse row's hover reveal: Restore default name, Delete and
+   Add section are why this card exists, and a card whose only controls appear
+   under the pointer reads as a card with no controls. */
+.section-row .row-actions .btn {
+  opacity: 1;
 }
 
 .section-row:first-child {

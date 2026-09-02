@@ -147,19 +147,18 @@ function renderView(): Node[] {
 }
 
 function renderTopbar(): HTMLElement {
-  const statusHost = el('span', { class: 'pill', attrs: { role: 'status', 'aria-live': 'polite' } });
+  const statusHost = el('span', {
+    class: 'status',
+    attrs: { role: 'status', 'aria-live': 'polite' },
+  });
   setStatusHost(statusHost);
   const resyncButton = button('Re-sync', () => void resync(), 'btn btn-sm');
   resyncButton.title = 'Rebuild the redirect rules from your current shortcuts';
   setResyncButton(resyncButton);
 
-  const brand = el('div', {
-    class: 'brand',
-    children: [
-      el('h1', { class: 'brand-name', text: 'BunnyLol' }),
-      el('span', { class: 'brand-tag', text: 'keyword shortcuts for the address bar' }),
-    ],
-  });
+  // The wordmark goes straight into the bar's flex row: the bar is left-packed,
+  // so the pattern's `.brand` wrapper would be a div with nothing to say.
+  const brandName = el('h1', { class: 'brand-name', text: 'BunnyLol' });
 
   const nav = el('nav', { class: 'nav', attrs: { 'aria-label': 'Sections' } });
   const tabs: { hash: string; label: string; match: RouteName[] }[] = [
@@ -177,13 +176,12 @@ function renderTopbar(): HTMLElement {
   return el('header', {
     class: 'topbar',
     children: [
+      // The status and Re-sync sit directly in the bar's flex row: `.status` is
+      // the status component itself now, so a wrapper wearing that class would
+      // put the button inside a 48ch box meant for one line of text.
       el('div', {
         class: 'topbar-inner',
-        children: [
-          brand,
-          el('div', { class: 'status', children: [statusHost, resyncButton] }),
-          nav,
-        ],
+        children: [brandName, statusHost, resyncButton, nav],
       }),
     ],
   });

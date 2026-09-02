@@ -13,7 +13,8 @@ export type PillTone = 'busy' | 'ok' | 'warn' | 'bad';
 export interface PillView {
   tone: PillTone;
   text: string;
-  /** Secondary line, rendered muted next to the text. Empty when there is none. */
+  /** Secondary line, rendered under the text and truncated there. Empty when
+   *  there is none. */
   detail: string;
 }
 
@@ -44,7 +45,7 @@ export function pillView({ status, busy, engineCount }: PillInput): PillView {
     const warning = messageOf(status, 'warning');
     const notes: string[] = [];
     // An exemption is the user's own choice, so it is reported without turning
-    // the pill amber; a dropped keyword is something they asked for that is not
+    // the status amber; a dropped keyword is something they asked for that is not
     // happening.
     if (suppressed > 0) notes.push(`${suppressed} exempted by you`);
     if (warning) notes.push(warning);
@@ -61,11 +62,14 @@ export function pillView({ status, busy, engineCount }: PillInput): PillView {
   return { tone: 'bad', text: 'Rules not registered', detail: '' };
 }
 
+/** The one tone -> appearance seam. The capsule is gone: what the page renders
+ *  is the `.status` component from design/components.css — a 6px dot and a line
+ *  of text, with the neutral tone carrying no modifier at all. */
 export const PILL_CLASS: Record<PillTone, string> = {
-  busy: 'pill',
-  ok: 'pill pill-ok',
-  warn: 'pill pill-warn',
-  bad: 'pill pill-bad',
+  busy: 'status',
+  ok: 'status status-ok',
+  warn: 'status status-warn',
+  bad: 'status status-bad',
 };
 
 /**
