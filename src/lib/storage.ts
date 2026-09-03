@@ -260,7 +260,6 @@ function normalizeSettings(raw: unknown): Settings {
   return {
     githubUser: trimmed(source.githubUser),
     defaultEngine: safeUrl(source.defaultEngine) || DEFAULT_SETTINGS.defaultEngine,
-    defaultAi: trimmed(source.defaultAi).toLowerCase() || DEFAULT_SETTINGS.defaultAi,
     interceptEngines: normalizeEngines(source.interceptEngines),
     aiTemplates: normalizeTemplates(source.aiTemplates),
     googleAccount: normalizeAccount(source.googleAccount),

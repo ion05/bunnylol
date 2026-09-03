@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { applyImport, exportJson, importJson } from '../src/lib/storage';
 import { BUILTIN_COMMANDS } from '../src/lib/commands';
 import { buildKeyMap, mergeCommands } from '../src/lib/resolve';
-import { restorableShipped } from '../src/lib/overrides';
 import {
   DEFAULT_OVERRIDES,
   DEFAULT_SETTINGS,
@@ -36,7 +35,6 @@ const STATE: StoredState = {
   settings: {
     githubUser: 'octocat',
     defaultEngine: 'https://kagi.com/search?q={q}',
-    defaultAi: 'gpt',
     interceptEngines: ['google', 'duckduckgo'],
     aiTemplates: { chatgpt: 'https://chatgpt.com/?prompt={q}' },
     googleAccount: 2,
@@ -154,7 +152,7 @@ describe('importJson leniency', () => {
     // `deleted` hides a shipped command. An id no build ever shipped hides
     // nothing, and a `u:` id names a custom command, which is removed by not
     // being in the file at all: keeping either would grow a list of ghosts
-    // that "Restore shipped shortcuts" then has to explain.
+    // that nothing on the page could ever clear.
     expect(
       importJson('{"overrides":{"deleted":["gh","no-such-command","u:tix"]}}').overrides.deleted,
     ).toEqual(['gh']);
@@ -212,6 +210,16 @@ describe('importJson leniency', () => {
 
   it('accepts the current format version', () => {
     expect(() => importJson('{"version":2,"overrides":{},"settings":{}}')).not.toThrow();
+  });
+
+  // `settings.defaultAi` shipped until the `?` command was removed. An export
+  // written by that build still has it, and a settings field this build has
+  // never heard of must not make the file unimportable.
+  it('ignores a settings field this build no longer has', () => {
+    const state = importJson('{"version":2,"settings":{"defaultAi":"gpt","githubUser":"octocat"}}');
+    expect(state.settings?.githubUser).toBe('octocat');
+    expect(state.settings).not.toHaveProperty('defaultAi');
+    expect(Object.keys(state.settings ?? {}).sort()).toEqual(Object.keys(DEFAULT_SETTINGS).sort());
   });
 
   it('strips builtin:true from imported custom commands', () => {
@@ -958,11 +966,13 @@ describe('deleting a shipped shortcut', () => {
     expect(state.overrides.edits.gh).toEqual({ name: 'Mine' });
   });
 
-  it('survives an export round trip and stays restorable', () => {
+  it('survives an export round trip, edit and all', () => {
     const round = importJson(exportJson({ overrides: state.overrides, settings: DEFAULT_SETTINGS }));
     expect(round.overrides.deleted).toEqual(['gh']);
-    expect(restorableShipped(BUILTIN_COMMANDS, round.overrides).map((cmd) => cmd.name)).toEqual([
-      'GitHub',
-    ]);
+    // Read through to the merge rather than stopping at the stored list: a
+    // round trip that dropped the id would quietly bring the shortcut back,
+    // and one that dropped the edit would bring back the shipped name.
+    expect(buildKeyMap(mergeCommands(BUILTIN_COMMANDS, round.overrides)).has('gh')).toBe(false);
+    expect(round.overrides.edits.gh).toEqual({ name: 'Mine' });
   });
 });

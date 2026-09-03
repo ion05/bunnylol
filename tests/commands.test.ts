@@ -92,12 +92,8 @@ describe('BUILTIN_COMMANDS registry', () => {
       expect(claimed.has(cmd.provider), `${cmd.provider} is claimed twice`).toBe(false);
       claimed.set(cmd.provider, cmd.keys[0]);
     }
-    // Every provider offered in the settings dropdown is reachable by keyword.
+    // Every provider the AI handler can pick is reachable by its own keyword.
     for (const provider of AI_PROVIDERS) expect(claimed.has(provider.id)).toBe(true);
-  });
-
-  it('ships a defaultAi that is a provider id, not a rebindable alias', () => {
-    expect(AI_PROVIDERS.map((provider) => provider.id)).toContain(DEFAULT_SETTINGS.defaultAi);
   });
 
   it('gives every search engine a distinct id and a prefix pattern that compiles', () => {

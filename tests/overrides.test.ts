@@ -17,7 +17,6 @@ import {
   newSectionId,
   normalizeId,
   renameSection,
-  restorableShipped,
   sectionLabel,
   sectionLabelTaken,
   sectionMembers,
@@ -425,26 +424,6 @@ describe('foldLegacyKeyOverrides', () => {
     const edits = { gh: { name: 'Mine' } };
     foldLegacyKeyOverrides(edits, { gh: ['hub'] });
     expect(edits).toEqual({ gh: { name: 'Mine' } });
-  });
-});
-
-describe('restorableShipped', () => {
-  it('returns the deleted builtins in registry order and nothing else', () => {
-    const last = BUILTIN_COMMANDS[BUILTIN_COMMANDS.length - 1];
-    const overrides: Overrides = {
-      ...DEFAULT_OVERRIDES,
-      // Named out of registry order on purpose: the list the user sees is the
-      // registry's, not the order they happened to delete things in.
-      deleted: [shortcutId(last), ' GH ', 'u:tix', 'no-such-command'],
-    };
-    expect(restorableShipped(BUILTIN_COMMANDS, overrides).map(shortcutId)).toEqual([
-      'gh',
-      shortcutId(last),
-    ]);
-  });
-
-  it('is empty when nothing was deleted', () => {
-    expect(restorableShipped(BUILTIN_COMMANDS, DEFAULT_OVERRIDES)).toEqual([]);
   });
 });
 

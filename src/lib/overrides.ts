@@ -15,10 +15,9 @@
  *
  * On top of that identity sits the algebra: `applyEdit` folds a stored
  * `ShortcutEdit` onto a shipped command, `diffEdit` produces one from an edited
- * copy, `editedFields` says what actually moved, `foldLegacyKeyOverrides`
- * migrates the v1 `keyOverrides` map into it, and `restorableShipped` names the
- * shipped commands a user deleted. A DIFF, not a copy: a corrected URL in a
- * later build still reaches a user who only renamed the command.
+ * copy, `editedFields` says what actually moved, and `foldLegacyKeyOverrides`
+ * migrates the v1 `keyOverrides` map into it. A DIFF, not a copy: a corrected
+ * URL in a later build still reaches a user who only renamed the command.
  *
  * The section algebra sits here for the same reason: a category is now an open
  * id resolved against `Overrides.sections`, so "which group is this shortcut
@@ -340,15 +339,6 @@ export function foldLegacyKeyOverrides(
     out[id] = { ...out[id], keys };
   }
   return out;
-}
-
-/** The shipped commands the user deleted, in registry order: what "Restore
- *  shipped shortcuts" offers. */
-export function restorableShipped(builtins: Command[], overrides: Overrides): Command[] {
-  const deleted = new Set(
-    (overrides?.deleted ?? []).map((id) => normalizeId(id)).filter(Boolean),
-  );
-  return (builtins ?? []).filter((cmd) => deleted.has(shortcutId(cmd)));
 }
 
 // --------------------------------------------------------- section algebra ----

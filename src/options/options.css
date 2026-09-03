@@ -1034,12 +1034,6 @@ a {
   max-width: 66ch;
 }
 
-.templates {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-5);
-}
-
 /* A row rather than the contract's plain block: the product's one code block
    is a URL to copy, so the Copy button and its confirmation sit in it. */
 .code-block {
@@ -1079,30 +1073,6 @@ a {
   font-size: var(--fs-12);
   color: var(--text-dim);
   max-width: 56ch;
-}
-
-/* Restore rows reuse the browse row's grid; only the card's own padding has to
-   go, since the panel body already supplies it. */
-.restore-rows .row {
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.restore-rows .row:first-child {
-  border-top: 0;
-}
-
-/* Exempt from the browse row's hover reveal: Restore is the only thing this
-   card does, and a list whose buttons appear under the pointer reads as a list
-   with no buttons. */
-.restore-rows .row-actions .btn {
-  opacity: 1;
-}
-
-.restore-all {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: var(--sp-5);
 }
 
 /* ----------------------------------------------------------- sections -- */

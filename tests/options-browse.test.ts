@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { BUILTIN_COMMANDS } from '../src/lib/commands';
-import { restorableShipped, sectionKey, shortcutId } from '../src/lib/overrides';
+import { sectionKey, shortcutId } from '../src/lib/overrides';
 import { mergeCommands } from '../src/lib/resolve';
 import { validateSectionId } from '../src/lib/validate';
 import { DEFAULT_OVERRIDES } from '../src/lib/types';
@@ -154,15 +154,14 @@ describe('browseEntries', () => {
     expect(overrides.edits.gh).toEqual({ name: 'Hub' });
   });
 
-  it('deleted shipped shortcuts are absent from browse entries and present in restorableShipped', () => {
+  it('deleting a shipped shortcut takes only that row off the list', () => {
+    // `deleted` names shipped ids. A custom command is deleted by being taken
+    // out of `custom`, so a `u:` id sitting in the list (an older build, a
+    // hand-edited import) must not hide its row: nothing could bring it back.
     const overrides = overridesWith({ deleted: ['gh'], custom: [ticket] });
-    const entries = browseEntries(builtins, overrides);
-    expect(entries.some((entry) => entry.id === 'gh')).toBe(false);
-    expect(entries.some((entry) => entry.id === 'r')).toBe(true);
-    expect(restorableShipped(builtins, overrides).map(shortcutId)).toEqual(['gh']);
-    // A custom command is deleted by removing it from `custom`, so it is never
-    // offered for restore: there would be nothing to restore it from.
-    expect(restorableShipped(builtins, overridesWith({ deleted: ['u:tix'] }))).toEqual([]);
+    expect(browseEntries(builtins, overrides).map((entry) => entry.id)).toEqual(['u:tix', 'r']);
+    const stale = overridesWith({ deleted: ['u:tix'], custom: [ticket] });
+    expect(browseEntries(builtins, stale).some((entry) => entry.id === 'u:tix')).toBe(true);
   });
 
   it('browseEntries and mergeCommands agree on every enabled builtin', () => {

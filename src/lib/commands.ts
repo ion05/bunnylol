@@ -63,16 +63,6 @@ export const BUILTIN_COMMANDS: BuiltinCommand[] = [
     example: 'cc add a retry to the fetch helper',
   },
   {
-    keys: ['?'],
-    name: 'Default AI',
-    description: 'Send the prompt to whichever AI is set as default in settings.',
-    url: 'https://claude.ai/new',
-    handler: 'ai',
-    category: 'ai',
-    builtin: true,
-    example: '? what is a merkle tree',
-  },
-  {
     keys: ['grok'],
     name: 'Grok',
     description: 'Ask Grok.',
@@ -990,7 +980,7 @@ export const BUILTIN_COMMANDS: BuiltinCommand[] = [
   {
     keys: ['set', 'settings', 'opts'],
     name: 'BunnyLol settings',
-    description: 'Default engine, default AI, GitHub user, interception.',
+    description: 'Default engine, GitHub user, interception.',
     url: `${OPTIONS_PAGE}#settings`,
     handler: 'meta',
     category: 'meta',

@@ -146,12 +146,6 @@ export interface Settings {
   githubUser: string;
   /** Where an unrecognized query goes. Template containing `{q}`. */
   defaultEngine: string;
-  /**
-   * `AiProvider.id` the `?` command routes to. A provider id, not an alias:
-   * the user can rebind the Claude builtin's keys, and `?` must keep pointing
-   * at the provider they picked rather than at whatever now answers to `c`.
-   */
-  defaultAi: string;
   /** Which search engines DNR intercepts. Values are `SearchEngineId`s. */
   interceptEngines: SearchEngineId[];
   /** Overrides for `AI_PROVIDERS` templates, keyed by provider id. */
@@ -322,7 +316,6 @@ export const FORCE_SEARCH_PREFIXES: string[] = ['\\', '='];
 export const DEFAULT_SETTINGS: Settings = {
   githubUser: '',
   defaultEngine: 'https://www.google.com/search?q={q}',
-  defaultAi: 'claude',
   interceptEngines: ['google', 'bing', 'duckduckgo'],
   aiTemplates: {},
   googleAccount: 0,

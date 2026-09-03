@@ -520,11 +520,6 @@ describe('ai handler', () => {
     expect(ai('hi', providerCmd('c', 'chatgpt'), settings())).toBe('https://chatgpt.com/?q=hi');
   });
 
-  it('accepts a provider id or a legacy alias as the default AI', () => {
-    expect(ai('hi', aiCmd('?'), settings({ defaultAi: 'chatgpt' }))).toBe('https://chatgpt.com/?q=hi');
-    expect(ai('hi', aiCmd('?'), settings({ defaultAi: 'gpt' }))).toBe('https://chatgpt.com/?q=hi');
-  });
-
   it('dispatches on the command canonical key', () => {
     expect(ai('hi', aiCmd('c'), settings())).toBe('https://claude.ai/new?q=hi');
     expect(ai('hi', aiCmd('gpt'), settings())).toBe('https://chatgpt.com/?q=hi');
@@ -536,17 +531,17 @@ describe('ai handler', () => {
     expect(ai('', aiCmd('gpt'), settings())).toBe('https://chatgpt.com/');
   });
 
-  it('routes ? to the configured default AI', () => {
-    expect(ai('hi', aiCmd('?'), settings({ defaultAi: 'gpt' }))).toBe('https://chatgpt.com/?q=hi');
-    expect(ai('hi', aiCmd('?'), settings({ defaultAi: 'gemini' }))).toBe(
-      'https://www.google.com/search?udm=50&q=hi',
+  // There is no configured default any more, so a command that names neither a
+  // provider nor a known alias has to land somewhere rather than throw
+  // (invariant 12). The first shipped provider is that somewhere.
+  it('falls back to the first provider when nothing selects one', () => {
+    const first = AI_PROVIDERS[0];
+    expect(ai('hi', aiCmd('?'), settings())).toBe(first.template.replace('{q}', 'hi'));
+    expect(ai('hi', aiCmd('nonesuch'), settings())).toBe(first.template.replace('{q}', 'hi'));
+    expect(ai('hi', providerCmd('ai', 'nonesuch'), settings())).toBe(
+      first.template.replace('{q}', 'hi'),
     );
-  });
-
-  it('does not loop when the default AI points back at ?', () => {
-    expect(ai('hi', aiCmd('?'), settings({ defaultAi: '?' }))).toBe('https://claude.ai/new?q=hi');
-    expect(ai('hi', aiCmd('?'), settings({ defaultAi: 'nonesuch' }))).toBe('https://claude.ai/new?q=hi');
-    expect(ai('hi', aiCmd('?'), settings({ defaultAi: '' }))).toBe('https://claude.ai/new?q=hi');
+    expect(ai('', aiCmd('?'), settings())).toBe(first.home);
   });
 });
 

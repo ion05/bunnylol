@@ -287,11 +287,8 @@ describe('the options page implements the approved component contract', () => {
     // A coarse pointer has nothing to hover with, so there is nothing to reveal.
     expect(options).toMatch(/@media \(hover: none\)/);
     expect(coarse).toMatch(/opacity:\s*1/);
-    // The cards whose only reason to exist is their buttons opt back out.
+    // The one card whose only reason to exist is its buttons opts back out.
     expect(rulesFor(optionsCss, '.section-row .row-actions .btn')).toEqual([
-      expect.stringMatching(/opacity:\s*1/),
-    ]);
-    expect(rulesFor(optionsCss, '.restore-rows .row-actions .btn')).toEqual([
       expect.stringMatching(/opacity:\s*1/),
     ]);
   });

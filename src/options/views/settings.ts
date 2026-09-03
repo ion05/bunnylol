@@ -1,26 +1,21 @@
 /**
- * The "Settings" route: defaults, the section list, the undo for a deleted
- * shipped shortcut, search interception, the address-bar exemption list, AI
- * prompt templates, and (via `renderData`) import/export.
+ * The "Settings" route: the values the smart handlers read, the section list,
+ * search interception, the keyword exemption list, and (via `renderData`)
+ * import/export.
  */
 
 import { BUILTIN_COMMANDS, SEARCH_ENGINES } from '../../lib/commands';
-import { AI_PROVIDERS } from '../../lib/handlers';
 import {
   MAX_SECTIONS,
   addSection,
-  applyEdit,
   deleteSection,
   isShippedSection,
-  knownCategoryIds,
   renameSection,
-  restorableShipped,
   sectionKey,
   sectionLabel,
   sectionLabelTaken,
   sectionMembers,
   sectionOptions,
-  shortcutId,
 } from '../../lib/overrides';
 import type { Overrides, SearchEngineId } from '../../lib/types';
 import { DEFAULT_SETTINGS, FALLBACK_SECTION } from '../../lib/types';
@@ -33,6 +28,7 @@ import {
   errorField,
   field,
   flash,
+  iconButton,
   panelCard,
   selectControl,
   textInput,
@@ -41,14 +37,7 @@ import { buildKeyOwner, browseEntries } from '../model/browse';
 import { engineProblem } from '../model/form';
 import { go } from '../router';
 import { getStatus, runtimeId, setSuppressedHost } from '../rule-status';
-import {
-  commitOverrides,
-  commitSettings,
-  getCommands,
-  getState,
-  reportFailure,
-  stopSet,
-} from '../store';
+import { commitOverrides, commitSettings, getState, reportFailure, stopSet } from '../store';
 import { countShortcuts, renderData } from './data';
 
 const ENGINE_PRESETS: { label: string; template: string }[] = [
@@ -60,22 +49,11 @@ const ENGINE_PRESETS: { label: string; template: string }[] = [
 ];
 
 export function renderSettings(): Node[] {
-  return [
-    renderDefaults(),
-    renderSections(),
-    renderRestore(),
-    renderInterception(),
-    renderStopList(),
-    renderAiTemplates(),
-    renderData(),
-  ];
+  return [renderDefaults(), renderSections(), renderInterception(), renderStopList(), renderData()];
 }
 
 export function renderDefaults(): HTMLElement {
-  const card = panelCard(
-    'Defaults',
-    'Values the smart handlers read: your GitHub user, where unmatched queries go, and which account Google links use.',
-  );
+  const card = panelCard('Default Usernames');
 
   const githubInput = textInput(getState().settings.githubUser, 'octocat');
   githubInput.addEventListener('change', () => {
@@ -94,7 +72,7 @@ export function renderDefaults(): HTMLElement {
     'Fallback URL template',
     engineInput,
     'err-engine',
-    'Anything with {q} works, so a self-hosted or region-specific engine is one paste away.',
+    undefined,
     true,
   );
   const enginePreset = selectControl(
@@ -149,21 +127,6 @@ export function renderDefaults(): HTMLElement {
     void commitSettings({ ...getState().settings, defaultEngine: value }, card.saved);
   });
 
-  // Keyed by provider id, not by alias: rebinding the Claude builtin's keyword
-  // must not silently repoint `?` at somebody else.
-  const aiOptions = AI_PROVIDERS.map((provider) => {
-    const alias = getCommands().find((cmd) => cmd.provider === provider.id)?.keys[0];
-    return { value: provider.id, label: alias ? `${provider.label} (${alias})` : provider.label };
-  });
-  const defaultAi = getState().settings.defaultAi;
-  if (!aiOptions.some((option) => option.value === defaultAi)) {
-    aiOptions.unshift({ value: defaultAi, label: defaultAi });
-  }
-  const aiSelect = selectControl(aiOptions, defaultAi);
-  aiSelect.addEventListener('change', () => {
-    void commitSettings({ ...getState().settings, defaultAi: aiSelect.value }, card.saved);
-  });
-
   const accountInput = el('input', {
     class: 'input',
     attrs: { type: 'number', min: '0', step: '1', inputmode: 'numeric' },
@@ -179,13 +142,8 @@ export function renderDefaults(): HTMLElement {
     el('div', {
       class: 'form',
       children: [
-        field('GitHub username', githubInput, 'Used by gh me, pr and iss.'),
-        field(
-          'Default AI',
-          aiSelect,
-          'Where the ? shortcut sends your prompt. Follows the provider, not its keyword.',
-        ),
-        field('Fallback search engine', enginePreset, 'Used when no keyword matches.'),
+        field('GitHub username', githubInput),
+        field('Fallback search engine', enginePreset),
         field(
           'Google account index',
           accountInput,
@@ -208,10 +166,7 @@ export function renderDefaults(): HTMLElement {
  * it is clear why they cannot be deleted.
  */
 export function renderSections(): HTMLElement {
-  const card = panelCard(
-    'Sections',
-    `Group your shortcuts however you like. Renaming a shipped section only changes what it is called here, and nothing moves. Deleting one of your own moves everything in it to ${fallbackLabel()}, so nothing is lost.`,
-  );
+  const card = panelCard('Sections');
 
   const rows = el('div', { class: 'rows' });
 
@@ -231,8 +186,13 @@ export function renderSections(): HTMLElement {
     const shipped = isShippedSection(id);
     const members = sectionMembers(id, BUILTIN_COMMANDS, overrides).length;
 
+    // The row shows the name as text and swaps in this field only while it is
+    // being edited, so the card reads like the shortcut list rather than like a
+    // form. The input is built once and moved, so nothing below has to care
+    // which state the row is in.
     const input = textInput(label, label);
     input.setAttribute('aria-label', `Name of the ${label} section`);
+    const nameHost = el('div', { class: 'row-name', text: label });
     const errors = el('div', {
       class: 'field-errors',
       id: nextId('section-err'),
@@ -296,15 +256,56 @@ export function renderSections(): HTMLElement {
       applyRename(check.label);
     };
 
+    let editing = false;
+
+    const stopEdit = (): void => {
+      if (!editing) return;
+      editing = false;
+      input.remove();
+      nameHost.textContent = label;
+    };
+
+    const startEdit = (): void => {
+      if (editing) return;
+      editing = true;
+      // From the stored label rather than from whatever the last rejected
+      // attempt left behind, so reopening the field is a fresh start.
+      input.value = label;
+      setError('');
+      nameHost.textContent = '';
+      nameHost.append(input);
+      input.focus();
+      input.select();
+    };
+
+    const pencil = iconButton(`Rename the ${label} section`, 'pencil', startEdit);
+
     input.addEventListener('change', rename);
     // Enter commits through `blur` rather than by calling `rename` itself: the
     // commit repaints these rows, and a keydown that renamed directly would
     // then get the `change` event the blur fires on the detached input and
     // write the same rename a second time.
     input.addEventListener('keydown', (event) => {
-      if (event.key !== 'Enter') return;
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        input.blur();
+        return;
+      }
+      if (event.key !== 'Escape') return;
       event.preventDefault();
-      input.blur();
+      // Restored BEFORE the field leaves the DOM, so the `change` event that a
+      // modified value would otherwise fire on the way out never happens: an
+      // abandoned edit must not write anything.
+      input.value = label;
+      setError('');
+      stopEdit();
+      pencil.focus();
+    });
+    input.addEventListener('blur', () => {
+      // A rejected name keeps its field, because the error under it is about
+      // text that would otherwise no longer be on screen.
+      if (errors.textContent) return;
+      stopEdit();
     });
 
     // "15 shortcuts · shipped": the count and what kind of section it is, in
@@ -322,7 +323,12 @@ export function renderSections(): HTMLElement {
       );
     }
 
-    const actions = el('div', { class: 'row-actions' });
+    // Rename, then Delete, in the order and with the glyphs the shortcut rows
+    // use. Restore-default-name sits between them and only for a shipped
+    // section that carries a stored rename, which is the only row it can do
+    // anything on. It stays outside the edit state so that clicking it never
+    // races the field's own blur.
+    const actions = el('div', { class: 'row-actions', children: [pencil] });
     if (shipped && overrides.sections.some((section) => sectionKey(section.id) === id)) {
       actions.append(
         button(
@@ -341,28 +347,23 @@ export function renderSections(): HTMLElement {
       const moves = members === 1 ? '1 shortcut moves' : `${members} shortcuts move`;
       actions.append(
         confirmButton(
-          members === 0 ? 'Delete' : `Delete · ${countShortcuts(members)}`,
+          `Delete the ${label} section`,
           members === 0
             ? 'Click again: the section is empty'
             : `Click again: ${moves} to ${fallbackLabel()}`,
           // Ghost, like every other row action: the red belongs to the armed
           // state `confirmButton` adds, not to a button that has not been
           // asked to do anything yet.
-          'btn btn-sm btn-ghost',
+          'btn btn-sm btn-ghost btn-icon',
           () => commit(deleteSection(getState().overrides, id)),
+          'trash',
         ),
       );
     }
 
     return el('div', {
       class: 'row section-row',
-      children: [
-        el('div', {
-          class: 'row-body',
-          children: [el('div', { class: 'row-name', children: [input] }), errors, desc],
-        }),
-        actions,
-      ],
+      children: [el('div', { class: 'row-body', children: [nameHost, errors, desc] }), actions],
     });
   }
 
@@ -376,12 +377,7 @@ export function renderSections(): HTMLElement {
   }
 
   const addInput = textInput('', 'Client work');
-  const addField = errorField(
-    'New section',
-    addInput,
-    'err-section',
-    'It shows up in the browse list and in every shortcut’s Section menu.',
-  );
+  const addField = errorField('New section', addInput, 'err-section');
 
   const add = (): void => {
     const overrides = getState().overrides;
@@ -435,13 +431,13 @@ export function renderSections(): HTMLElement {
             el('div', { class: 'row-name', text: 'Shortcut packs' }),
             el('div', {
               class: 'row-desc',
-              text: 'Turn whole groups of shipped shortcuts on or off at once. Continue on that screen turns on every shortcut in the packs you pick, including ones you had switched off by hand.',
+              text: 'Enable or disable default shortcut packs',
             }),
           ],
         }),
         el('div', {
           class: 'row-actions',
-          children: [button('Choose shortcut packs…', () => go('#welcome'), 'btn')],
+          children: [button('Choose shortcut packs…', () => go('#packs'), 'btn')],
         }),
       ],
     }),
@@ -456,104 +452,10 @@ function fallbackLabel(): string {
   return sectionLabel(FALLBACK_SECTION, getState().overrides.sections);
 }
 
-/**
- * Deleting a shipped shortcut is undoable, so there has to be somewhere the
- * undo lives. The card renders even when there is nothing in it, the same way
- * the stop-list card does, because a restore path that only appears once you
- * have already lost something is a path nobody finds when they need it.
- */
-export function renderRestore(): HTMLElement {
-  const card = panelCard(
-    'Restore shipped shortcuts',
-    'Shortcuts that ship with BunnyLol and that you deleted. Restoring one brings its shipped definition back, along with anything you had edited.',
-  );
-
-  const rows = el('div', { class: 'restore-rows' });
-
-  const restore = (ids: string[]): void => {
-    const overrides = getState().overrides;
-    const dropped = new Set(ids);
-    // Only `deleted` moves. `edits[id]` is left where it is, which is what
-    // makes the sub above true.
-    void commitOverrides({
-      ...overrides,
-      deleted: overrides.deleted.filter((id) => !dropped.has(id)),
-    })
-      .then(paint)
-      .catch(reportFailure);
-  };
-
-  function paint(): void {
-    rows.textContent = '';
-    const overrides = getState().overrides;
-    const known = knownCategoryIds(overrides.sections);
-    const restorable = restorableShipped(BUILTIN_COMMANDS, overrides);
-    if (restorable.length === 0) {
-      rows.append(
-        el('p', {
-          class: 'field-hint',
-          text: 'You have not deleted any shipped shortcuts.',
-        }),
-      );
-      return;
-    }
-
-    for (const shipped of restorable) {
-      const id = shortcutId(shipped);
-      // Shown as it will come BACK, not as it shipped: the edit survives the
-      // delete, so a renamed shortcut listed under its shipped name would send
-      // the user looking for a row that never appears.
-      const cmd = applyEdit({ ...shipped, id, keys: [...shipped.keys] }, overrides.edits[id], known);
-      const keys = el('div', { class: 'row-keys' });
-      for (const key of cmd.keys) keys.append(el('code', { class: 'chip', text: key }));
-      rows.append(
-        el('div', {
-          class: 'row',
-          children: [
-            keys,
-            el('div', {
-              class: 'row-body',
-              children: [
-                el('div', { class: 'row-name', text: cmd.name }),
-                el('div', { class: 'row-desc', text: cmd.description }),
-              ],
-            }),
-            el('div', {
-              class: 'row-actions',
-              children: [button('Restore', () => restore([id]), 'btn btn-sm')],
-            }),
-          ],
-        }),
-      );
-    }
-
-    // With exactly one row the button would repeat the row's own action under
-    // a longer name.
-    if (restorable.length > 1) {
-      rows.append(
-        el('div', {
-          class: 'restore-all',
-          children: [
-            button(
-              `Restore all ${restorable.length}`,
-              () => restore(restorable.map(shortcutId)),
-              'btn',
-            ),
-          ],
-        }),
-      );
-    }
-  }
-
-  paint();
-  card.body.append(rows);
-  return card.section;
-}
-
 export function renderInterception(): HTMLElement {
   const card = panelCard(
     'Search interception',
-    'BunnyLol watches searches on the engines below. When one starts with a keyword you own, it redirects the tab before the request leaves your machine. Uncheck an engine to leave its searches alone.',
+    'BunnyLol will work when you try to search using one of these engines. bl always works irrespective of engine.',
   );
 
   const checks = el('div', { class: 'checks' });
@@ -585,10 +487,6 @@ export function renderInterception(): HTMLElement {
 
   card.body.append(
     checks,
-    el('p', {
-      class: 'field-hint',
-      text: 'You can also type bl followed by a shortcut in the address bar. That path always works, whatever is checked above.',
-    }),
     el('div', {
       class: 'code-block',
       children: [el('code', { text: searchUrl }), copyButton, copyState],
@@ -599,10 +497,6 @@ export function renderInterception(): HTMLElement {
     }),
     checkbox('Confirm before opening a shortcut', getState().settings.dispatchToast, (on) => {
       void commitSettings({ ...getState().settings, dispatchToast: on }, card.saved);
-    }),
-    el('p', {
-      class: 'field-hint',
-      text: 'Shows which shortcut fired, with a link to search for what you typed instead. It holds the page for about 1.2 seconds every time, so it is off by default. Turn it on while you are learning the keywords.',
     }),
   );
   return card.section;
@@ -615,8 +509,8 @@ export function renderInterception(): HTMLElement {
  */
 export function renderStopList(): HTMLElement {
   const card = panelCard(
-    'Address-bar interception',
-    'Every keyword you own is intercepted in the address bar. If the first word of what you type is a shortcut, it runs, always. To search for those words instead, start the query with \\ or = (“=map of france”). Add a keyword here to exempt it permanently. An exempted keyword is skipped in the address bar, but it still works from bl + Tab and the toolbar popup.',
+    'Exempt keywords',
+    'These keywords are not matched to a shortcut. They are searched directly.',
   );
 
   const chips = el('div', { class: 'chip-row' });
@@ -645,12 +539,7 @@ export function renderStopList(): HTMLElement {
     chips.textContent = '';
     const list = [...stopSet()].sort();
     if (list.length === 0) {
-      chips.append(
-        el('p', {
-          class: 'field-hint',
-          text: 'Nothing is exempt. Every keyword is intercepted in the address bar.',
-        }),
-      );
+      chips.append(el('p', { class: 'field-hint', text: 'None yet.' }));
       return;
     }
     for (const key of list) {
@@ -708,48 +597,5 @@ export function renderStopList(): HTMLElement {
     }),
     suppressedHost,
   );
-  return card.section;
-}
-
-export function renderAiTemplates(): HTMLElement {
-  const card = panelCard(
-    'AI prompt templates',
-    'These prefill parameters are undocumented and providers change them. If one stops carrying your prompt, fix it here. No rebuild, no waiting.',
-  );
-
-  const list = el('div', { class: 'templates' });
-  for (const provider of AI_PROVIDERS) {
-    const input = textInput(
-      getState().settings.aiTemplates[provider.id] ?? '',
-      provider.template,
-      true,
-    );
-    const warning = el('p', { class: 'msg msg-warn' });
-    warning.hidden = true;
-
-    const check = (): void => {
-      const value = input.value.trim();
-      warning.hidden = !value || value.includes('{q}');
-      warning.textContent = 'Without {q} this template is ignored and the built-in one is used.';
-    };
-    input.addEventListener('input', check);
-    input.addEventListener('change', () => {
-      const value = input.value.trim();
-      const aiTemplates = { ...getState().settings.aiTemplates };
-      if (value) aiTemplates[provider.id] = value;
-      else delete aiTemplates[provider.id];
-      void commitSettings({ ...getState().settings, aiTemplates }, card.saved);
-    });
-    check();
-
-    list.append(
-      el('div', {
-        class: 'field',
-        children: [field(provider.label, input, `Default: ${provider.template}`), warning],
-      }),
-    );
-  }
-
-  card.body.append(list);
   return card.section;
 }

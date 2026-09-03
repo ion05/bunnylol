@@ -539,13 +539,11 @@ function ai(args: string, cmd: Command, settings: Settings): string {
   // aliases, and binding ChatGPT to `ai` must not start sending prompts to
   // whatever the old key happened to map to.
   const key = (cmd.keys?.[0] ?? '').trim().toLowerCase();
-  let providerId = resolveProvider(cmd.provider ?? '') || AI_KEYS[key] || '';
-  if (!providerId) {
-    // `?` (and any other command with no provider of its own) defers to the
-    // configured default, guarding against a default that points back here.
-    const target = (settings?.defaultAi ?? '').trim().toLowerCase();
-    providerId = (target && target !== key ? resolveProvider(target) : '') || 'claude';
-  }
+  // A command that names neither a provider nor a known alias hands `aiUrl` an
+  // empty id, which `findProvider` answers with the first shipped provider.
+  // That is the degrade invariant 12 asks for: no throw, and a prompt still
+  // reaches an assistant.
+  const providerId = resolveProvider(cmd.provider ?? '') || AI_KEYS[key] || '';
   return aiUrl(providerId, args, settings);
 }
 

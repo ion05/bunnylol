@@ -16,7 +16,7 @@ import { describe, expect, it } from 'vitest';
 import { BUILTIN_COMMANDS, SEARCH_ENGINES } from '../src/lib/commands';
 import { syncRules } from '../src/lib/dnr';
 import { applyCategoryPick } from '../src/lib/onboarding';
-import { restorableShipped, shortcutId } from '../src/lib/overrides';
+import { shortcutId } from '../src/lib/overrides';
 import { buildKeyMap, mergeCommands, resolve } from '../src/lib/resolve';
 import { applyImport, exportJson, importJson } from '../src/lib/storage';
 import { DEFAULT_OVERRIDES, DEFAULT_SETTINGS, FALLBACK_SECTION } from '../src/lib/types';
@@ -321,18 +321,17 @@ describe('an unknown category', () => {
 });
 
 describe('a deleted shipped shortcut', () => {
-  it('stays deleted across a save round trip and is restorable', () => {
+  it('stays deleted across a save round trip', () => {
     const landed = land(file({ deleted: ['gh'] }));
     expect(landed.by('gh')).toBeUndefined();
     expect(landed.go('gh facebook/react')).toContain('google.com/search');
-    expect(restorableShipped(BUILTIN_COMMANDS, landed.overrides).map(shortcutId)).toEqual(['gh']);
 
     const again = land(exportJson({ overrides: landed.overrides, settings: landed.settings }));
     expect(again.overrides.deleted).toEqual(['gh']);
     expect(again.by('gh')).toBeUndefined();
   });
 
-  it('keeps its edit, so restoring does not also discard the rename', () => {
+  it('keeps its edit, so re-importing the file it came from does not discard the rename', () => {
     const landed = land(file({ deleted: ['gh'], edits: { gh: { name: 'Hub' } } }));
     expect(landed.overrides.edits.gh).toEqual({ name: 'Hub' });
     const restored = mergeCommands(BUILTIN_COMMANDS, { ...landed.overrides, deleted: [] });

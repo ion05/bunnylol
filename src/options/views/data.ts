@@ -18,10 +18,7 @@ import { applyState, commitState, getCommands, getState, setNotice } from '../st
 import { forgetCollapsed } from './browse';
 
 export function renderData(): HTMLElement {
-  const card = panelCard(
-    'Data',
-    'The export holds your shortcuts, your edits, your sections and your settings. It does not hold the built-in list, so an old file still works after an update.',
-  );
+  const card = panelCard('Data');
 
   const error = el('p', { class: 'msg msg-error', attrs: { role: 'alert' } });
   error.hidden = true;
@@ -88,7 +85,7 @@ export function renderData(): HTMLElement {
     }
     // Four clauses in one sentence is where "Merge also a, b, c and d." stops
     // being readable, so the shortcut-level changes and the section-level ones
-    // are separate sentences and the undo for a delete is its own.
+    // are separate sentences.
     const also: string[] = [];
     if (plan.disables.length > 0) {
       also.push(
@@ -107,11 +104,6 @@ export function renderData(): HTMLElement {
       also.push(`changes ${countShipped(plan.edits.length)} (${shortcutNames(plan.edits)})`);
     }
     if (also.length > 0) lines.push(`Merge also ${joinClauses(also)}.`);
-    if (plan.deletes.length > 0) {
-      lines.push(
-        'Anything it deletes comes back from Settings → Restore shipped shortcuts, so nothing is lost for good.',
-      );
-    }
 
     const sections: string[] = [];
     if (plan.sections.length > 0) {
