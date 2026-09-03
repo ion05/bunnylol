@@ -266,12 +266,13 @@ first if you want your shortcuts back.
 ### Rule status
 
 A pill in the options page header reports what the redirect rules are *actually* doing. It reads
-that back from Chrome, not from what BunnyLol asked for.
+that back from Chrome, not from what BunnyLol asked for. It appears only when there is something to
+say: a healthy profile shows no pill at all, and neither does one whose only shortfall is a keyword
+you exempted yourself.
 
 | Pill | Colour | Meaning |
 |---|---|---|
-| *Shortcuts active* | green | Every eligible alias is intercepted on every engine you selected, with nothing dropped. |
-| *…N exempted by you* | green | Your choice, not a failure. Those still work from `bl` + Tab and the popup. |
+| nothing | | Every eligible alias is intercepted on every engine you selected, with nothing dropped. |
 | *Some keywords not intercepted* + a detail line | amber | Partial coverage. The rules are live, but some aliases ended up without one, because Chrome refused to compile their pattern or the rule budget filled up. The detail says which. In the address bar they fall through to a normal search. |
 | *Interception off* | amber | No engines selected, so nothing is intercepted. That is by design. |
 | *Rules not registered* | red | The sync itself failed and nothing is intercepted. The detail carries the error. Click **Re-sync**. |

@@ -91,7 +91,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   engines.
 
 ### Removed
-
+- The green *Shortcuts active* pill. The rule-status pill in the topbar now
+  appears only when there is something to act on: partial coverage, a failed
+  sync, or interception switched off. A healthy profile shows nothing.
 - The `?` shortcut and the **Default AI** setting it read (`settings.defaultAi`).
   Pick the assistant with its own keyword instead: `c`, `gpt`, `gem` or `cc`.
 - The **AI prompt templates** card. `settings.aiTemplates` still overrides a
