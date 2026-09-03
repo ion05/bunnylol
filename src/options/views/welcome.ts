@@ -7,31 +7,22 @@
  * closes the tab half-way through keeps whatever the install already wrote
  * (`lib/install.ts` writes the starter pick before the rules are ever built).
  *
- * The pick is authoritative, not additive: Continue re-enables every shipped
- * shortcut in a pack it picks, including ones switched off by hand, matching
- * what the Settings card that links here promises.
+ * The cards, the ticks and the write are `views/packs.ts`, shared with the
+ * `#packs` screen a returning user reaches from Settings. What is only here is
+ * the first-run framing: the introduction to a product the user has never seen,
+ * the escape-hatch explainer, and Skip.
  */
 
-import { BUILTIN_COMMANDS } from '../../lib/commands';
-import { categoryPicks } from '../../lib/onboarding';
-import type { PickRow } from '../../lib/onboarding';
 import { FORCE_SEARCH_PREFIXES } from '../../lib/types';
-import { el, nextId } from '../../ui/dom';
+import { el } from '../../ui/dom';
 import { button } from '../dom';
-import { initialPicks, pickToState } from '../model/welcome';
 import { go } from '../router';
-import { applyState, commitState, getState, reportFailure } from '../store';
+import { getState } from '../store';
+import { packChoice, pickError, savePick } from './packs';
 
 export function renderWelcome(): Node[] {
-  const overrides = getState().overrides;
-  const rows = categoryPicks(BUILTIN_COMMANDS);
-  const picked = initialPicks(overrides);
-
-  const error = el('p', { class: 'msg msg-error', attrs: { role: 'alert' } });
-  error.hidden = true;
-
-  const starters = rows.filter((row) => !row.optional);
-  const optional = rows.filter((row) => row.optional);
+  const choice = packChoice(getState().overrides);
+  const error = pickError();
 
   const nodes: Node[] = [
     el('h1', { text: 'Welcome to BunnyLol' }),
@@ -42,126 +33,22 @@ export function renderWelcome(): Node[] {
         ' tools, AI tools, and general Google and Microsoft suite tools, but feel' +
         ' free to add your own or edit/remove any of the default ones.',
     }),
-    el('div', {
-      class: 'picks',
-      attrs: { role: 'group', 'aria-label': 'Shortcut packs' },
-      children: starters.map((row) => pickCard(row, picked)),
-    }),
+    ...choice.nodes,
+    escapeNote(),
   ];
-
-  if (optional.length > 0) {
-    const head = el('div', {
-      class: 'optional-head',
-      id: nextId('optional'),
-      text: 'Optional packs',
-    });
-    nodes.push(
-      head,
-      el('p', {
-        class: 'faint',
-        text: 'School Specific Packs',
-      }),
-      el('div', {
-        class: 'picks',
-        // Named by the heading above it, or the second grid is an unlabelled
-        // group of checkboxes that reads exactly like the first one.
-        attrs: { role: 'group', 'aria-labelledby': head.id },
-        children: optional.map((row) => pickCard(row, picked)),
-      }),
-    );
-  }
-
-  nodes.push(escapeNote());
 
   const skip = button('Skip', () => go('#help'), 'btn btn-ghost');
   // Both buttons are captured by the handler so it can lock them for the one
   // write; the closure only runs on a click, long after both are bound.
   const proceed = button(
     'Continue',
-    () => void save(picked, proceed, skip, error),
+    () => void savePick(choice.picked, [proceed, skip], error, 'Continue'),
     'btn btn-primary',
   );
 
   nodes.push(el('div', { class: 'form-actions', children: [proceed, skip] }), error);
 
   return [el('section', { class: 'welcome', children: nodes })];
-}
-
-/** One pack: a checkbox, its name, how many shortcuts it holds and the first
- *  three keywords in it, plus a chevron that unfolds the full list so a tick is
- *  never a guess. Everything but the checkbox comes off the registry, so the
- *  card cannot go stale when a command is added. */
-function pickCard(row: PickRow, picked: Set<string>): HTMLElement {
-  const input = el('input', { attrs: { type: 'checkbox' } });
-  input.checked = picked.has(row.id);
-  input.addEventListener('change', () => {
-    if (input.checked) picked.add(row.id);
-    else picked.delete(row.id);
-  });
-
-  const text = el('span', {
-    children: [
-      el('span', { class: 'pick-name', text: row.label }),
-      el('span', {
-        class: 'pick-count',
-        text: ` · ${row.count} ${row.count === 1 ? 'shortcut' : 'shortcuts'}`,
-      }),
-      el('span', { class: 'pick-keys', text: row.sample.join(' · ') }),
-    ],
-  });
-
-  const list = el('ul', {
-    class: 'pick-list',
-    id: nextId('pick-list'),
-    children: row.members.map((member) =>
-      el('li', {
-        class: 'pick-item',
-        children: [
-          el('span', {
-            class: 'pick-item-keys',
-            children: member.keys.map((key) => el('code', { class: 'chip', text: key })),
-          }),
-          el('span', { class: 'pick-item-name', text: member.name }),
-          el('span', { class: 'pick-item-desc', text: member.description }),
-        ],
-      }),
-    ),
-  });
-  list.hidden = true;
-
-  // Outside the label on purpose: a button inside it would be a second
-  // activation target for the checkbox, and unfolding the list must not tick
-  // or untick the pack.
-  const toggle = el('button', {
-    class: 'pick-toggle',
-    title: `Show the shortcuts in ${row.label}`,
-    attrs: {
-      type: 'button',
-      'aria-expanded': 'false',
-      'aria-controls': list.id,
-      'aria-label': `Show the shortcuts in ${row.label}`,
-    },
-    children: [el('span', { class: 'group-chevron', attrs: { 'aria-hidden': 'true' } })],
-  });
-  toggle.addEventListener('click', () => {
-    const open = list.hidden;
-    list.hidden = !open;
-    toggle.setAttribute('aria-expanded', String(open));
-    const label = `${open ? 'Hide' : 'Show'} the shortcuts in ${row.label}`;
-    toggle.setAttribute('aria-label', label);
-    toggle.title = label;
-  });
-
-  return el('div', {
-    class: 'pick',
-    children: [
-      el('div', {
-        class: 'pick-head',
-        children: [el('label', { class: 'pick-main', children: [input, text] }), toggle],
-      }),
-      list,
-    ],
-  });
 }
 
 /**
@@ -187,39 +74,4 @@ function escapeNote(): HTMLElement {
     ' searches for “gh cheat sheet”.',
   );
   return el('div', { class: 'escape', children: parts });
-}
-
-/**
- * The one write. `commitState` applies it optimistically and persists both
- * halves of the state in a single `chrome.storage.local.set`, which is what
- * keeps the install from producing the burst of saves that `syncRules`'
- * serialization exists to survive.
- */
-async function save(
-  picked: Set<string>,
-  proceed: HTMLButtonElement,
-  skip: HTMLButtonElement,
-  error: HTMLElement,
-): Promise<void> {
-  proceed.disabled = true;
-  skip.disabled = true;
-  error.hidden = true;
-
-  const before = getState();
-  try {
-    await commitState(pickToState(picked, before));
-  } catch (err) {
-    // `commitState` applies the pick optimistically, so a rejected write would
-    // otherwise leave the page, and every view rendered after it, showing a
-    // pick that is not in storage.
-    applyState(before);
-    reportFailure(err);
-    error.textContent = 'Could not save your pick. Try Continue again.';
-    error.hidden = false;
-    proceed.disabled = false;
-    skip.disabled = false;
-    return;
-  }
-
-  go('#help');
 }

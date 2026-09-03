@@ -1,8 +1,12 @@
 /**
- * What the first-run picker decides, without a DOM. No `document` and no
- * `chrome.*`, so the three questions the page actually answers are testable
- * under node instead of being read off the render: which boxes open ticked,
- * what closing the tab does, and what Continue writes.
+ * What the pack picker decides, without a DOM. No `document` and no `chrome.*`,
+ * so the two questions the page actually answers are testable under node
+ * instead of being read off the render: which boxes open ticked, and what the
+ * confirming button writes.
+ *
+ * Both pack screens read this one: `#welcome` on first run and `#packs` from
+ * Settings ask the same question and write the same answer, and only the words
+ * around them differ (`views/packs.ts`).
  *
  * `src/lib/onboarding.ts` owns what a pick *means*; this owns what the page
  * shows about the pick already on record.
@@ -13,7 +17,6 @@ import {
   HIDDEN_CATEGORIES,
   STARTER_CATEGORIES,
   applyCategoryPick,
-  categoryPicks,
   hasOnboarded,
 } from '../../lib/onboarding';
 import type { Overrides, StoredState } from '../../lib/types';
@@ -33,30 +36,6 @@ export function initialPicks(overrides: Overrides): Set<string> {
     ? (overrides.enabledCategories ?? [])
     : STARTER_CATEGORIES;
   return new Set(source.filter((id) => !hidden.has(id)));
-}
-
-/**
- * What closing the tab actually does: keyed on the pick that is live, not on
- * whether the picker has been answered.
- *
- * On a real install those two agree, because the starter pick is written
- * before this tab is opened. They come apart everywhere else: a v1 profile
- * arriving from Settings, or an install whose write failed, has no pick at all
- * and so has every shipped shortcut on. Promising it "the starter set" there
- * would be a sentence that is simply untrue.
- */
-export function closingLine(overrides: Overrides): string {
-  if (!hasOnboarded(overrides)) return 'Closing this tab leaves every shipped pack on.';
-
-  const live = new Set(overrides.enabledCategories ?? []);
-  // Off the registry rather than off the stored ids, so the packs are named in
-  // the order they are shown and an id with no card is never named.
-  const names = categoryPicks(BUILTIN_COMMANDS)
-    .filter((row) => live.has(row.id))
-    .map((row) => row.label);
-
-  if (names.length === 0) return 'Closing this tab leaves every shipped pack off.';
-  return `Closing this tab keeps what is on now: ${names.join(', ')}.`;
 }
 
 /**

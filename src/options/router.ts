@@ -12,7 +12,7 @@
 
 import { setRoute } from './store';
 
-export type RouteName = 'help' | 'new' | 'edit' | 'settings' | 'welcome';
+export type RouteName = 'help' | 'new' | 'edit' | 'settings' | 'welcome' | 'packs';
 
 export interface Route {
   name: RouteName;
@@ -33,7 +33,12 @@ export function parseRoute(hash: string): Route {
           ? 'settings'
           : head === 'welcome'
             ? 'welcome'
-            : 'help';
+            : // Not an alias of `welcome`: the first-run tab and the pack
+              // screen Settings links to are two different pages over the same
+              // question, and only one of them may introduce the product.
+              head === 'packs'
+              ? 'packs'
+              : 'help';
   return { name, params };
 }
 

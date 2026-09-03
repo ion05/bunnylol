@@ -35,6 +35,7 @@ import {
 } from './store';
 import { renderBrowse } from './views/browse';
 import { renderForm } from './views/form';
+import { renderPacks } from './views/packs';
 import { renderSettings } from './views/settings';
 import { renderWelcome } from './views/welcome';
 
@@ -70,9 +71,9 @@ async function boot(): Promise<void> {
     // has already refreshed what the preview and the validator read. The
     // welcome picker is the same hazard: its ticks live in a Set that belongs
     // to the render, so a write from another window would repaint the page
-    // with boxes the user did not tick.
+    // with boxes the user did not tick. `packs` is that same picker.
     const route = getRoute().name;
-    if (route === 'new' || route === 'edit' || route === 'welcome') return;
+    if (route === 'new' || route === 'edit' || route === 'welcome' || route === 'packs') return;
     // Same hazard on every other route: the settings fields only commit on
     // blur, so repainting the one the user is inside throws their text away.
     if (isTextEntry(document.activeElement)) return;
@@ -143,6 +144,7 @@ function renderView(): Node[] {
   if (route.name === 'settings') return renderSettings();
   if (route.name === 'new' || route.name === 'edit') return [renderForm()];
   if (route.name === 'welcome') return renderWelcome();
+  if (route.name === 'packs') return renderPacks();
   return renderBrowse();
 }
 
@@ -164,7 +166,10 @@ function renderTopbar(): HTMLElement {
   const tabs: { hash: string; label: string; match: RouteName[] }[] = [
     { hash: '#help', label: 'Shortcuts', match: ['help'] },
     { hash: '#new', label: 'New shortcut', match: ['new', 'edit'] },
-    { hash: '#settings', label: 'Settings', match: ['settings'] },
+    // `#packs` is reached from the Settings row and is a Settings screen, so
+    // the tab it came from stays lit while the user is on it. `#welcome` lights
+    // nothing: the install opens it, not a tab.
+    { hash: '#settings', label: 'Settings', match: ['settings', 'packs'] },
   ];
   for (const tab of tabs) {
     const link = el('a', { class: 'nav-link', text: tab.label });

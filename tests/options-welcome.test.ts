@@ -6,11 +6,10 @@
  * `environment: 'node'`, which is only true if it touches neither `document`
  * nor `chrome.*` at module scope.
  *
- * The three questions here are the three the page answers: which boxes open
- * ticked, what the closing sentence promises, and what Continue writes. The
- * last one is asserted against `applyCategoryPick` itself, because a
- * picker that renders the ticks and then writes something else is the failure
- * mode with no visible symptom.
+ * The two questions here are the two the page answers: which boxes open ticked,
+ * and what the confirming button writes. The second is asserted against
+ * `applyCategoryPick` itself, because a picker that renders the ticks and then
+ * writes something else is the failure mode with no visible symptom.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -26,7 +25,7 @@ import {
 import { shortcutId } from '../src/lib/overrides';
 import { CATEGORY_LABELS, DEFAULT_OVERRIDES, DEFAULT_SETTINGS } from '../src/lib/types';
 import type { Overrides, StoredState } from '../src/lib/types';
-import { closingLine, initialPicks, pickToState } from '../src/options/model/welcome';
+import { initialPicks, pickToState } from '../src/options/model/welcome';
 
 function overridesWith(extra: Partial<Overrides> = {}): Overrides {
   return { ...DEFAULT_OVERRIDES, ...extra };
@@ -87,38 +86,6 @@ describe('which boxes open ticked', () => {
       expect(firstRun.has(hidden)).toBe(false);
     }
     for (const id of picks) expect(shown.has(id)).toBe(true);
-  });
-});
-
-describe('what closing the tab does', () => {
-  it('says every pack is on when no pick is on record', () => {
-    // The honest sentence for a v1 profile arriving from Settings, or an
-    // install whose write failed: `DEFAULT_OVERRIDES.disabled` is empty, so
-    // everything shipped is live.
-    expect(closingLine(overridesWith())).toBe('Closing this tab leaves every shipped pack on.');
-  });
-
-  it('names the packs that are on after the install-time starter pick', () => {
-    const written = applyCategoryPick(BUILTIN_COMMANDS, STARTER_CATEGORIES, overridesWith());
-    const line = closingLine(written);
-
-    expect(line).toBe('Closing this tab keeps what is on now: AI, Search, Developer.');
-    // Named off the registry, so a pack nobody picked is never in the sentence.
-    expect(line).not.toContain(CATEGORY_LABELS.purdue);
-    // The always-on pack has no card and is not something the user chose.
-    expect(line).not.toContain(CATEGORY_LABELS.meta);
-  });
-
-  it('names a custom pick', () => {
-    const line = closingLine(overridesWith({ enabledCategories: stored(['purdue', 'ai']) }));
-
-    expect(line).toBe('Closing this tab keeps what is on now: AI, Purdue.');
-  });
-
-  it('says every pack is off when the pick is empty', () => {
-    expect(closingLine(overridesWith({ enabledCategories: stored([]) }))).toBe(
-      'Closing this tab leaves every shipped pack off.',
-    );
   });
 });
 
