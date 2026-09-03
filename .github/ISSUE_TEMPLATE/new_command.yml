@@ -1,0 +1,69 @@
+name: New builtin command
+description: Propose a new command for the default registry
+labels: [enhancement]
+body:
+  - type: input
+    id: service
+    attributes:
+      label: Service name
+    validations:
+      required: true
+  - type: input
+    id: aliases
+    attributes:
+      label: Proposed aliases
+      description: >-
+        Comma-separated. Aliases must be globally unique. A test enforces
+        this.
+    validations:
+      required: true
+  - type: textarea
+    id: collision
+    attributes:
+      label: Alias collisions
+      description: >-
+        Does any of the proposed aliases already exist in the builtin
+        registry, or match a common personal shortcut? List any that do, or
+        write "none" if you checked and found none.
+    validations:
+      required: true
+  - type: input
+    id: jump_url
+    attributes:
+      label: Jump URL
+      description: Where the bare keyword goes with no arguments.
+    validations:
+      required: true
+  - type: input
+    id: search_url
+    attributes:
+      label: Search URL template
+      description: Using `{q}` for the argument placeholder, if applicable.
+    validations:
+      required: false
+  - type: input
+    id: example
+    attributes:
+      label: Example invocation
+      description: >-
+        e.g. `catalog ma 26100` -> where it should land.
+    validations:
+      required: true
+  - type: textarea
+    id: handler
+    attributes:
+      label: Smart handler
+      description: >-
+        Do arguments need a smart handler instead of plain `{q}`
+        substitution? If so, describe the shape of the input.
+    validations:
+      required: false
+  - type: textarea
+    id: why
+    attributes:
+      label: Why a builtin
+      description: >-
+        One sentence on why this belongs in the default set rather than
+        being a personal custom shortcut.
+    validations:
+      required: true

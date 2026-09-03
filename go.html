@@ -4,33 +4,67 @@
     <meta charset="utf-8" />
     <title>BunnyLol</title>
     <meta name="color-scheme" content="light dark" />
+    <!-- Values copied by hand from design/tokens.css; tests/tokens.test.ts pins
+         each of them, the colours and the scale steps alike, against the token
+         it came from, so change them there first. The sheet is inline because
+         this page redirects before it is seen, go.ts waits 150ms before it even
+         reveals "Opening…", so a render-blocking <link> would be a regression,
+         and vite.config.ts has no node types to substitute the values at build
+         time. Colours are light-dark() pairs, as tokens.css declares them. No
+         font is loaded: a fetch, even a local one, is work the dispatch does not
+         need, so the stack below is the platform's own. -->
     <style>
-      html,body{height:100%;margin:0;background:#0f1115;color:#e6e8ee;
-        font:14px/1.5 ui-sans-serif,-apple-system,'SF Pro Text',system-ui,sans-serif}
-      @media (prefers-color-scheme: light){html,body{background:#fff;color:#1a1d23}}
-      #wrap{height:100%;display:grid;place-items:center;text-align:center;padding:24px}
-      #status{margin:0;opacity:.6}
-      #err{display:none;max-width:520px}
-      code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-      #toast{position:fixed;left:16px;bottom:16px;display:flex;align-items:center;gap:2px;
-        padding:8px 10px;border-radius:8px;background:#1c2029;color:#e6e8ee;
-        border:1px solid #2c313d;box-shadow:0 4px 16px rgba(0,0,0,.35);max-width:calc(100vw - 32px)}
-      @media (prefers-color-scheme: light){#toast{background:#fff;color:#1a1d23;border-color:#dcdfe6;
-        box-shadow:0 4px 16px rgba(0,0,0,.12)}}
-      #toast[hidden]{display:none}
-      #toast a{text-decoration:underline}
-      .toast-x{margin-left:8px;padding:0 4px;border:0;background:none;color:inherit;
-        font:inherit;line-height:1;opacity:.6;cursor:pointer}
-      .toast-x:hover{opacity:1}
+      html,body{height:100%;margin:0;color-scheme:light dark;
+        background:light-dark(#ffffff,#131312);color:light-dark(#1a1a19,#ececea);
+        font:13px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif}
+      #wrap{height:100%;display:grid;place-items:center;text-align:center;padding:32px 24px}
+      /* Dimmed by colour, never by opacity: an opacity fade takes this line
+         below its measured ratio and cannot be checked. */
+      #status{margin:0;color:light-dark(#5b5b57,#a3a39c)}
+      #err{max-width:520px;text-align:left}
+      code{font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace}
+      /* The confirmation, shown only when the setting is on. It waits for the
+         user rather than a timer, so it sits in the page's own centred column
+         next to the error box instead of floating in a corner. Flat: the design
+         declares no shadow token, so it is separated by a 1px border instead. */
+      #confirm{max-width:520px;text-align:left;padding:12px;border-radius:6px;
+        background:light-dark(#fafaf9,#1c1c1a);color:light-dark(#1a1a19,#ececea);
+        border:1px solid light-dark(#d3d3ce,#3a3a36)}
+      #confirm[hidden]{display:none}
+      .confirm-what{margin:0;display:flex;align-items:center;gap:2px;flex-wrap:wrap}
+      /* Anywhere, not break-word: a long path with no space in it would push
+         the panel past the viewport. */
+      .confirm-url{margin:4px 0 16px;font-size:12px;color:light-dark(#5b5b57,#a3a39c);
+        overflow-wrap:anywhere}
+      .confirm-actions{margin:0;display:flex;align-items:center;gap:12px}
+      /* The fill is the text colour and the label is the page colour, so the
+         primary action is the highest contrast thing on the page in both
+         schemes. --accent is a fill at 2.04:1 and could not carry a label. */
+      .confirm-go{padding:4px 10px;border:0;border-radius:4px;font:inherit;cursor:pointer;
+        background:light-dark(#1a1a19,#ececea);color:light-dark(#ffffff,#131312)}
+      #confirm a{text-decoration:underline}
+      .err-title{font-size:16px;font-weight:600;margin:0 0 12px}
+      .err-echo{margin:0 0 8px;color:light-dark(#5b5b57,#a3a39c)}
+      .err-why{margin:0 0 20px;color:light-dark(#6e6e68,#8a8a83)}
+      .err-actions{margin:0;display:flex;gap:12px}
+      /* Not .err-*: go.ts builds the confirmation's search escape with the
+         same helper as the error page's two actions, so the class belongs to
+         the page rather than to the error state. */
+      .go-link{color:inherit}
+      /* #wrap's padding goes with it when go.ts falls back to the body. */
+      .err-fallback{padding:32px 24px}
     </style>
   </head>
   <body>
     <!-- go.ts unhides #status only if the storage read outlasts a short timer,
          so a normal dispatch shows nothing rather than a flash of this copy. -->
-    <div id="wrap"><p id="status" hidden>Opening…</p><div id="err"></div></div>
-    <!-- Only populated when settings.dispatchToast is on: it holds the
-         navigation for TOAST_MS, so it is opt-in rather than the default. -->
-    <div id="toast" hidden></div>
+    <div id="wrap">
+      <p id="status" hidden>Opening…</p>
+      <div id="err" hidden></div>
+      <!-- Only populated when settings.dispatchToast is on, and then it holds
+           the dispatch until the user picks one of its two actions. -->
+      <div id="confirm" hidden></div>
+    </div>
     <script type="module" src="/src/go/go.ts"></script>
   </body>
 </html>

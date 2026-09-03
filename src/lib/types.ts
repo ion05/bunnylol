@@ -2,10 +2,15 @@
  * Shared contract for the whole extension.
  *
  * Every other module builds against these types. Nothing in here may import
- * `chrome.*` or touch the DOM — it is imported by the pure resolver, the
+ * `chrome.*` or touch the DOM: it is imported by the pure resolver, the
  * service worker, all three UI surfaces, and the tests.
  */
 
+/**
+ * The sections this build ships. A CLOSED list, and the only thing a category
+ * pick may name: a user section holds no builtins, so it can never be a pack.
+ * User sections live in `Overrides.sections` and are open strings.
+ */
 export type Category =
   | 'ai'
   | 'search'
@@ -14,7 +19,6 @@ export type Category =
   | 'microsoft'
   | 'purdue'
   | 'social'
-  | 'media'
   | 'productivity'
   | 'meta'
   | 'custom';
@@ -27,7 +31,6 @@ export const CATEGORIES: Category[] = [
   'microsoft',
   'purdue',
   'social',
-  'media',
   'productivity',
   'meta',
   'custom',
@@ -41,7 +44,6 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   microsoft: 'Microsoft',
   purdue: 'Purdue',
   social: 'Social',
-  media: 'Media',
   productivity: 'Productivity',
   meta: 'BunnyLol',
   custom: 'My shortcuts',
@@ -49,7 +51,11 @@ export const CATEGORY_LABELS: Record<Category, string> = {
 
 /**
  * Identifies a "smart" argument handler in `handlers.ts`. A command with a
- * handler ignores `searchUrl` and calls the handler with its raw arguments.
+ * handler bypasses plain `{q}` substitution: `resolve()` hands the handler the
+ * raw arguments, and the handler decides whether `searchUrl` is consulted. Most
+ * ignore it; the multi-tenant handlers (brightspace, gradescope) and the
+ * slot-shaped ones degrade their words through it, so it is a live, editable
+ * field on those rows rather than dead weight.
  */
 export type HandlerId =
   | 'github'
@@ -73,12 +79,23 @@ export type HandlerId =
   | 'zoom'
   | 'meet'
   | 'tracking'
+  | 'track'
   | 'instagram'
   | 'whatsapp'
   | 'word';
 
 export interface Command {
-  /** Aliases. `keys[0]` is canonical and is the stable identity of the command. */
+  /**
+   * Stable identity, independent of the aliases. A shipped command omits it and
+   * is identified by its SHIPPED `keys[0]`, which never moves because the
+   * registry is code; a user-created one carries a generated `u:`-prefixed id
+   * that survives every key edit. `mergeCommands` and the storage boundary
+   * stamp the resolved value onto everything they emit, so the override maps,
+   * the browse rows and the resolver all key off one string. Never authored in
+   * `commands.ts`, never user-editable.
+   */
+  id?: string;
+  /** Aliases. `keys[0]` is canonical, and for a shipped command it is the `id`. */
   keys: string[];
   name: string;
   description: string;
@@ -88,7 +105,12 @@ export interface Command {
   searchUrl?: string;
   /** Opt into a smart handler instead of plain `{q}` substitution. */
   handler?: HandlerId;
-  category: Category;
+  /**
+   * An open section id: a builtin `Category`, or the id of a `Section` in
+   * `Overrides.sections`. Resolved for display by `sectionLabel`; an id that
+   * names neither is coerced to `FALLBACK_SECTION` on the next save.
+   */
+  category: string;
   builtin: boolean;
   /** Shown in the UI, e.g. "gh facebook/react -> github.com/facebook/react". */
   example?: string;
@@ -99,6 +121,15 @@ export interface Command {
    */
   provider?: string;
 }
+
+/**
+ * A registry row. The shipped commands keep the CLOSED category union and a
+ * literal `builtin: true` even though `Command` is open on both, so a typo'd
+ * category in `commands.ts` is still a compile error and
+ * `tests/commands.test.ts` keeps a real assertion rather than a tautology.
+ * Assignable to `Command` everywhere.
+ */
+export type BuiltinCommand = Command & { category: Category; builtin: true };
 
 /** A provider whose web UI accepts a prompt via URL parameter. */
 export interface AiProvider {
@@ -115,12 +146,6 @@ export interface Settings {
   githubUser: string;
   /** Where an unrecognized query goes. Template containing `{q}`. */
   defaultEngine: string;
-  /**
-   * `AiProvider.id` the `?` command routes to. A provider id, not an alias:
-   * the user can rebind the Claude builtin's keys, and `?` must keep pointing
-   * at the provider they picked rather than at whatever now answers to `c`.
-   */
-  defaultAi: string;
   /** Which search engines DNR intercepts. Values are `SearchEngineId`s. */
   interceptEngines: SearchEngineId[];
   /** Overrides for `AI_PROVIDERS` templates, keyed by provider id. */
@@ -133,9 +158,10 @@ export interface Settings {
    */
   interceptStopList: string[];
   /**
-   * Show a dismissible toast on the dispatch page naming the command that
-   * fired, with a link to search instead. Off by default because it costs
-   * ~1.2s on every dispatch; see `TOAST_MS` in go.ts.
+   * Hold the dispatch page on a confirmation naming the command that fired,
+   * with the destination, a button that opens it and a link to search for what
+   * was typed instead. Off by default, because the ordinary dispatch must not
+   * ask a question. Nothing auto-navigates: see `confirmOpen` in go.ts.
    */
   dispatchToast: boolean;
 }
@@ -151,14 +177,80 @@ export interface SearchEngine {
   urlPrefixPattern: string;
 }
 
+/**
+ * The fields of a shipped shortcut the user is allowed to change, as a diff
+ * against the shipped definition rather than a copy of it, so a corrected URL
+ * in a later build still reaches someone who only renamed the command.
+ *
+ * Absent means "inherit"; `null` on the two optional fields means "cleared",
+ * which is a different instruction and cannot be said with `undefined`.
+ *
+ * There is deliberately no `handler`, `provider`, `builtin` or `id` here.
+ * Those select behaviour and identity, and an import file is untrusted input:
+ * `applyEdit` copies this type field by field rather than spreading, so a
+ * hand-edited edit object has no path into any of them (invariant 16).
+ */
+export interface ShortcutEdit {
+  keys?: string[];
+  name?: string;
+  description?: string;
+  url?: string;
+  searchUrl?: string | null;
+  category?: string;
+  example?: string | null;
+}
+
+/**
+ * A group in the browse list. An entry whose `id` names a builtin category is
+ * not a collision: it is how a shipped category gets renamed.
+ */
+export interface Section {
+  id: string;
+  label: string;
+}
+
+/**
+ * Where a command whose category names no section this build knows about ends
+ * up. "My shortcuts" is the one group that is always there, so it is the only
+ * safe destination for an orphan.
+ */
+export const FALLBACK_SECTION = 'custom';
+
 /** The user's customization layer. Builtins are never mutated in place. */
 export interface Overrides {
-  /** Canonical keys of builtins the user turned off. */
+  /** Ids of shortcuts the user turned off. Shipped or custom. */
   disabled: string[];
-  /** Canonical key -> replacement alias list. */
-  keyOverrides: Record<string, string[]>;
-  /** User-created commands. Always `builtin: false`. */
+  /**
+   * Ids of SHIPPED shortcuts the user deleted, kept so they stay restorable. A
+   * custom command is deleted by removing it from `custom`.
+   */
+  deleted: string[];
+  /**
+   * Shortcut id -> the fields the user changed. Shipped shortcuts only: a
+   * custom command has nothing to diff against and is edited in place.
+   */
+  edits: Record<string, ShortcutEdit>;
+  /** User-created sections, plus renames of shipped ones. */
+  sections: Section[];
+  /** User-created commands. Always `builtin: false`, always a `u:` id. */
   custom: Command[];
+  /**
+   * The builtin categories the user picked during onboarding. `null` means they
+   * never saw the picker: every category counts as enabled and a builtin added
+   * later arrives on. No resolution path reads it: the resolver reads
+   * `disabled` and nothing else, so there is exactly one exclusion axis and a
+   * pick is projected onto it at write time by `applyCategoryPick`.
+   *
+   * `[]` is a real answer and not the same as `null`: it says the user
+   * unchecked every pack.
+   */
+  enabledCategories: string[] | null;
+  /**
+   * Shortcut ids this profile has already been offered, so an update can tell a
+   * builtin added since the last version from one the user deliberately turned
+   * off.
+   */
+  seenBuiltins: string[];
 }
 
 export interface StoredState {
@@ -181,8 +273,8 @@ export interface ResolveResult {
  * `keyword` is the alias the user actually typed, which a handler needs when
  * its degrade is a plain search: reproducing the query the alias intercepted
  * ("lh surge meaning") requires the keyword, and `cmd.keys[0]` is the canonical
- * alias rather than the typed one. Optional so a handler called directly — the
- * tests, an imported command — still type-checks.
+ * alias rather than the typed one. Optional so a handler called directly still
+ * type-checks, as in the tests or with an imported command.
  */
 export type HandlerFn = (args: string, cmd: Command, settings: Settings, keyword?: string) => string;
 
@@ -190,7 +282,7 @@ export type HandlerFn = (args: string, cmd: Command, settings: Settings, keyword
  * The user's EXEMPTION list: aliases they have asked BunnyLol to leave out of
  * address-bar interception.
  *
- * Empty on purpose. BunnyLol follows true bunnylol semantics — if the first
+ * Empty on purpose. BunnyLol follows true bunnylol semantics: if the first
  * word of an address-bar query is a registered keyword, it IS a command, every
  * time. `c programming tutorial` opens Claude and `pr firms in new york` opens
  * your pull requests, and that is the contract rather than a bug: a blocklist
@@ -199,7 +291,7 @@ export type HandlerFn = (args: string, cmd: Command, settings: Settings, keyword
  *
  * What makes that liveable is the escape hatch (`FORCE_SEARCH_PREFIXES`), not
  * a curated list. This list stays because one user in ten will keep tripping
- * over one specific keyword — "I search for 'maps of X' constantly" — and the
+ * over one specific keyword, "I search for 'maps of X' constantly", and the
  * options page lets them exempt exactly that alias. An exempted alias loses
  * address-bar interception and nothing else: it still resolves from the `bl`
  * omnibox keyword and the toolbar popup.
@@ -217,7 +309,7 @@ export const DEFAULT_STOP_LIST: string[] = [];
  * the way into a URL; `=` is one unshifted keystroke everywhere and is never
  * the first character of a real search.
  *
- * ORDER MATTERS ONLY FOR DOCS — matching tries each in turn, and no prefix here
+ * ORDER MATTERS ONLY FOR DOCS: matching tries each in turn, and no prefix here
  * may be a prefix of another.
  */
 export const FORCE_SEARCH_PREFIXES: string[] = ['\\', '='];
@@ -225,7 +317,6 @@ export const FORCE_SEARCH_PREFIXES: string[] = ['\\', '='];
 export const DEFAULT_SETTINGS: Settings = {
   githubUser: '',
   defaultEngine: 'https://www.google.com/search?q={q}',
-  defaultAi: 'claude',
   interceptEngines: ['google', 'bing', 'duckduckgo'],
   aiTemplates: {},
   googleAccount: 0,
@@ -235,8 +326,12 @@ export const DEFAULT_SETTINGS: Settings = {
 
 export const DEFAULT_OVERRIDES: Overrides = {
   disabled: [],
-  keyOverrides: {},
+  deleted: [],
+  edits: {},
+  sections: [],
   custom: [],
+  enabledCategories: null,
+  seenBuiltins: [],
 };
 
 export const STORAGE_KEY = 'bunnylol.state.v1';
@@ -259,7 +354,7 @@ export interface RuleStatus {
   keywords: number;
   /** Aliases the user exempted through `settings.interceptStopList`. */
   suppressed: number;
-  /** Eligible aliases that ended up with no rule — `keywords + dropped` is the eligible total. */
+  /** Eligible aliases that ended up with no rule: `keywords + dropped` is the eligible total. */
   dropped: number;
   /**
    * Set only when the sync itself failed and interception is not working.

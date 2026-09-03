@@ -3,40 +3,46 @@
  * distance fields sampled at 4x4 per pixel, and the PNGs are encoded by hand
  * (IHDR + IDAT + IEND, one zlib stream, filter byte 0 per scanline).
  *
+ * Both colours are read out of design/tokens.css, the sand tile is --accent
+ * and the glyph is --accent-fg, so the icon cannot drift from the palette.
+ * Those two tokens are declared as flat hexes rather than light-dark() pairs
+ * precisely because a PNG has one colour, not one per scheme.
+ *
+ * Writes public/icons/icon{16,32,48,128}.png, which are full-bleed for the
+ * toolbar and the extensions page, and store/icon128.png, which is the same
+ * art at 96px centred in a 128px frame for the Web Store listing. store/ sits
+ * outside public/, so it is never copied into dist/ or a release zip.
+ *
  * Deterministic: re-running writes byte-identical files.
  *
  *   node scripts/gen-icons.mjs
  */
 
 import { deflateSync } from 'node:zlib';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { crc32 } from './lib/crc32.mjs';
+import { readFlatHex } from './lib/tokens.mjs';
 
 const SIZES = [16, 32, 48, 128];
-const BG = [0x4f, 0x46, 0xe5];
-const FG = [0xff, 0xff, 0xff];
 
 /** Subsamples per axis. 4x4 = 16 coverage samples per pixel. */
 const SS = 4;
 
+/* -------------------------------------------------------------- palette */
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const TOKENS = join(root, 'design', 'tokens.css');
+
+const tokensCss = readFileSync(TOKENS, 'utf8');
+
+const BG = readFlatHex(tokensCss, '--accent');
+/* Dark glyph, not white: #1a1a1a on the sand is 8.53:1, where #ffffff would be
+ * 2.04:1 and fail the 3:1 WCAG 1.4.11 asks of a graphical object. */
+const FG = readFlatHex(tokensCss, '--accent-fg');
+
 /* ------------------------------------------------------------------ PNG */
-
-const CRC_TABLE = (() => {
-  const table = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    table[n] = c >>> 0;
-  }
-  return table;
-})();
-
-function crc32(buf) {
-  let c = 0xffffffff;
-  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
-  return (c ^ 0xffffffff) >>> 0;
-}
 
 function chunk(type, data) {
   const length = Buffer.alloc(4);
@@ -98,13 +104,21 @@ const EAR_R = 0.066;
 const EAR_TIP_Y = 0.205;
 const EAR_BASE_Y = 0.585;
 
-function insideBackground(x, y) {
-  return sdRoundedRect(x, y, 0.5, 0.5, 0.48, 0.48, 0.22) <= 0;
+/** Half the tile's width, in the unit square. The toolbar icons are full
+ *  bleed; the Web Store asks for 96px of art inside a 128px frame. */
+const TILE_HALF = 0.48;
+const STORE_TILE_HALF = 0.375;
+
+function insideBackground(x, y, half) {
+  return sdRoundedRect(x, y, 0.5, 0.5, half, half, 0.22 * (half / TILE_HALF)) <= 0;
 }
 
-function insideGlyph(x, y) {
-  const gx = 0.5 + (x - 0.5) / GLYPH_SCALE;
-  const gy = 0.5 + (y - 0.5) / GLYPH_SCALE;
+function insideGlyph(x, y, half) {
+  /* The glyph shrinks with the tile, so the padded variant is the same drawing
+   * rather than the same rabbit in a smaller box. */
+  const scale = GLYPH_SCALE * (half / TILE_HALF);
+  const gx = 0.5 + (x - 0.5) / scale;
+  const gy = 0.5 + (y - 0.5) / scale;
 
   // Head, then the two ears splayed outward from it.
   if (sdRoundedRect(gx, gy, 0.5, 0.705, 0.205, 0.155, 0.145) <= 0) return true;
@@ -113,7 +127,7 @@ function insideGlyph(x, y) {
   return false;
 }
 
-function render(size) {
+function render(size, half) {
   const rgba = Buffer.alloc(size * size * 4);
   const step = 1 / (size * SS);
   const samples = SS * SS;
@@ -127,9 +141,9 @@ function render(size) {
         const y = (py * SS + sy + 0.5) * step;
         for (let sx = 0; sx < SS; sx++) {
           const x = (px * SS + sx + 0.5) * step;
-          if (!insideBackground(x, y)) continue;
+          if (!insideBackground(x, y, half)) continue;
           covered++;
-          if (insideGlyph(x, y)) glyph++;
+          if (insideGlyph(x, y, half)) glyph++;
         }
       }
 
@@ -150,13 +164,19 @@ function render(size) {
 
 /* ----------------------------------------------------------------- main */
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const outDir = join(root, 'public', 'icons');
-mkdirSync(outDir, { recursive: true });
+const hex = (rgb) => rgb.map((c) => c.toString(16).padStart(2, '0')).join('');
+console.log(`tile #${hex(BG)}, glyph #${hex(FG)}  (design/tokens.css)`);
 
-for (const size of SIZES) {
-  const file = join(outDir, `icon${size}.png`);
-  const png = render(size);
+const emit = (file, size, half) => {
+  mkdirSync(dirname(file), { recursive: true });
+  const png = render(size, half);
   writeFileSync(file, png);
   console.log(`${relative(root, file)}  ${png.length} bytes  (${size}x${size})`);
+};
+
+for (const size of SIZES) {
+  emit(join(root, 'public', 'icons', `icon${size}.png`), size, TILE_HALF);
 }
+
+/* The listing icon, which is uploaded by hand rather than packed. */
+emit(join(root, 'store', 'icon128.png'), 128, STORE_TILE_HALF);

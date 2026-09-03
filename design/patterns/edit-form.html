@@ -1,0 +1,252 @@
+<!-- @dsCard group="Patterns" -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Edit form</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../components.css" />
+    <link rel="stylesheet" href="../preview.css" />
+  </head>
+  <body>
+    <main class="sheet screens">
+      <header class="sheet-head">
+        <h1 class="sheet-title">Edit form</h1>
+        <p class="sheet-note">One form for every shortcut. Eight fields, a section select that can mint a new section, and a live preview of both destinations. Shown valid and mid-error.</p>
+      </header>
+      <div class="pair stack">
+        <section class="scheme">
+          <div class="scheme-label">Light</div>
+          <div class="scheme-body flush">
+              <header class="topbar">
+                <div class="topbar-inner">
+                  <div class="brand"><h1 class="brand-name">BunnyLol</h1></div>
+                  <span class="status status-ok"><span class="status-dot"></span><span>All 14 keywords are intercepted.</span></span>
+                  <nav class="nav" aria-label="Sections">
+                    <a class="nav-link" href="#help">Shortcuts</a>
+                    <a class="nav-link" aria-current="page" href="#new">New shortcut</a>
+                    <a class="nav-link" href="#settings">Settings</a>
+                  </nav>
+                </div>
+              </header>
+              <div class="shell">
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2 class="panel-title">Edit GitHub</h2>
+                    <p class="panel-sub">The same form for every shortcut, whether it shipped with BunnyLol or you made it. Reset puts back the shipped definition; for one of yours, it puts back what you last saved.</p>
+                  </div>
+                  <div class="panel-body">
+                    <div class="form">
+                      <div class="field">
+                        <label class="field-label" for="f-keys">Keywords</label>
+                        <input class="input mono" id="f-keys" value="gh, github" />
+                        <span class="field-hint">Comma separated. The first one is what the popup shows.</span>
+                      </div>
+                      <div class="field">
+                        <label class="field-label" for="f-name">Name</label>
+                        <input class="input" id="f-name" value="GitHub" />
+                      </div>
+                      <div class="field wide">
+                        <label class="field-label" for="f-desc">Description</label>
+                        <input class="input" id="f-desc" value="Jump to a repo, a user, or search GitHub." />
+                      </div>
+                      <div class="field wide">
+                        <label class="field-label" for="f-url">URL</label>
+                        <input class="input mono" id="f-url" value="https://github.com" />
+                        <span class="field-hint">Where the keyword goes on its own, with nothing after it.</span>
+                      </div>
+                      <div class="field wide">
+                        <label class="field-label" for="f-surl">Search URL</label>
+                        <input class="input mono" id="f-surl" value="https://github.com/search?q=%s" />
+                        <span class="field-hint">%s is replaced by whatever you type after the keyword. For a literal percent, write \%.</span>
+                      </div>
+                      <div class="field">
+                        <label class="field-label" for="f-cat">Section</label>
+                        <select class="select" id="f-cat">
+                          <option>My shortcuts</option>
+                          <option>Search</option>
+                          <option selected>Developer</option>
+                          <option>AI</option>
+                          <option>Productivity</option>
+                          <option>New section&hellip;</option>
+                        </select>
+                      </div>
+                      <div class="field">
+                        <label class="field-label" for="f-ex">Example</label>
+                        <input class="input mono" id="f-ex" value="gh facebook/react" />
+                        <span class="field-hint">Shown under the row. Yours to write.</span>
+                      </div>
+                      <div class="field wide">
+                        <div class="preview">
+                          <div class="preview-head"><h3>Preview</h3></div>
+                          <div class="preview-row"><span class="chip">gh</span><span class="preview-arrow">&rarr;</span><span class="preview-url">https://github.com</span></div>
+                          <div class="preview-row"><span class="chip">gh facebook/react</span><span class="preview-arrow">&rarr;</span><span class="preview-url">https://github.com/facebook/react</span></div>
+                        </div>
+                      </div>
+                      <div class="form-actions">
+                        <button class="btn btn-primary" type="button">Save</button>
+                        <button class="btn btn-ghost" type="button">Reset</button>
+                        <button class="btn" type="button">Cancel</button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2 class="panel-title">The same form, not working out</h2>
+                  </div>
+                  <div class="panel-body">
+                    <div class="form">
+                      <div class="field">
+                        <label class="field-label" for="e-keys">Keywords</label>
+                        <input class="input mono bad" id="e-keys" value="gh, git hub" />
+                        <div class="field-errors"><span class="msg msg-error">A keyword cannot contain a space.</span></div>
+                      </div>
+                      <div class="field">
+                        <label class="field-label" for="e-name">Name</label>
+                        <input class="input" id="e-name" value="GitHub" />
+                      </div>
+                      <div class="field wide">
+                        <label class="field-label" for="e-url">URL</label>
+                        <input class="input mono bad" id="e-url" value="github dot com" />
+                        <div class="field-errors"><span class="msg msg-error">That is not a URL. It needs a host, like github.com.</span></div>
+                      </div>
+                      <div class="field wide">
+                        <div class="preview">
+                          <div class="preview-head"><h3>Preview</h3></div>
+                          <div class="preview-row"><span class="chip">gh rust</span><span class="preview-arrow">&rarr;</span><span class="preview-url is-fallback">https://github.com &mdash; no %s, so &ldquo;rust&rdquo; is dropped</span></div>
+                        </div>
+                      </div>
+                      <div class="field wide"><span class="msg msg-warn">This shortcut has no search URL, so anything you type after the keyword goes nowhere.</span></div>
+                      <div class="form-actions">
+                        <button class="btn btn-primary" type="button" disabled>Save</button>
+                        <button class="btn btn-ghost" type="button">Reset</button>
+                        <button class="btn" type="button">Cancel</button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+          </div>
+        </section>
+        <section class="scheme dark">
+          <div class="scheme-label">Dark</div>
+          <div class="scheme-body flush">
+              <header class="topbar">
+                <div class="topbar-inner">
+                  <div class="brand"><h1 class="brand-name">BunnyLol</h1></div>
+                  <span class="status status-ok"><span class="status-dot"></span><span>All 14 keywords are intercepted.</span></span>
+                  <nav class="nav" aria-label="Sections">
+                    <a class="nav-link" href="#help">Shortcuts</a>
+                    <a class="nav-link" aria-current="page" href="#new">New shortcut</a>
+                    <a class="nav-link" href="#settings">Settings</a>
+                  </nav>
+                </div>
+              </header>
+              <div class="shell">
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2 class="panel-title">Edit GitHub</h2>
+                    <p class="panel-sub">The same form for every shortcut, whether it shipped with BunnyLol or you made it. Reset puts back the shipped definition; for one of yours, it puts back what you last saved.</p>
+                  </div>
+                  <div class="panel-body">
+                    <div class="form">
+                      <div class="field">
+                        <label class="field-label" for="f-keys">Keywords</label>
+                        <input class="input mono" id="f-keys" value="gh, github" />
+                        <span class="field-hint">Comma separated. The first one is what the popup shows.</span>
+                      </div>
+                      <div class="field">
+                        <label class="field-label" for="f-name">Name</label>
+                        <input class="input" id="f-name" value="GitHub" />
+                      </div>
+                      <div class="field wide">
+                        <label class="field-label" for="f-desc">Description</label>
+                        <input class="input" id="f-desc" value="Jump to a repo, a user, or search GitHub." />
+                      </div>
+                      <div class="field wide">
+                        <label class="field-label" for="f-url">URL</label>
+                        <input class="input mono" id="f-url" value="https://github.com" />
+                        <span class="field-hint">Where the keyword goes on its own, with nothing after it.</span>
+                      </div>
+                      <div class="field wide">
+                        <label class="field-label" for="f-surl">Search URL</label>
+                        <input class="input mono" id="f-surl" value="https://github.com/search?q=%s" />
+                        <span class="field-hint">%s is replaced by whatever you type after the keyword. For a literal percent, write \%.</span>
+                      </div>
+                      <div class="field">
+                        <label class="field-label" for="f-cat">Section</label>
+                        <select class="select" id="f-cat">
+                          <option>My shortcuts</option>
+                          <option>Search</option>
+                          <option selected>Developer</option>
+                          <option>AI</option>
+                          <option>Productivity</option>
+                          <option>New section&hellip;</option>
+                        </select>
+                      </div>
+                      <div class="field">
+                        <label class="field-label" for="f-ex">Example</label>
+                        <input class="input mono" id="f-ex" value="gh facebook/react" />
+                        <span class="field-hint">Shown under the row. Yours to write.</span>
+                      </div>
+                      <div class="field wide">
+                        <div class="preview">
+                          <div class="preview-head"><h3>Preview</h3></div>
+                          <div class="preview-row"><span class="chip">gh</span><span class="preview-arrow">&rarr;</span><span class="preview-url">https://github.com</span></div>
+                          <div class="preview-row"><span class="chip">gh facebook/react</span><span class="preview-arrow">&rarr;</span><span class="preview-url">https://github.com/facebook/react</span></div>
+                        </div>
+                      </div>
+                      <div class="form-actions">
+                        <button class="btn btn-primary" type="button">Save</button>
+                        <button class="btn btn-ghost" type="button">Reset</button>
+                        <button class="btn" type="button">Cancel</button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2 class="panel-title">The same form, not working out</h2>
+                  </div>
+                  <div class="panel-body">
+                    <div class="form">
+                      <div class="field">
+                        <label class="field-label" for="e-keys">Keywords</label>
+                        <input class="input mono bad" id="e-keys" value="gh, git hub" />
+                        <div class="field-errors"><span class="msg msg-error">A keyword cannot contain a space.</span></div>
+                      </div>
+                      <div class="field">
+                        <label class="field-label" for="e-name">Name</label>
+                        <input class="input" id="e-name" value="GitHub" />
+                      </div>
+                      <div class="field wide">
+                        <label class="field-label" for="e-url">URL</label>
+                        <input class="input mono bad" id="e-url" value="github dot com" />
+                        <div class="field-errors"><span class="msg msg-error">That is not a URL. It needs a host, like github.com.</span></div>
+                      </div>
+                      <div class="field wide">
+                        <div class="preview">
+                          <div class="preview-head"><h3>Preview</h3></div>
+                          <div class="preview-row"><span class="chip">gh rust</span><span class="preview-arrow">&rarr;</span><span class="preview-url is-fallback">https://github.com &mdash; no %s, so &ldquo;rust&rdquo; is dropped</span></div>
+                        </div>
+                      </div>
+                      <div class="field wide"><span class="msg msg-warn">This shortcut has no search URL, so anything you type after the keyword goes nowhere.</span></div>
+                      <div class="form-actions">
+                        <button class="btn btn-primary" type="button" disabled>Save</button>
+                        <button class="btn btn-ghost" type="button">Reset</button>
+                        <button class="btn" type="button">Cancel</button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

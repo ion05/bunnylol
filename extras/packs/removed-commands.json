@@ -1,0 +1,931 @@
+{
+  "overrides": {
+    "sections": [
+      {
+        "id": "media",
+        "label": "Media",
+        "_note": "BunnyLol shipped a \"media\" category until v1.1.0, when categories became open section ids and the empty shipped one was removed. Declared here so these entries import into the group they were filed under instead of landing in \"My shortcuts\"."
+      }
+    ],
+    "custom": [
+      {
+        "keys": [
+          "copilot",
+          "msai"
+        ],
+        "name": "Microsoft Copilot",
+        "description": "Open Microsoft Copilot; arguments search the web.",
+        "url": "https://copilot.microsoft.com/",
+        "handler": "unindexed",
+        "category": "ai",
+        "example": "copilot -> copilot.microsoft.com",
+        "_note": "Consumer Copilot has no supported search route. Every `?q=` form returns a 302 to the bare home page and drops the prompt, including Microsoft's own bing.com/search?showconv=1 entry point. So this opens the app rather than a guessed URL. The app is a chat SPA with nothing indexed, so a site: search would be just as empty. The words go to a plain search instead."
+      },
+      {
+        "keys": [
+          "hf",
+          "huggingface"
+        ],
+        "name": "Hugging Face",
+        "description": "Search models, datasets and spaces.",
+        "url": "https://huggingface.co/",
+        "searchUrl": "https://huggingface.co/search/full-text?q={q}",
+        "category": "ai",
+        "example": "hf whisper large"
+      },
+      {
+        "keys": [
+          "bing",
+          "b"
+        ],
+        "name": "Bing",
+        "description": "Search Bing.",
+        "url": "https://www.bing.com/",
+        "searchUrl": "https://www.bing.com/search?q={q}",
+        "category": "search",
+        "example": "bing weather chicago"
+      },
+      {
+        "keys": [
+          "brave"
+        ],
+        "name": "Brave Search",
+        "description": "Search with Brave.",
+        "url": "https://search.brave.com/",
+        "searchUrl": "https://search.brave.com/search?q={q}",
+        "category": "search",
+        "example": "brave rust vs zig"
+      },
+      {
+        "keys": [
+          "kagi"
+        ],
+        "name": "Kagi",
+        "description": "Search with Kagi.",
+        "url": "https://kagi.com/",
+        "searchUrl": "https://kagi.com/search?q={q}",
+        "category": "search",
+        "example": "kagi sqlite wal mode"
+      },
+      {
+        "keys": [
+          "gsite",
+          "site"
+        ],
+        "name": "Site search",
+        "description": "Google a single site. First word is the domain.",
+        "url": "https://www.google.com/",
+        "handler": "gsite",
+        "category": "search",
+        "example": "gsite react.dev hooks -> google site:react.dev hooks"
+      },
+      {
+        "keys": [
+          "weather",
+          "wx"
+        ],
+        "name": "Weather",
+        "description": "Weather for a place.",
+        "url": "https://www.google.com/search?q=weather",
+        "searchUrl": "https://www.google.com/search?q=weather+{q}",
+        "category": "search",
+        "example": "weather west lafayette"
+      },
+      {
+        "keys": [
+          "stock",
+          "ticker"
+        ],
+        "name": "Yahoo Finance",
+        "description": "Quote for a ticker symbol.",
+        "url": "https://finance.yahoo.com/",
+        "searchUrl": "https://finance.yahoo.com/quote/{q}",
+        "handler": "ticker",
+        "category": "search",
+        "example": "stock NVDA"
+      },
+      {
+        "keys": [
+          "wayback",
+          "archive"
+        ],
+        "name": "Wayback Machine",
+        "description": "Latest archived snapshot of a URL.",
+        "url": "https://web.archive.org/",
+        "searchUrl": "https://web.archive.org/web/2/{q}",
+        "handler": "wayback",
+        "category": "search",
+        "example": "wayback nytimes.com"
+      },
+      {
+        "keys": [
+          "lh",
+          "localhost"
+        ],
+        "name": "localhost",
+        "description": "Open a local dev server. Bare invocation uses port 3000.",
+        "url": "http://localhost:3000",
+        "handler": "localhost",
+        "category": "dev",
+        "example": "lh 8080 -> http://localhost:8080"
+      },
+      {
+        "keys": [
+          "so",
+          "stackoverflow"
+        ],
+        "name": "Stack Overflow",
+        "description": "Search Stack Overflow.",
+        "url": "https://stackoverflow.com/",
+        "searchUrl": "https://stackoverflow.com/search?q={q}",
+        "category": "dev",
+        "example": "so python asyncio gather exception"
+      },
+      {
+        "keys": [
+          "mdn"
+        ],
+        "name": "MDN Web Docs",
+        "description": "Web platform documentation.",
+        "url": "https://developer.mozilla.org/",
+        "searchUrl": "https://developer.mozilla.org/en-US/search?q={q}",
+        "category": "dev",
+        "example": "mdn structuredClone"
+      },
+      {
+        "keys": [
+          "caniuse",
+          "ciu"
+        ],
+        "name": "Can I use",
+        "description": "Browser support tables.",
+        "url": "https://caniuse.com/",
+        "searchUrl": "https://caniuse.com/?search={q}",
+        "category": "dev",
+        "example": "caniuse container queries"
+      },
+      {
+        "keys": [
+          "lc",
+          "leetcode"
+        ],
+        "name": "LeetCode",
+        "description": "Search LeetCode problems.",
+        "url": "https://leetcode.com/problemset/",
+        "searchUrl": "https://leetcode.com/problemset/all/?search={q}",
+        "category": "dev",
+        "example": "lc two sum"
+      },
+      {
+        "keys": [
+          "pypi"
+        ],
+        "name": "PyPI",
+        "description": "Search Python packages.",
+        "url": "https://pypi.org/",
+        "searchUrl": "https://pypi.org/search/?q={q}",
+        "category": "dev",
+        "example": "pypi httpx"
+      },
+      {
+        "keys": [
+          "pydocs",
+          "pydoc"
+        ],
+        "name": "Python Docs",
+        "description": "Search the Python 3 standard library docs.",
+        "url": "https://docs.python.org/3/",
+        "searchUrl": "https://docs.python.org/3/search.html?q={q}",
+        "category": "dev",
+        "example": "pydocs itertools groupby"
+      },
+      {
+        "keys": [
+          "crates"
+        ],
+        "name": "crates.io",
+        "description": "Search Rust crates.",
+        "url": "https://crates.io/",
+        "searchUrl": "https://crates.io/search?q={q}",
+        "category": "dev",
+        "example": "crates serde"
+      },
+      {
+        "keys": [
+          "docsrs"
+        ],
+        "name": "docs.rs",
+        "description": "Rust crate API documentation.",
+        "url": "https://docs.rs/",
+        "searchUrl": "https://docs.rs/releases/search?query={q}",
+        "category": "dev",
+        "example": "docsrs tokio"
+      },
+      {
+        "keys": [
+          "golang",
+          "gopkg"
+        ],
+        "name": "pkg.go.dev",
+        "description": "Search Go packages.",
+        "url": "https://pkg.go.dev/",
+        "searchUrl": "https://pkg.go.dev/search?q={q}",
+        "category": "dev",
+        "example": "golang errgroup"
+      },
+      {
+        "keys": [
+          "rubygems"
+        ],
+        "name": "RubyGems",
+        "description": "Search Ruby gems.",
+        "url": "https://rubygems.org/",
+        "searchUrl": "https://rubygems.org/search?query={q}",
+        "category": "dev",
+        "example": "rubygems rails"
+      },
+      {
+        "keys": [
+          "packagist",
+          "composer"
+        ],
+        "name": "Packagist",
+        "description": "Search PHP packages.",
+        "url": "https://packagist.org/",
+        "searchUrl": "https://packagist.org/?query={q}",
+        "category": "dev",
+        "example": "packagist guzzle"
+      },
+      {
+        "keys": [
+          "nuget"
+        ],
+        "name": "NuGet",
+        "description": "Search .NET packages.",
+        "url": "https://www.nuget.org/",
+        "searchUrl": "https://www.nuget.org/packages?q={q}",
+        "category": "dev",
+        "example": "nuget newtonsoft.json"
+      },
+      {
+        "keys": [
+          "mvn",
+          "maven"
+        ],
+        "name": "Maven Central",
+        "description": "Search Java artifacts.",
+        "url": "https://mvnrepository.com/",
+        "searchUrl": "https://mvnrepository.com/search?q={q}",
+        "category": "dev",
+        "example": "mvn jackson databind"
+      },
+      {
+        "keys": [
+          "dockerhub",
+          "docker"
+        ],
+        "name": "Docker Hub",
+        "description": "Search container images.",
+        "url": "https://hub.docker.com/",
+        "searchUrl": "https://hub.docker.com/search?q={q}",
+        "category": "dev",
+        "example": "docker postgres"
+      },
+      {
+        "keys": [
+          "gitlab",
+          "gl"
+        ],
+        "name": "GitLab",
+        "description": "Search GitLab projects.",
+        "url": "https://gitlab.com/",
+        "searchUrl": "https://gitlab.com/explore/projects?name={q}",
+        "category": "dev",
+        "example": "gitlab gitlab-runner",
+        "_note": "gitlab.com/search requires auth and bounces signed-out users to sign-in; /explore/projects is the public equivalent."
+      },
+      {
+        "keys": [
+          "bitbucket",
+          "bb"
+        ],
+        "name": "Bitbucket",
+        "description": "Bitbucket workspaces and repos.",
+        "url": "https://bitbucket.org/",
+        "searchUrl": "https://www.google.com/search?q=site%3Abitbucket.org+{q}",
+        "category": "dev",
+        "example": "bitbucket -> bitbucket.org"
+      },
+      {
+        "keys": [
+          "sourcegraph",
+          "sg"
+        ],
+        "name": "Sourcegraph",
+        "description": "Cross-repository code search.",
+        "url": "https://sourcegraph.com/",
+        "searchUrl": "https://sourcegraph.com/search?q={q}",
+        "category": "dev",
+        "example": "sg lang:go http.HandlerFunc"
+      },
+      {
+        "keys": [
+          "devdocs",
+          "dd"
+        ],
+        "name": "DevDocs",
+        "description": "Unified API documentation browser.",
+        "url": "https://devdocs.io/",
+        "searchUrl": "https://devdocs.io/#q={q}",
+        "category": "dev",
+        "example": "dd array.prototype.flatmap"
+      },
+      {
+        "keys": [
+          "ts",
+          "typescript"
+        ],
+        "name": "TypeScript",
+        "description": "TypeScript handbook and docs.",
+        "url": "https://www.typescriptlang.org/",
+        "searchUrl": "https://www.google.com/search?q=site%3Atypescriptlang.org+{q}",
+        "category": "dev",
+        "example": "ts satisfies operator"
+      },
+      {
+        "keys": [
+          "react"
+        ],
+        "name": "React",
+        "description": "React documentation.",
+        "url": "https://react.dev/",
+        "searchUrl": "https://www.google.com/search?q=site%3Areact.dev+{q}",
+        "category": "dev",
+        "example": "react useSyncExternalStore"
+      },
+      {
+        "keys": [
+          "node",
+          "nodedocs"
+        ],
+        "name": "Node.js Docs",
+        "description": "Node.js API documentation.",
+        "url": "https://nodejs.org/api/",
+        "searchUrl": "https://www.google.com/search?q=site%3Anodejs.org+{q}",
+        "category": "dev",
+        "example": "node fs promises readFile"
+      },
+      {
+        "keys": [
+          "bundlephobia",
+          "bphobia"
+        ],
+        "name": "Bundlephobia",
+        "description": "Size cost of an npm package.",
+        "url": "https://bundlephobia.com/",
+        "searchUrl": "https://bundlephobia.com/package/{q}",
+        "handler": "pkg",
+        "category": "dev",
+        "example": "bundlephobia lodash"
+      },
+      {
+        "keys": [
+          "npmtrends"
+        ],
+        "name": "npm trends",
+        "description": "Compare npm package downloads.",
+        "url": "https://npmtrends.com/",
+        "searchUrl": "https://npmtrends.com/{q}",
+        "handler": "pkg",
+        "category": "dev",
+        "example": "npmtrends vite-vs-webpack",
+        "_note": "Package pages intermittently 500 upstream (e.g. /react) while others load; the URL shape is correct, so the command stays as-is."
+      },
+      {
+        "keys": [
+          "codepen"
+        ],
+        "name": "CodePen",
+        "description": "Search pens.",
+        "url": "https://codepen.io/",
+        "searchUrl": "https://codepen.io/search/pens?q={q}",
+        "category": "dev",
+        "example": "codepen css grid gallery"
+      },
+      {
+        "keys": [
+          "vscode",
+          "vsx"
+        ],
+        "name": "VS Code",
+        "description": "VS Code site; arguments search the extension marketplace.",
+        "url": "https://code.visualstudio.com/",
+        "searchUrl": "https://marketplace.visualstudio.com/search?target=VSCode&term={q}",
+        "category": "dev",
+        "example": "vsx eslint"
+      },
+      {
+        "keys": [
+          "gnews",
+          "news"
+        ],
+        "name": "Google News",
+        "description": "Search the news.",
+        "url": "https://news.google.com/",
+        "searchUrl": "https://news.google.com/search?q={q}",
+        "category": "google",
+        "example": "news semiconductor tariffs"
+      },
+      {
+        "keys": [
+          "gimg",
+          "img",
+          "images"
+        ],
+        "name": "Google Images",
+        "description": "Google image search.",
+        "url": "https://images.google.com/",
+        "searchUrl": "https://www.google.com/search?tbm=isch&q={q}",
+        "category": "google",
+        "example": "img purdue bell tower"
+      },
+      {
+        "keys": [
+          "gvid",
+          "videos"
+        ],
+        "name": "Google Video",
+        "description": "Google video search.",
+        "url": "https://www.google.com/search?tbm=vid",
+        "searchUrl": "https://www.google.com/search?tbm=vid&q={q}",
+        "category": "google",
+        "example": "gvid rust lifetimes talk"
+      },
+      {
+        "keys": [
+          "gbooks",
+          "books"
+        ],
+        "name": "Google Books",
+        "description": "Search books.",
+        "url": "https://books.google.com/",
+        "searchUrl": "https://www.google.com/search?tbm=bks&q={q}",
+        "category": "google",
+        "example": "gbooks godel escher bach"
+      },
+      {
+        "keys": [
+          "gflights",
+          "flights"
+        ],
+        "name": "Google Flights",
+        "description": "Search flights.",
+        "url": "https://www.google.com/travel/flights",
+        "searchUrl": "https://www.google.com/travel/flights?q={q}",
+        "category": "google",
+        "example": "gflights ind to sfo friday"
+      },
+      {
+        "keys": [
+          "gtrends",
+          "trends"
+        ],
+        "name": "Google Trends",
+        "description": "Explore search interest over time.",
+        "url": "https://trends.google.com/trends/",
+        "searchUrl": "https://trends.google.com/trends/explore?q={q}",
+        "category": "google",
+        "example": "gtrends electric vehicles"
+      },
+      {
+        "keys": [
+          "gplay",
+          "play"
+        ],
+        "name": "Google Play",
+        "description": "Search the Play Store.",
+        "url": "https://play.google.com/store",
+        "searchUrl": "https://play.google.com/store/search?q={q}",
+        "category": "google",
+        "example": "gplay duolingo"
+      },
+      {
+        "keys": [
+          "sharepoint",
+          "sp"
+        ],
+        "name": "SharePoint",
+        "description": "SharePoint start page, or search your sites.",
+        "url": "https://m365.cloud.microsoft/launch/sharepoint",
+        "searchUrl": "https://m365.cloud.microsoft/search?q={q}",
+        "category": "microsoft",
+        "example": "sharepoint team site"
+      },
+      {
+        "keys": [
+          "azure",
+          "az"
+        ],
+        "name": "Azure Portal",
+        "description": "Azure portal; arguments search Microsoft Learn.",
+        "url": "https://portal.azure.com/",
+        "searchUrl": "https://learn.microsoft.com/en-us/search/?terms={q}",
+        "category": "microsoft",
+        "example": "az blob storage lifecycle"
+      },
+      {
+        "keys": [
+          "mslearn",
+          "learn"
+        ],
+        "name": "Microsoft Learn",
+        "description": "Microsoft technical documentation.",
+        "url": "https://learn.microsoft.com/",
+        "searchUrl": "https://learn.microsoft.com/en-us/search/?terms={q}",
+        "category": "microsoft",
+        "example": "mslearn graph api permissions"
+      },
+      {
+        "keys": [
+          "gss",
+          "gradescopesso"
+        ],
+        "name": "Gradescope (Purdue login)",
+        "description": "Sign in to Gradescope with Purdue school credentials.",
+        "url": "https://www.gradescope.com/login",
+        "searchUrl": "https://www.google.com/search?q=site%3Agradescope.com+{q}",
+        "category": "purdue",
+        "example": "gss -> Gradescope login (School Credentials)",
+        "_note": "Gradescope's own login page; \"School Credentials\" is the Purdue SAML SSO path. Purdue's former idp/gradescope1 entry point no longer exists."
+      },
+      {
+        "keys": [
+          "purdue",
+          "pu"
+        ],
+        "name": "Purdue University",
+        "description": "purdue.edu, or search the Purdue site.",
+        "url": "https://www.purdue.edu/",
+        "searchUrl": "https://www.google.com/search?q=site%3Apurdue.edu+{q}",
+        "category": "purdue",
+        "example": "purdue academic integrity policy"
+      },
+      {
+        "keys": [
+          "boilerconnect",
+          "bcon"
+        ],
+        "name": "BoilerConnect",
+        "description": "Advising appointments and student success.",
+        "url": "https://purdue.campus.eab.com/",
+        "searchUrl": "https://www.google.com/search?q=site%3Apurdue.edu+{q}",
+        "category": "purdue",
+        "example": "boilerconnect -> advising appointments"
+      },
+      {
+        "keys": [
+          "courseinsights",
+          "ci"
+        ],
+        "name": "Purdue Course Insights",
+        "description": "Course grade distributions; arguments search the web.",
+        "url": "https://sswis.mypurdue.purdue.edu/CourseInsights/",
+        "handler": "unindexed",
+        "category": "purdue",
+        "example": "ci -> Course Insights",
+        "_note": "Login-walled SPA: a site: fallback would send arguments nowhere useful, so they go to a plain search. A bare invocation opens the app."
+      },
+      {
+        "keys": [
+          "catalog",
+          "pcat",
+          "courses"
+        ],
+        "name": "Purdue Course Catalog",
+        "description": "Official course descriptions and requirements.",
+        "url": "https://catalog.purdue.edu/",
+        "searchUrl": "https://www.google.com/search?q=site%3Acatalog.purdue.edu+{q}",
+        "category": "purdue",
+        "example": "catalog ma 26100"
+      },
+      {
+        "keys": [
+          "citybus",
+          "bus"
+        ],
+        "name": "CityBus",
+        "description": "Greater Lafayette CityBus routes and tracker.",
+        "url": "https://www.in.gov/citybuslafayette/",
+        "searchUrl": "https://www.google.com/search?q=site%3Ain.gov/citybuslafayette+{q}",
+        "category": "purdue",
+        "example": "citybus route 4"
+      },
+      {
+        "keys": [
+          "purduesports",
+          "boilers"
+        ],
+        "name": "Purdue Athletics",
+        "description": "Schedules, scores and tickets.",
+        "url": "https://purduesports.com/",
+        "searchUrl": "https://www.google.com/search?q=site%3Apurduesports.com+{q}",
+        "category": "purdue",
+        "example": "boilers basketball schedule"
+      },
+      {
+        "keys": [
+          "piazza"
+        ],
+        "name": "Piazza",
+        "description": "Course Q&A boards.",
+        "url": "https://piazza.com/",
+        "searchUrl": "https://www.google.com/search?q=site%3Apiazza.com+{q}",
+        "category": "purdue",
+        "example": "piazza -> piazza.com"
+      },
+      {
+        "keys": [
+          "quora"
+        ],
+        "name": "Quora",
+        "description": "Search questions and answers.",
+        "url": "https://www.quora.com/",
+        "searchUrl": "https://www.quora.com/search?q={q}",
+        "category": "social",
+        "example": "quora how do jet engines work"
+      },
+      {
+        "keys": [
+          "slack",
+          "slk"
+        ],
+        "name": "Slack",
+        "description": "Open Slack in the browser.",
+        "url": "https://app.slack.com/client",
+        "searchUrl": "https://www.google.com/search?q=site%3Aslack.com+{q}",
+        "category": "social",
+        "example": "slack -> app.slack.com"
+      },
+      {
+        "keys": [
+          "spot",
+          "spotify"
+        ],
+        "name": "Spotify",
+        "description": "Search Spotify.",
+        "url": "https://open.spotify.com/",
+        "searchUrl": "https://open.spotify.com/search/{q}",
+        "category": "media",
+        "example": "spot bonobo"
+      },
+      {
+        "keys": [
+          "ytm",
+          "ytmusic"
+        ],
+        "name": "YouTube Music",
+        "description": "Search YouTube Music.",
+        "url": "https://music.youtube.com/",
+        "searchUrl": "https://music.youtube.com/search?q={q}",
+        "category": "media",
+        "example": "ytm radiohead"
+      },
+      {
+        "keys": [
+          "sc",
+          "soundcloud"
+        ],
+        "name": "SoundCloud",
+        "description": "Search SoundCloud.",
+        "url": "https://soundcloud.com/",
+        "searchUrl": "https://soundcloud.com/search?q={q}",
+        "category": "media",
+        "example": "sc dj sets"
+      },
+      {
+        "keys": [
+          "bandcamp"
+        ],
+        "name": "Bandcamp",
+        "description": "Search artists and albums.",
+        "url": "https://bandcamp.com/",
+        "searchUrl": "https://bandcamp.com/search?q={q}",
+        "category": "media",
+        "example": "bandcamp khruangbin"
+      },
+      {
+        "keys": [
+          "genius"
+        ],
+        "name": "Genius",
+        "description": "Search song lyrics.",
+        "url": "https://genius.com/",
+        "searchUrl": "https://genius.com/search?q={q}",
+        "category": "media",
+        "example": "genius pyramids"
+      },
+      {
+        "keys": [
+          "nf",
+          "netflix"
+        ],
+        "name": "Netflix",
+        "description": "Search Netflix.",
+        "url": "https://www.netflix.com/browse",
+        "searchUrl": "https://www.netflix.com/search?q={q}",
+        "category": "media",
+        "example": "nf arcane"
+      },
+      {
+        "keys": [
+          "hulu"
+        ],
+        "name": "Hulu",
+        "description": "Search Hulu.",
+        "url": "https://www.hulu.com/hub/home",
+        "searchUrl": "https://www.hulu.com/search?q={q}",
+        "category": "media",
+        "example": "hulu the bear"
+      },
+      {
+        "keys": [
+          "primevideo",
+          "pv"
+        ],
+        "name": "Prime Video",
+        "description": "Open Prime Video.",
+        "url": "https://www.primevideo.com/",
+        "searchUrl": "https://www.google.com/search?q=site%3Aprimevideo.com+{q}",
+        "category": "media",
+        "example": "primevideo -> primevideo.com"
+      },
+      {
+        "keys": [
+          "disney",
+          "dplus"
+        ],
+        "name": "Disney+",
+        "description": "Open Disney+.",
+        "url": "https://www.disneyplus.com/",
+        "searchUrl": "https://www.google.com/search?q=site%3Adisneyplus.com+{q}",
+        "category": "media",
+        "example": "disney -> disneyplus.com"
+      },
+      {
+        "keys": [
+          "twitch"
+        ],
+        "name": "Twitch",
+        "description": "Search Twitch channels and categories.",
+        "url": "https://www.twitch.tv/",
+        "searchUrl": "https://www.twitch.tv/search?term={q}",
+        "category": "media",
+        "example": "twitch speedrun"
+      },
+      {
+        "keys": [
+          "imdb"
+        ],
+        "name": "IMDb",
+        "description": "Search films, shows and people.",
+        "url": "https://www.imdb.com/",
+        "searchUrl": "https://www.imdb.com/find/?q={q}",
+        "category": "media",
+        "example": "imdb dune part two"
+      },
+      {
+        "keys": [
+          "rt",
+          "rottentomatoes"
+        ],
+        "name": "Rotten Tomatoes",
+        "description": "Search reviews and scores.",
+        "url": "https://www.rottentomatoes.com/",
+        "searchUrl": "https://www.rottentomatoes.com/search?search={q}",
+        "category": "media",
+        "example": "rt the batman"
+      },
+      {
+        "keys": [
+          "lb",
+          "letterboxd"
+        ],
+        "name": "Letterboxd",
+        "description": "Search films on Letterboxd.",
+        "url": "https://letterboxd.com/",
+        "searchUrl": "https://letterboxd.com/search/{q}/",
+        "category": "media",
+        "example": "lb parasite"
+      },
+      {
+        "keys": [
+          "mal",
+          "anime"
+        ],
+        "name": "MyAnimeList",
+        "description": "Search anime and manga.",
+        "url": "https://myanimelist.net/",
+        "searchUrl": "https://myanimelist.net/search/all?q={q}",
+        "category": "media",
+        "example": "mal frieren"
+      },
+      {
+        "keys": [
+          "steam"
+        ],
+        "name": "Steam",
+        "description": "Search the Steam store.",
+        "url": "https://store.steampowered.com/",
+        "searchUrl": "https://store.steampowered.com/search/?term={q}",
+        "category": "media",
+        "example": "steam factorio"
+      },
+      {
+        "keys": [
+          "vimeo"
+        ],
+        "name": "Vimeo",
+        "description": "Search Vimeo.",
+        "url": "https://vimeo.com/",
+        "searchUrl": "https://vimeo.com/search?q={q}",
+        "category": "media",
+        "example": "vimeo short film"
+      },
+      {
+        "keys": [
+          "tg",
+          "telegram"
+        ],
+        "name": "Telegram",
+        "description": "Telegram Web, or open a @username.",
+        "url": "https://web.telegram.org/",
+        "searchUrl": "https://t.me/{q}",
+        "handler": "telegram",
+        "category": "social",
+        "example": "tg durov"
+      },
+      {
+        "keys": [
+          "gtrans",
+          "translate",
+          "tr"
+        ],
+        "name": "Google Translate",
+        "description": "Translate text into English (auto-detect source).",
+        "url": "https://translate.google.com/",
+        "searchUrl": "https://translate.google.com/?sl=auto&tl=en&op=translate&text={q}",
+        "category": "google",
+        "example": "tr wo ist der bahnhof"
+      },
+      {
+        "keys": [
+          "gkeep",
+          "keep"
+        ],
+        "name": "Google Keep",
+        "description": "Open Keep or search your notes.",
+        "url": "https://keep.google.com/",
+        "searchUrl": "https://keep.google.com/#search/text={q}",
+        "category": "google",
+        "example": "gkeep groceries"
+      },
+      {
+        "keys": [
+          "gphotos",
+          "photos"
+        ],
+        "name": "Google Photos",
+        "description": "Open Photos or search your library.",
+        "url": "https://photos.google.com/",
+        "searchUrl": "https://photos.google.com/search/{q}",
+        "category": "google",
+        "example": "gphotos graduation"
+      },
+      {
+        "keys": [
+          "gscholar",
+          "sch",
+          "scholar"
+        ],
+        "name": "Google Scholar",
+        "description": "Search academic papers.",
+        "url": "https://scholar.google.com/",
+        "searchUrl": "https://scholar.google.com/scholar?q={q}",
+        "category": "google",
+        "example": "sch attention is all you need"
+      },
+      {
+        "keys": [
+          "gcontacts",
+          "contacts"
+        ],
+        "name": "Google Contacts",
+        "description": "Open Contacts or search people.",
+        "url": "https://contacts.google.com/",
+        "searchUrl": "https://contacts.google.com/search/{q}",
+        "category": "google",
+        "example": "gcontacts jordan"
+      }
+    ]
+  }
+}

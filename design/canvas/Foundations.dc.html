@@ -1,0 +1,961 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" />
+  <style>
+    body { margin: 0; }
+    a { color: var(--accent-text); }
+    a:hover { color: var(--accent-hover); }
+
+/* BunnyLol design tokens — the single source of truth for the extension's palette,
+ * type scale and metrics. src/options/options.css and src/popup/popup.css @import
+ * this file; tests/tokens.test.ts and scripts/gen-icons.mjs read it. Nothing else
+ * may declare a colour.
+ *
+ * Light and dark are expressed with light-dark() rather than a
+ * prefers-color-scheme media query, so each token is declared exactly once and a
+ * preview harness can render both schemes side by side by setting `color-scheme`
+ * on a wrapper. Chrome 123+; this is an MV3 Chrome extension.
+ *
+ * Surfaces are flat on purpose: there is no shadow token. go.html's toast uses a
+ * 1px border instead of a drop shadow.
+ */
+
+
+:root {
+  color-scheme: light dark;
+
+  /* ---- Surfaces ------------------------------------------------------- */
+  --bg: light-dark(#ffffff, #131312);              /* page and panels */
+  --bg-raised: light-dark(#fafaf9, #1c1c1a);       /* hover fill */
+  --bg-sunken: light-dark(#f2f2f0, #191917);       /* inputs, chips, code, selected row, toolbar */
+
+  /* Hairline separator only — 1.26:1 light. Never the edge of a control. */
+  --border: light-dark(#e5e5e2, #2a2a27);
+  --border-strong: light-dark(#d3d3ce, #3a3a36);
+
+  /* Borders and off-state fills of interactive controls, which WCAG 1.4.11
+   * holds to 3:1 against what surrounds them — --border-strong is 1.5:1.
+   * Verified against the darkest fill it ever sits on, --bg-sunken (3.10:1),
+   * not just --bg (3.48:1): a hovered button swaps its fill for --bg-raised
+   * (3.33:1). Dark: 4.30 on --bg, 3.95 on --bg-raised, 4.07 on --bg-sunken. */
+  --control-border: light-dark(#8a8a82, #7a7a72);
+
+  /* ---- Text ----------------------------------------------------------- */
+  --text: light-dark(#1a1a19, #ececea);            /* 17.42:1 light / 15.72:1 dark on --bg */
+  --text-dim: light-dark(#5b5b57, #a3a39c);        /* 6.82 / 7.33 on --bg; 6.08 / 6.94 on --bg-sunken */
+  --text-faint: light-dark(#6e6e68, #8a8a83);      /* 5.13 / 5.35 on --bg; 4.58 / 5.07 on --bg-sunken */
+
+  /* Purely decorative marks (the status dot, the preview arrow) that carry no
+   * text and are exempt from text contrast. */
+  --text-decor: light-dark(#a3a39c, #6a6a63);
+
+  /* ---- Accent --------------------------------------------------------- */
+  /* Fill only. #e1ab76 is 2.04:1 on white — it can never be text, a focus ring,
+   * or a state indicator in light mode. Use --accent-text for anything that
+   * must be read or must meet 3:1. Declared as a flat hex, not light-dark():
+   * the sand is the brand colour in both schemes, and scripts/gen-icons.mjs
+   * parses this exact declaration to colour the extension icon. */
+  --accent: #e1ab76;
+  --accent-hover: light-dark(#d69b5d, #eab98a);
+
+  /* The readable half of the accent: same hue and saturation at half lightness
+   * in light mode, so it reads as the same colour. 6.26:1 on --bg, 6.00:1 on
+   * --bg-raised, 5.59:1 on --bg-sunken. In dark, the raw sand is already 9.11:1
+   * on --bg and 8.63:1 on --bg-sunken, so dark needs no separate variant. */
+  --accent-text: light-dark(#895420, #e1ab76);
+
+  /* Dark text on the sand fill: 8.53:1. White would be 2.04:1. */
+  --accent-fg: #1a1a1a;
+
+  --ring: var(--accent-text);
+
+  /* ---- Semantic ------------------------------------------------------- */
+  /* No -soft companions: there are no tinted status backgrounds anywhere. */
+  --ok: light-dark(#10794a, #4cc38a);              /* 5.45 / 4.86 light · 8.39 / 7.95 dark */
+  --warn: light-dark(#8a5d09, #d9a441);            /* 5.75 / 5.13 light · 8.27 / 7.83 dark */
+  --danger: light-dark(#b83228, #f0796b);          /* 5.96 / 5.31 light · 6.77 / 6.42 dark */
+  --danger-fg: light-dark(#ffffff, #1b0f0d);       /* armed confirm button only; 5.96:1 on --danger */
+
+  /* ---- Type ----------------------------------------------------------- */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-16: 16px;
+  --fs-20: 20px;
+
+  --lh-tight: 1.3;
+  --lh-body: 1.45;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+
+  /* ---- Radii ---------------------------------------------------------- */
+  --radius-1: 4px;                                 /* chips, badges, sm buttons */
+  --radius-2: 6px;                                 /* inputs, buttons, blocks, toast */
+  --radius-full: 999px;                            /* the switch, and nothing else */
+
+  /* ---- Spacing -------------------------------------------------------- */
+  --sp-1: 2px;
+  --sp-2: 4px;
+  --sp-3: 6px;
+  --sp-4: 8px;
+  --sp-5: 12px;
+  --sp-6: 16px;
+  --sp-7: 20px;
+  --sp-8: 24px;
+  --sp-9: 32px;
+
+  /* ---- Layout --------------------------------------------------------- */
+  --layout-max: 900px;
+  --popup-w: 380px;                                /* a popup that resizes while you type reads as broken */
+  --popup-list-h: 268px;                           /* fixed, not max-height: the box keeps its size as matches come and go */
+  --row-h: 36px;
+  --row-h-popup: 32px;
+  --control-h: 30px;
+  --control-h-sm: 26px;
+  --btn-h: 28px;
+  --btn-h-sm: 24px;
+}
+
+
+/* The approved component vocabulary for the options page. These rules are the
+ * design contract: PR 4 / 10 / 11 implement them in src/options/options.css
+ * against the same class names the existing TypeScript already renders.
+ *
+ * Every value is a token. No shadows, no tinted status surfaces, no color-mix
+ * hairlines, no uppercase headings, no icon glyphs on messages.
+ */
+
+/* ---- Focus ------------------------------------------------------------ */
+/* One global ring. --ring is --accent-text, so it is 6.26:1 in light and
+ * 9.11:1 in dark; the raw sand would have been 2.04:1 and illegal. */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* ---- Topbar and nav --------------------------------------------------- */
+/* Not sticky, not glass: no position: sticky, no backdrop-filter, no
+ * color-mix() background. */
+.topbar {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-inner {
+  max-width: var(--layout-max);
+  margin: 0 auto;
+  padding: var(--sp-5) var(--sp-7) 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-5);
+}
+
+.brand-name {
+  font-size: var(--fs-14);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.01em;
+}
+
+.nav {
+  display: flex;
+  gap: var(--sp-6);
+  width: 100%;
+  padding-top: var(--sp-5);
+}
+
+.nav-link {
+  padding: 0 0 var(--sp-4);
+  border-radius: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-13);
+  font-weight: var(--fw-medium);
+  text-decoration: none;
+  box-shadow: inset 0 -1px 0 transparent;
+}
+
+.nav-link:hover {
+  background: none;
+  color: var(--text);
+}
+
+/* The underline uses --accent-text because a selection indicator is bound by
+ * 1.4.11's 3:1. Colour and weight change together, so the state is never
+ * conveyed by colour alone. */
+.nav-link[aria-current='page'] {
+  color: var(--text);
+  font-weight: var(--fw-semibold);
+  box-shadow: inset 0 -2px 0 var(--accent-text);
+}
+
+/* ---- Status: text plus dot, no capsule -------------------------------- */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  max-width: 48ch;
+  font-size: var(--fs-12);
+  color: var(--text-dim);
+}
+
+/* The dot is the non-textual signal. It is decorative — the text already names
+ * the state — so --text-decor is legal for the neutral case. */
+.status-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--text-decor);
+}
+
+.status-ok .status-dot { background: var(--ok); }
+
+.status-warn { color: var(--warn); font-weight: var(--fw-medium); }
+.status-warn .status-dot { background: var(--warn); }
+
+.status-bad { color: var(--danger); font-weight: var(--fw-medium); }
+.status-bad .status-dot { background: var(--danger); }
+
+.status-detail {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- Shell and panels: flat sections, not cards ----------------------- */
+.shell {
+  max-width: var(--layout-max);
+  margin: 0 auto;
+  padding: var(--sp-8) var(--sp-7) 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.panel {
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+}
+
+.panel:first-child { border-top: 0; }
+
+.panel-head {
+  padding: var(--sp-7) 0 var(--sp-4);
+  border-bottom: 0;
+}
+
+.panel-title { font-size: var(--fs-14); font-weight: var(--fw-semibold); }
+.panel-sub { font-size: var(--fs-12); color: var(--text-dim); max-width: 64ch; }
+
+.panel-body {
+  padding: 0 0 var(--sp-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+/* A transient announcement, not a dimmed control — the opacity transition stays. */
+.saved { font-size: var(--fs-12); color: var(--ok); }
+
+/* ---- Toolbar and counts ----------------------------------------------- */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: var(--sp-4) var(--sp-5);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2);
+  gap: var(--sp-5);
+}
+
+/* tabular-nums stops the count jittering as the filter types. */
+.count {
+  font-size: var(--fs-12);
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Group headers: sentence case ------------------------------------- */
+.group { border-bottom: 0; }
+
+.group-head {
+  display: flex;
+  align-items: center;
+  padding: var(--sp-7) 0 var(--sp-2);
+  gap: var(--sp-3);
+}
+
+.group-title {
+  font-size: var(--fs-12);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-dim);
+}
+
+.group-count {
+  font-size: var(--fs-12);
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.group-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.group-chevron {
+  width: 0;
+  height: 0;
+  border-left: 5px solid var(--text-dim);
+  border-top: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+  transition: transform 120ms ease;
+}
+
+[aria-expanded='true'] .group-chevron { transform: rotate(90deg); }
+
+/* ---- Rows: compact, actions on hover, always keyboard-reachable ------- */
+.row {
+  display: grid;
+  grid-template-columns: minmax(88px, 150px) minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--sp-2) var(--sp-5);
+  min-height: var(--row-h);
+  padding: var(--sp-4) var(--sp-3);
+  border-top: 1px solid var(--border);
+}
+
+.row:hover { background: var(--bg-raised); }
+
+/* Dimmed by colour rather than `opacity: 0.45`, which took this text to
+   1.83:1. The `off` badge, not a wash, is what says the row is turned off. */
+.row.off .row-name,
+.row.off .chip {
+  color: var(--text-dim);
+}
+
+.row.off .row-desc,
+.row.off .row-url {
+  color: var(--text-faint);
+}
+
+.row-keys { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+
+.row-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.row-name { font-size: var(--fs-13); font-weight: var(--fw-medium); }
+.row-desc { font-size: var(--fs-12); color: var(--text-dim); }
+
+.row-url {
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-example { font-size: var(--fs-11); color: var(--text-faint); }
+
+.row-actions { display: flex; align-items: center; gap: var(--sp-2); }
+
+/* opacity, never visibility or display, so the buttons stay in the tab order;
+ * :focus-within reveals them the moment a keyboard reaches them. The switch is
+ * excluded — it conveys state and must always be visible. */
+.row-actions .btn { opacity: 0; transition: opacity 90ms ease; }
+.row:hover .row-actions .btn,
+.row:focus-within .row-actions .btn { opacity: 1; }
+
+@media (hover: none) {
+  .row-actions .btn { opacity: 1; }
+}
+
+/* ---- Keyword chips: 1px outlined mono --------------------------------- */
+.chip {
+  display: inline-block;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-1);
+  background: none;
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+  line-height: 18px;
+  color: var(--text);
+}
+
+/* ---- Badges: lowercase, untinted -------------------------------------- */
+.badge {
+  margin-left: var(--sp-3);
+  font-size: var(--fs-11);
+  font-weight: var(--fw-regular);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-dim);
+  background: none;
+  padding: 0;
+  vertical-align: baseline;
+}
+
+/* Outlined so it is still a visible non-colour marker. */
+.badge-quiet {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-1);
+  padding: 0 var(--sp-2);
+  background: none;
+  color: var(--text-dim);
+}
+
+/* ---- Buttons ---------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--btn-h);
+  padding: 0 var(--sp-4);
+  gap: var(--sp-3);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-2);
+  background: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-13);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+}
+
+.btn:hover { background: var(--bg-raised); }
+
+/* Colour, not opacity — the same discipline the rows use. opacity: 0.5 also
+ * fades the border below 3:1 and cannot be measured. */
+.btn:disabled {
+  color: var(--text-faint);
+  border-color: var(--border-strong);
+  background: none;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.btn-ghost { border-color: transparent; color: var(--text-dim); }
+.btn-ghost:hover { background: var(--bg-raised); color: var(--text); }
+
+/* No tinted border and no red hover wash: the old color-mix(--danger 40%)
+ * border measured 1.94:1. */
+.btn-danger { color: var(--danger); border-color: var(--control-border); background: none; }
+.btn-danger:hover { background: var(--bg-raised); }
+
+.btn-armed {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--danger-fg);
+}
+
+.btn-sm { height: var(--btn-h-sm); padding: 0 var(--sp-3); font-size: var(--fs-12); }
+
+/* ---- Inputs and select ------------------------------------------------ */
+.input,
+.select {
+  height: var(--control-h);
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-2);
+  background: var(--bg-sunken);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-13);
+}
+
+.input.mono { font-family: var(--font-mono); font-size: var(--fs-12); }
+.input.bad { border-color: var(--danger); }
+
+/* One SVG chevron, not two stacked gradients. A data URI cannot resolve
+ * currentColor and light-dark() takes colours, not images, so the stroke is a
+ * single mid grey instead of a light/dark pair: #8a8a82 is 3.10:1 on the light
+ * --bg-sunken and 5.07:1 on the dark one, clearing the 3:1 that WCAG 1.4.11
+ * asks of a control's affordance in both schemes. This is the one place the
+ * palette is inlined; tests/tokens.test.ts pins the hex. */
+.select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%238a8a82' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: right var(--sp-4) center;
+  background-size: 8px 5px;
+  background-repeat: no-repeat;
+  padding-right: var(--sp-8);
+}
+
+/* ---- Switch: flat, kept over a checkbox ------------------------------- */
+/* A switch means "this thing is on or off" (a shortcut). A checkbox means
+ * "include this in a set" (which engines to intercept, which categories to
+ * enable). Do not swap one for the other. */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  font-size: var(--fs-12);
+  color: var(--text-dim);
+}
+
+.switch input {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 28px;
+  height: 16px;
+  margin: 0;
+  border-radius: var(--radius-full);
+  background: var(--control-border);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.switch input::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-full);
+  background: var(--bg);
+  /* The knob is --bg on a --control-border track: 3.48:1 light, but only
+   * 2.4:1 against the sand when checked. The ring guarantees the knob edge
+   * regardless of which track it sits on. */
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 35%);
+  transition: transform 120ms ease;
+}
+
+.switch input:checked { background: var(--accent); }
+.switch input:checked::after { transform: translateX(12px); }
+
+/* ---- Form ------------------------------------------------------------- */
+.form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-6) var(--sp-6);
+}
+
+.field { display: flex; flex-direction: column; gap: var(--sp-2); }
+.field.wide { grid-column: 1 / -1; }
+
+.field-label {
+  font-size: var(--fs-12);
+  font-weight: var(--fw-medium);
+  color: var(--text-dim);
+}
+
+.field-hint { font-size: var(--fs-12); color: var(--text-faint); }
+
+.form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding-top: var(--sp-2);
+}
+
+/* ---- Messages: no bar, no icon, colour plus weight -------------------- */
+.msg { display: block; font-size: var(--fs-12); line-height: var(--lh-body); }
+.msg-error { color: var(--danger); font-weight: var(--fw-medium); }
+.msg-warn { color: var(--warn); }
+.msg-ok { color: var(--ok); }
+
+.msg-list,
+.field-errors { display: flex; flex-direction: column; gap: var(--sp-3); }
+
+.field-errors:empty { display: none; }
+
+/* ---- Preview block ---------------------------------------------------- */
+.preview {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2);
+  background: var(--bg-sunken);
+}
+
+.preview-head { padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--border); }
+
+.preview-head h3 {
+  margin: 0;
+  font-size: var(--fs-12);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-dim);
+}
+
+.preview-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-12);
+}
+
+.preview-row:first-of-type { border-top: 0; }
+
+/* Decorative, exempt from text contrast. */
+.preview-arrow { color: var(--text-decor); }
+
+.preview-url {
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-url.is-fallback { color: var(--warn); }
+
+/* ---- Checkboxes ------------------------------------------------------- */
+.check {
+  display: flex;
+  align-items: flex-start;
+  font-size: var(--fs-13);
+  gap: var(--sp-4);
+  cursor: pointer;
+}
+
+.check input {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+/* ---- Removable chips -------------------------------------------------- */
+.chip-row { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+
+.chip-x {
+  border: 0;
+  border-radius: var(--radius-1);
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--fs-12);
+  line-height: 1;
+  padding: 0 var(--sp-2);
+  cursor: pointer;
+}
+
+.chip-x:hover { background: var(--bg-raised); color: var(--danger); }
+
+/* ---- Import choice ---------------------------------------------------- */
+.import-choice {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-2);
+  background: var(--bg-sunken);
+  padding: var(--sp-5);
+  gap: var(--sp-4);
+}
+
+.import-title { font-size: var(--fs-13); font-weight: var(--fw-medium); }
+.import-line { font-size: var(--fs-12); color: var(--text-dim); }
+
+/* ---- Code block ------------------------------------------------------- */
+.code-block {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2);
+  background: var(--bg-sunken);
+  padding: var(--sp-4) var(--sp-5);
+  overflow-x: auto;
+}
+
+.code-block code { font-family: var(--font-mono); font-size: var(--fs-12); }
+
+/* ---- Danger zone: outlined, no tint ----------------------------------- */
+/* The destructive intent is carried by .btn-danger and by confirmButton's
+ * two-step arm, not by a red box. */
+.danger-zone {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2);
+  background: none;
+  padding: var(--sp-5);
+  gap: var(--sp-4);
+}
+
+.danger-zone p { margin: 0; font-size: var(--fs-12); color: var(--text-dim); max-width: 56ch; }
+
+/* ---- Empty state ------------------------------------------------------ */
+.empty { padding: var(--sp-9) var(--sp-7); font-size: var(--fs-13); color: var(--text-faint); }
+
+
+    .sheet { max-width: 900px; margin: 0 auto; padding: var(--sp-8) var(--sp-7) 96px; display: flex; flex-direction: column; gap: var(--sp-8); }
+    .sec { display: flex; flex-direction: column; gap: var(--sp-5); }
+    .sec + .sec { border-top: 1px solid var(--border); padding-top: var(--sp-8); }
+    .sec-title { margin: 0; font-size: var(--fs-14); font-weight: var(--fw-semibold); }
+    .sec-note { margin: 0; font-size: var(--fs-12); color: var(--text-dim); max-width: 64ch; line-height: var(--lh-body); }
+    .swatches { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-5); }
+    .sw { display: flex; flex-direction: column; gap: var(--sp-2); }
+    .sw-chip { height: 44px; border-radius: var(--radius-1); border: 1px solid var(--border); }
+    .sw-name { font-family: var(--font-mono); font-size: var(--fs-11); color: var(--text); }
+    .sw-note { font-size: var(--fs-11); color: var(--text-faint); line-height: 1.35; }
+    .t-row { display: grid; grid-template-columns: 96px 1fr; gap: var(--sp-5); align-items: baseline; }
+    .t-tok { font-family: var(--font-mono); font-size: var(--fs-11); color: var(--text-faint); }
+    .t-use { font-size: var(--fs-11); color: var(--text-faint); }
+    .strip { display: flex; flex-wrap: wrap; gap: var(--sp-4); align-items: center; }
+    .col { display: flex; flex-direction: column; gap: var(--sp-4); align-items: flex-start; }
+    .is-focus { outline: 2px solid var(--ring); outline-offset: 2px; }
+  </style>
+</helmet>
+<div style="color-scheme: {{scheme}}; background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: var(--fs-13); line-height: var(--lh-body); min-height: 100%; ">
+  <div class="sheet">
+    <div class="sec">
+      <h2 class="sec-title">Surfaces and text</h2>
+      <p class="sec-note">Flat throughout: there is no shadow token. Surfaces are separated by a 1px border or by a sunken fill.</p>
+      <div class="swatches">
+        <div class="sw">
+          <div class="sw-chip" style="background: var(--bg)"></div>
+          <span class="sw-name">--bg</span>
+          <span class="sw-note">Page and panels.</span>
+        </div>
+        <div class="sw">
+          <div class="sw-chip" style="background: var(--bg-raised)"></div>
+          <span class="sw-name">--bg-raised</span>
+          <span class="sw-note">Hover fill.</span>
+        </div>
+        <div class="sw">
+          <div class="sw-chip" style="background: var(--bg-sunken)"></div>
+          <span class="sw-name">--bg-sunken</span>
+          <span class="sw-note">Inputs, chips, selected row.</span>
+        </div>
+        <div class="sw">
+          <div class="sw-chip" style="background: var(--border)"></div>
+          <span class="sw-name">--border</span>
+          <span class="sw-note">1.26:1 &mdash; separator only, never a control edge.</span>
+        </div>
+        <div class="sw">
+          <div class="sw-chip" style="background: var(--border-strong)"></div>
+          <span class="sw-name">--border-strong</span>
+          <span class="sw-note">Heavier separator, disabled edge.</span>
+        </div>
+        <div class="sw">
+          <div class="sw-chip" style="background: var(--control-border)"></div>
+          <span class="sw-name">--control-border</span>
+          <span class="sw-note">Control edges. 3.10:1 on the sunken fill &mdash; clears 1.4.11.</span>
+        </div>
+        <div class="sw">
+          <div class="sw-chip" style="background: var(--text)"></div>
+          <span class="sw-name">--text</span>
+          <span class="sw-note">17.42:1 light, 15.72:1 dark.</span>
+        </div>
+        <div class="sw">
+          <div class="sw-chip" style="background: var(--text-dim)"></div>
+          <span class="sw-name">--text-dim</span>
+          <span class="sw-note">6.82 / 7.33 on the page.</span>
+        </div>
+        <div class="sw">
+          <div class="sw-chip" style="background: var(--text-faint)"></div>
+          <span class="sw-name">--text-faint</span>
+          <span class="sw-note">5.13 / 5.35 on the page.</span>
+        </div>
+        <div class="sw">
+          <div class="sw-chip" style="background: var(--text-decor)"></div>
+          <span class="sw-name">--text-decor</span>
+          <span class="sw-note">Decorative marks only. Exempt.</span>
+        </div>
+      </div>
+    </div>
+    <div class="sec">
+      <h2 class="sec-title">Accent &mdash; one colour, two tokens</h2>
+      <p class="sec-note">#e1ab76 is 2.04:1 on white, so it cannot legally be text, a focus ring or a state indicator in light mode. --accent-text is the same hue and saturation at half lightness (6.26:1); in dark the raw sand is already 9.11:1, so dark needs no separate value.</p>
+      <div class="swatches">
+        <div class="sw">
+          <div class="sw-chip" style="background: var(--accent)"></div>
+          <span class="sw-name">--accent</span>
+          <span class="sw-note">Fill only. Primary button, switch track, icon.</span>
+        </div>
+        <div class="sw">
+          <div class="sw-chip" style="background: var(--accent-hover)"></div>
+          <span class="sw-name">--accent-hover</span>
+          <span class="sw-note">Primary button hover.</span>
+        </div>
+        <div class="sw">
+          <div class="sw-chip" style="background: var(--accent-text)"></div>
+          <span class="sw-name">--accent-text</span>
+          <span class="sw-note">Links, the keyword mark, the nav underline, the focus ring.</span>
+        </div>
+        <div class="sw">
+          <div class="sw-chip" style="background: var(--accent-fg)"></div>
+          <span class="sw-name">--accent-fg</span>
+          <span class="sw-note">Text on the sand fill: 8.53:1. White would be 2.04:1.</span>
+        </div>
+      </div>
+      <div class="swatches">
+        <div class="sw">
+          <div class="sw-chip" style="background: var(--ok)"></div>
+          <span class="sw-name">--ok</span>
+          <span class="sw-note">5.45 light, 8.39 dark.</span>
+        </div>
+        <div class="sw">
+          <div class="sw-chip" style="background: var(--warn)"></div>
+          <span class="sw-name">--warn</span>
+          <span class="sw-note">5.75 light, 8.27 dark.</span>
+        </div>
+        <div class="sw">
+          <div class="sw-chip" style="background: var(--danger)"></div>
+          <span class="sw-name">--danger</span>
+          <span class="sw-note">5.96 light, 6.77 dark.</span>
+        </div>
+        <div class="sw">
+          <div class="sw-chip" style="background: var(--danger-fg)"></div>
+          <span class="sw-name">--danger-fg</span>
+          <span class="sw-note">Armed confirm button only.</span>
+        </div>
+      </div>
+    </div>
+    <div class="sec">
+      <h2 class="sec-title">Type</h2>
+      <p class="sec-note">Inter, bundled as a variable woff2 with a latin unicode-range. Six sizes, three weights. No fractional sizes &mdash; the audit found 13.5px and 12.5px drifting across three stylesheets.</p>
+      <div class="t-row">
+        <span class="t-tok">--fs-20<br />20px</span>
+        <div><div style="font-size: var(--fs-20)">Jump to a repo, a user, or search GitHub.</div><div class="t-use">The welcome heading. Nothing else.</div></div>
+      </div>
+      <div class="t-row">
+        <span class="t-tok">--fs-16<br />16px</span>
+        <div><div style="font-size: var(--fs-16)">Jump to a repo, a user, or search GitHub.</div><div class="t-use">The dispatch error heading.</div></div>
+      </div>
+      <div class="t-row">
+        <span class="t-tok">--fs-14<br />14px</span>
+        <div><div style="font-size: var(--fs-14)">Jump to a repo, a user, or search GitHub.</div><div class="t-use">Wordmark, panel titles, the popup query.</div></div>
+      </div>
+      <div class="t-row">
+        <span class="t-tok">--fs-13<br />13px</span>
+        <div><div style="font-size: var(--fs-13)">Jump to a repo, a user, or search GitHub.</div><div class="t-use">Body. Row names, buttons, inputs, nav.</div></div>
+      </div>
+      <div class="t-row">
+        <span class="t-tok">--fs-12<br />12px</span>
+        <div><div style="font-size: var(--fs-12)">Jump to a repo, a user, or search GitHub.</div><div class="t-use">Descriptions, labels, counts, badges, chips.</div></div>
+      </div>
+      <div class="t-row">
+        <span class="t-tok">--fs-11<br />11px</span>
+        <div><div style="font-size: var(--fs-11)">Jump to a repo, a user, or search GitHub.</div><div class="t-use">URLs, examples, the popup footer.</div></div>
+      </div>
+      <div class="t-row"><span class="t-tok">--font-mono</span><div><div style="font-family: var(--font-mono); font-size: var(--fs-12)">gh &middot; claude &middot; gcal &middot; https://github.com/search?q=%s</div><div class="t-use">Keyword chips, destinations, the popup key column, the export block.</div></div></div>
+    </div>
+    <div class="sec">
+      <h2 class="sec-title">Buttons</h2>
+      <p class="sec-note">Four families, one filled. Disabled dims by colour, not opacity &mdash; opacity: 0.5 also fades the border below 3:1 and cannot be measured. The focus ring is shown forced on.</p>
+      <div class="strip">
+        <button class="btn btn-primary" type="button">Save shortcut</button>
+        <button class="btn" type="button">Cancel</button>
+        <button class="btn btn-ghost" type="button">Reset</button>
+        <button class="btn btn-danger" type="button">Delete</button>
+        <button class="btn btn-armed" type="button">Really delete?</button>
+      </div>
+      <div class="strip">
+        <button class="btn btn-sm btn-ghost" type="button">Edit</button>
+        <button class="btn btn-sm" type="button">Restore</button>
+        <button class="btn btn-primary" type="button" disabled>Save shortcut</button>
+        <button class="btn" type="button" disabled>Import</button>
+        <button class="btn btn-primary is-focus" type="button">Save shortcut</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2 class="sec-title">Inputs and controls</h2>
+      <p class="sec-note">A switch means &ldquo;this thing is on or off&rdquo; (a shortcut). A checkbox means &ldquo;include this in a set&rdquo; (which engines to intercept, which packs to enable). They are not interchangeable.</p>
+      <div class="col" style="width: 100%">
+        <input class="input" style="width: 100%" value="GitHub" aria-label="Name" />
+        <input class="input mono" style="width: 100%" value="https://github.com/search?q=%s" aria-label="Search URL" />
+        <input class="input mono bad" style="width: 100%" value="git hub" aria-label="Keys" />
+        <span class="msg msg-error">A keyword cannot contain a space. Separate keywords with a comma.</span>
+        <select class="select" style="width: 100%" aria-label="Section">
+          <option>My shortcuts</option>
+          <option selected>Developer</option>
+          <option>New section&hellip;</option>
+        </select>
+      </div>
+      <div class="strip">
+        <label class="switch"><input type="checkbox" checked aria-label="on" /> <span>on</span></label>
+        <label class="switch"><input type="checkbox" aria-label="off" /> <span>off</span></label>
+        <label class="check"><input type="checkbox" checked /> <span>Intercept Google</span></label>
+        <label class="check"><input type="checkbox" /> <span>Intercept Bing</span></label>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2 class="sec-title">Status and messages</h2>
+      <p class="sec-note">Text plus a 6px dot &mdash; no capsule, no background, no radius. Messages carry no coloured bar and no icon: colour plus weight is the tone, the wording is the meaning.</p>
+      <div class="col">
+        <span class="status"><span class="status-dot"></span><span>Checking interception&hellip;</span></span>
+        <span class="status status-ok"><span class="status-dot"></span><span>All 14 keywords are intercepted.</span></span>
+        <span class="status status-warn"><span class="status-dot"></span><span>11 of 14 keywords are intercepted.</span></span>
+        <span class="status status-bad"><span class="status-dot"></span><span>Could not write the redirect rules.</span></span>
+      </div>
+      <div class="msg-list">
+        <span class="msg msg-error">&ldquo;gh&rdquo; is already used by GitHub. Pick another keyword or edit GitHub instead.</span>
+        <span class="msg msg-warn">This URL has no %s, so words typed after the keyword are dropped.</span>
+        <span class="msg msg-ok">Imported 14 shortcuts and 2 sections.</span>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2 class="sec-title">Chips and badges</h2>
+      <p class="sec-note">Keyword chips are outlined mono. Badges are lowercase and untinted; &ldquo;off&rdquo; and &ldquo;omnibox only&rdquo; keep an outline so they stay a visible non-colour marker.</p>
+      <div class="strip">
+        <span class="chip">gh</span><span class="chip">github</span><span class="chip">wiki</span>
+        <span class="badge">yours</span><span class="badge">modified</span>
+        <span class="badge badge-quiet">off</span><span class="badge badge-quiet">omnibox only</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      scheme: this.props.theme ?? 'light',
+    };
+  }
+}
+</script>
+</body>
+</html>

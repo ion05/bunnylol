@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { AI_PROVIDERS, HANDLERS, aiUrl } from '../src/lib/handlers';
+import { BUILTIN_COMMANDS } from '../src/lib/commands';
+import { AI_PROVIDERS, CARRIERS, HANDLERS, aiUrl, detectCarrier } from '../src/lib/handlers';
 import { DEFAULT_SETTINGS } from '../src/lib/types';
 import type { Command, HandlerId, Settings } from '../src/lib/types';
 
@@ -25,6 +26,7 @@ const ALL_HANDLER_IDS: HandlerId[] = [
   'zoom',
   'meet',
   'tracking',
+  'track',
   'instagram',
   'whatsapp',
   'word',
@@ -44,6 +46,17 @@ function cmd(keys: string[], url: string, handler?: HandlerId): Command {
     category: 'custom',
     builtin: false,
   };
+}
+
+/**
+ * The shipped row, not a lookalike. These handlers now read `url` and
+ * `searchUrl` off the command, so a hand-built fixture can agree with the
+ * handler while the registry it is meant to stand for does not.
+ */
+function builtin(key: string): Command {
+  const found = BUILTIN_COMMANDS.find((command) => command.keys.includes(key));
+  if (!found) throw new Error(`no builtin ${key}`);
+  return found;
 }
 
 const GH = cmd(['gh', 'github'], 'https://github.com/', 'github');
@@ -308,29 +321,108 @@ describe('microsoft handlers', () => {
 
 describe('purdue handlers', () => {
   it('brightspace deep-links a numeric org unit only', () => {
-    const bs = cmd(['bs'], 'https://purdue.brightspace.com/d2l/home', 'brightspace');
+    const bs = builtin('bs');
     expect(HANDLERS.brightspace('123456', bs, settings())).toBe('https://purdue.brightspace.com/d2l/home/123456');
     expect(HANDLERS.brightspace('', bs, settings())).toBe('https://purdue.brightspace.com/d2l/home');
   });
 
   it('brightspace sends non-numeric arguments to a purdue.edu search', () => {
-    const bs = cmd(['bs'], 'https://purdue.brightspace.com/d2l/home', 'brightspace');
-    expect(HANDLERS.brightspace('in nursing programs', bs, settings())).toBe(
+    expect(HANDLERS.brightspace('in nursing programs', builtin('bs'), settings())).toBe(
       'https://www.google.com/search?q=site%3Apurdue.edu+in%20nursing%20programs',
     );
   });
 
   it('gradescope deep-links a numeric course only', () => {
-    const gs = cmd(['gs'], 'https://www.gradescope.com/', 'gradescope');
+    const gs = builtin('gs');
     expect(HANDLERS.gradescope('987654', gs, settings())).toBe('https://www.gradescope.com/courses/987654');
     expect(HANDLERS.gradescope('', gs, settings())).toBe('https://www.gradescope.com/');
   });
 
   it('gradescope sends non-numeric arguments to a gradescope.com search', () => {
-    const gs = cmd(['gs'], 'https://www.gradescope.com/', 'gradescope');
-    expect(HANDLERS.gradescope('pay scale 2026', gs, settings())).toBe(
+    expect(HANDLERS.gradescope('pay scale 2026', builtin('gs'), settings())).toBe(
       'https://www.google.com/search?q=site%3Agradescope.com+pay%20scale%202026',
     );
+  });
+
+  // Brightspace and Gradescope are multi-tenant, so nothing about the school is
+  // allowed to live in the handler: a user who repoints the row at their own
+  // institution must keep both the deep link and the degrade.
+  it('brightspace follows an edited url to another institution', () => {
+    const bs: Command = { ...builtin('bs'), url: 'https://iu.brightspace.com/d2l/home', searchUrl: undefined };
+    expect(HANDLERS.brightspace('4242', bs, settings())).toBe('https://iu.brightspace.com/d2l/home/4242');
+    expect(HANDLERS.brightspace('cs251', bs, settings())).toBe(
+      'https://www.google.com/search?q=site%3Abrightspace.com+cs251',
+    );
+  });
+
+  it('gradescope follows an edited url to another institution', () => {
+    const gs: Command = { ...builtin('gs'), url: 'https://gradescope.example.edu/', searchUrl: undefined };
+    expect(HANDLERS.gradescope('7', gs, settings())).toBe('https://gradescope.example.edu/courses/7');
+    expect(HANDLERS.gradescope('rubric', gs, settings())).toBe(
+      'https://www.google.com/search?q=site%3Aexample.edu+rubric',
+    );
+  });
+
+  it('sends the words to an edited searchUrl rather than a site: search', () => {
+    const gs: Command = { ...builtin('gs'), searchUrl: 'https://example.test/find?q={q}' };
+    expect(HANDLERS.gradescope('pay scale', gs, settings())).toBe('https://example.test/find?q=pay%20scale');
+  });
+
+  it('builds a clean deep link from a url carrying a query or fragment', () => {
+    const bs: Command = { ...builtin('bs'), url: 'https://x.test/d2l/home?a=1#z' };
+    expect(HANDLERS.brightspace('9', bs, settings())).toBe('https://x.test/d2l/home/9');
+  });
+
+  // The deep link hangs off the tenant's ORIGIN, not off whatever path the row
+  // happens to carry: a bare origin is the most natural thing to paste, and a
+  // row left pointing at a login or dashboard path must not turn the product's
+  // own path into `/d2l/login/12345`.
+  it('deep-links off the origin whatever path the edited url carries', () => {
+    const bare: Command = { ...builtin('bs'), url: 'https://school.brightspace.com' };
+    expect(HANDLERS.brightspace('12345', bare, settings())).toBe(
+      'https://school.brightspace.com/d2l/home/12345',
+    );
+    const login: Command = { ...builtin('bs'), url: 'https://school.brightspace.com/d2l/login' };
+    expect(HANDLERS.brightspace('12345', login, settings())).toBe(
+      'https://school.brightspace.com/d2l/home/12345',
+    );
+    const account: Command = { ...builtin('gs'), url: 'https://www.gradescope.com/account' };
+    expect(HANDLERS.gradescope('7', account, settings())).toBe('https://www.gradescope.com/courses/7');
+    const courses: Command = { ...builtin('gs'), url: 'https://www.gradescope.com/courses' };
+    expect(HANDLERS.gradescope('7', courses, settings())).toBe('https://www.gradescope.com/courses/7');
+  });
+
+  // `validateUrlTemplate` parses with `new URL`, which accepts a special
+  // scheme's single slash, and stores the string verbatim, so a url that made
+  // it past import has to deep-link, not degrade to the landing page.
+  it('deep-links from a url whose scheme carries one slash, as stored', () => {
+    const bs: Command = { ...builtin('bs'), url: 'https:/school.brightspace.com/d2l/home' };
+    expect(HANDLERS.brightspace('12345', bs, settings())).toBe(
+      'https://school.brightspace.com/d2l/home/12345',
+    );
+    // The degrade reads the same field, so it has to read it the same way: a
+    // host matched out of this string is `https:`.
+    expect(HANDLERS.brightspace('cs251', { ...bs, searchUrl: undefined }, settings())).toBe(
+      'https://www.google.com/search?q=site%3Abrightspace.com+cs251',
+    );
+  });
+
+  // A port is part of the authority but not part of the site, and `site:` takes
+  // a host: a tenant on a non-default port must not degrade to `site:x.test:8443`.
+  it('degrades to the host of a url carrying a port, without the port', () => {
+    const gs: Command = { ...builtin('gs'), url: 'https://gradescope.test:8443/', searchUrl: undefined };
+    expect(HANDLERS.gradescope('7', gs, settings())).toBe('https://gradescope.test:8443/courses/7');
+    expect(HANDLERS.gradescope('rubric', gs, settings())).toBe(
+      'https://www.google.com/search?q=site%3Agradescope.test+rubric',
+    );
+  });
+
+  // `expandTemplate` treats a placeholder-less template as a bare destination
+  // and appends `?q=`, and `validateUrlTemplate` lets one through, so these
+  // handlers must not be the one place that throws the user's endpoint away.
+  it('sends the words to a searchUrl that carries no placeholder', () => {
+    const bs: Command = { ...builtin('bs'), searchUrl: 'https://x.test/find' };
+    expect(HANDLERS.brightspace('foo bar', bs, settings())).toBe('https://x.test/find?q=foo%20bar');
   });
 });
 
@@ -428,11 +520,6 @@ describe('ai handler', () => {
     expect(ai('hi', providerCmd('c', 'chatgpt'), settings())).toBe('https://chatgpt.com/?q=hi');
   });
 
-  it('accepts a provider id or a legacy alias as the default AI', () => {
-    expect(ai('hi', aiCmd('?'), settings({ defaultAi: 'chatgpt' }))).toBe('https://chatgpt.com/?q=hi');
-    expect(ai('hi', aiCmd('?'), settings({ defaultAi: 'gpt' }))).toBe('https://chatgpt.com/?q=hi');
-  });
-
   it('dispatches on the command canonical key', () => {
     expect(ai('hi', aiCmd('c'), settings())).toBe('https://claude.ai/new?q=hi');
     expect(ai('hi', aiCmd('gpt'), settings())).toBe('https://chatgpt.com/?q=hi');
@@ -444,17 +531,17 @@ describe('ai handler', () => {
     expect(ai('', aiCmd('gpt'), settings())).toBe('https://chatgpt.com/');
   });
 
-  it('routes ? to the configured default AI', () => {
-    expect(ai('hi', aiCmd('?'), settings({ defaultAi: 'gpt' }))).toBe('https://chatgpt.com/?q=hi');
-    expect(ai('hi', aiCmd('?'), settings({ defaultAi: 'gemini' }))).toBe(
-      'https://www.google.com/search?udm=50&q=hi',
+  // There is no configured default any more, so a command that names neither a
+  // provider nor a known alias has to land somewhere rather than throw
+  // (invariant 12). The first shipped provider is that somewhere.
+  it('falls back to the first provider when nothing selects one', () => {
+    const first = AI_PROVIDERS[0];
+    expect(ai('hi', aiCmd('?'), settings())).toBe(first.template.replace('{q}', 'hi'));
+    expect(ai('hi', aiCmd('nonesuch'), settings())).toBe(first.template.replace('{q}', 'hi'));
+    expect(ai('hi', providerCmd('ai', 'nonesuch'), settings())).toBe(
+      first.template.replace('{q}', 'hi'),
     );
-  });
-
-  it('does not loop when the default AI points back at ?', () => {
-    expect(ai('hi', aiCmd('?'), settings({ defaultAi: '?' }))).toBe('https://claude.ai/new?q=hi');
-    expect(ai('hi', aiCmd('?'), settings({ defaultAi: 'nonesuch' }))).toBe('https://claude.ai/new?q=hi');
-    expect(ai('hi', aiCmd('?'), settings({ defaultAi: '' }))).toBe('https://claude.ai/new?q=hi');
+    expect(ai('', aiCmd('?'), settings())).toBe(first.home);
   });
 });
 
@@ -533,6 +620,64 @@ describe('shape-guarded slots', () => {
     );
   });
 
+  describe('track: one keyword, the carrier read off the number', () => {
+    const TRACK = builtin('track');
+
+    it.each([
+      ['1Z999AA10123456784', 'ups', 'https://www.ups.com/track?tracknum=1Z999AA10123456784'],
+      [
+        '9400111899223197428490',
+        'usps',
+        'https://tools.usps.com/go/TrackConfirmAction?tLabels=9400111899223197428490',
+      ],
+      ['92001903432200000000000000', 'usps', 'https://tools.usps.com/go/TrackConfirmAction?tLabels=92001903432200000000000000'],
+      ['EC123456789US', 'usps', 'https://tools.usps.com/go/TrackConfirmAction?tLabels=EC123456789US'],
+      ['123456789012', 'fedex', 'https://www.fedex.com/wtrk/track/?trknbr=123456789012'],
+      ['123456789012345', 'fedex', 'https://www.fedex.com/wtrk/track/?trknbr=123456789012345'],
+      ['9612019000000000000000', 'fedex', 'https://www.fedex.com/wtrk/track/?trknbr=9612019000000000000000'],
+      ['1234567890', 'dhl', 'https://www.dhl.com/global-en/home/tracking.html?tracking-id=1234567890'],
+      ['JD014600006281011111', 'dhl', 'https://www.dhl.com/global-en/home/tracking.html?tracking-id=JD014600006281011111'],
+    ])('routes %s to %s', (number, carrier, url) => {
+      expect(detectCarrier(number)?.id).toBe(carrier);
+      expect(HANDLERS.track(number, TRACK, settings(), 'track')).toBe(url);
+    });
+
+    it('accepts the spaces and dashes a label prints, and lowercase', () => {
+      expect(HANDLERS.track('1z999aa1 0123 4567-84', TRACK, settings(), 'track')).toBe(
+        'https://www.ups.com/track?tracknum=1Z999AA10123456784',
+      );
+      expect(HANDLERS.track('9400 1118 9922 3197 4284 90', TRACK, settings(), 'track')).toBe(
+        'https://tools.usps.com/go/TrackConfirmAction?tLabels=9400111899223197428490',
+      );
+    });
+
+    it('decides the overlapping 20-digit shape by its first digit', () => {
+      expect(detectCarrier('94001118992231974284')?.id).toBe('usps');
+      expect(detectCarrier('74001118992231974284')?.id).toBe('fedex');
+    });
+
+    it('searches for anything no carrier recognises instead of guessing', () => {
+      expect(HANDLERS.track('where is my parcel', TRACK, settings(), 'track')).toBe(
+        'https://www.google.com/search?q=track%20where%20is%20my%20parcel',
+      );
+      expect(HANDLERS.track('12345', TRACK, settings(), 'track')).toBe(
+        'https://www.google.com/search?q=track%2012345',
+      );
+      expect(detectCarrier('hourstodaynearme')).toBeNull();
+    });
+
+    it('lands on the bare page with no number', () => {
+      expect(HANDLERS.track('', TRACK, settings(), 'track')).toBe(TRACK.url);
+    });
+
+    it('routes through the same templates the carrier shortcuts use', () => {
+      for (const carrier of CARRIERS) {
+        const cmd = BUILTIN_COMMANDS.find((entry) => entry.keys[0] === carrier.id);
+        expect(cmd?.searchUrl, carrier.id).toBe(carrier.template);
+      }
+    });
+  });
+
   it('starts a whatsapp chat only for a phone number', () => {
     expect(HANDLERS.whatsapp('+1 (555) 123-4567', WA, settings())).toBe('https://wa.me/15551234567');
     expect(HANDLERS.whatsapp('web login qr code', WA, settings())).toBe(
@@ -578,7 +723,7 @@ describe('github repo sub-commands', () => {
   });
 
   it('opens a numbered item, using the path segment that item actually has', () => {
-    // GitHub lists at /pulls but addresses one at /pull/123 — the mapping
+    // GitHub lists at /pulls but addresses one at /pull/123: the mapping
     // cannot just append the number to the tab.
     expect(gh('facebook/react pr 123')).toBe('https://github.com/facebook/react/pull/123');
     expect(gh('facebook/react i 456')).toBe('https://github.com/facebook/react/issues/456');

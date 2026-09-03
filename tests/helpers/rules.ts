@@ -2,11 +2,14 @@
  * Test scaffolding shared by the rule suites.
  *
  * Two things live here. `installChromeStub` is a `chrome` object complete
- * enough to run the REAL `syncRules()` in Node — storage, the dynamic-rule
- * table and `isRegexSupported` — so the production path can be tested instead
- * of the pure `buildRules` mirror of it. `claim`/`redirectTo` replay Chrome's
- * own matching against a rule set, so a test can ask what the browser would
- * actually do with a url rather than trusting a rule count.
+ * enough to run the REAL `syncRules()` in Node, storage, the dynamic-rule
+ * table and `isRegexSupported`, so the production path can be tested instead
+ * of the pure `buildRules` mirror of it. It also counts local writes and
+ * records `tabs.create` / `openOptionsPage`, which is what lets the install
+ * branch be driven end to end here rather than reasoned about.
+ * `claim`/`redirectTo` replay Chrome's own matching against a rule set, so a
+ * test can ask what the browser would actually do with a url rather than
+ * trusting a rule count.
  *
  * Not a suite: vitest only collects files ending in `.test.ts`.
  */
@@ -23,6 +26,17 @@ export interface ChromeStub {
   probed: string[];
   /** How many times `updateDynamicRules` was called. */
   updates: number;
+  /** How many times `chrome.storage.local.set` was called: "did that path
+   *  write" is a question the install branch has to be able to answer. */
+  writes: number;
+  /** The urls handed to `chrome.tabs.create`, in order. */
+  opened: string[];
+  /** How many times `chrome.runtime.openOptionsPage` was called. */
+  optionsPages: number;
+  /** Every storage call, in order, as `<area>.<verb> <key>`. A count cannot
+   *  answer "was the stale status cleared BEFORE the new one was written",
+   *  which is the whole question for a path that resets and then re-syncs. */
+  ops: string[];
   restore(): void;
 }
 
@@ -40,6 +54,18 @@ export interface StubOptions {
    * successful sync are still live afterwards.
    */
   rejectUpdate?: (call: number, update: DynamicRuleUpdate) => string | null;
+  /**
+   * Chrome's own duplicate-id check: an add whose id is still present once
+   * `removeRuleIds` have been applied is refused, and, like every refusal,
+   * the whole call is refused WITHOUT CHANGING THE TABLE.
+   *
+   * Off by default, because it only matters for the suites that drive more
+   * than one rebuild at a time.
+   */
+  strictIds?: boolean;
+  /** A Chrome that refuses to open a tab, which is the only way to reach the
+   *  `openOptionsPage` fallback. */
+  rejectTabsCreate?: boolean;
   extensionId?: string;
 }
 
@@ -60,21 +86,49 @@ export function installChromeStub(options: StubOptions = {}): ChromeStub {
     rules: () => dynamic,
     probed: [],
     updates: 0,
+    writes: 0,
+    opened: [],
+    optionsPages: 0,
+    ops: [],
     restore: () => {
       globals.chrome = previous;
     },
   };
 
-  const area = (bag: Map<string, unknown>) => ({
+  const area = (name: string, bag: Map<string, unknown>, counted = false) => ({
     get: async (key: string) => (bag.has(key) ? { [key]: bag.get(key) } : {}),
     set: async (values: Record<string, unknown>) => {
-      for (const [key, value] of Object.entries(values)) bag.set(key, value);
+      if (counted) stub.writes += 1;
+      for (const [key, value] of Object.entries(values)) {
+        stub.ops.push(`${name}.set ${key}`);
+        bag.set(key, value);
+      }
+    },
+    remove: async (keys: string | string[]) => {
+      for (const key of Array.isArray(keys) ? keys : [keys]) {
+        stub.ops.push(`${name}.remove ${key}`);
+        bag.delete(key);
+      }
     },
   });
 
+  const extensionId = options.extensionId ?? EXT_ID;
+
   const chromeStub = {
-    runtime: { id: options.extensionId ?? EXT_ID },
-    storage: { local: area(local), session: area(session) },
+    runtime: {
+      id: extensionId,
+      getURL: (path: string) => `chrome-extension://${extensionId}/${path.replace(/^\//, '')}`,
+      openOptionsPage: async () => {
+        stub.optionsPages += 1;
+      },
+    },
+    tabs: {
+      create: async (info: { url?: string }) => {
+        if (options.rejectTabsCreate) throw new Error('Tabs cannot be created right now.');
+        stub.opened.push(info.url ?? '');
+      },
+    },
+    storage: { local: area('local', local, true), session: area('session', session) },
     declarativeNetRequest: {
       getDynamicRules: async () => [...dynamic],
       updateDynamicRules: async (update: DynamicRuleUpdate) => {
@@ -82,7 +136,14 @@ export function installChromeStub(options: StubOptions = {}): ChromeStub {
         const refusal = options.rejectUpdate?.(stub.updates, update) ?? null;
         if (refusal) throw new Error(refusal);
         const removed = new Set(update.removeRuleIds ?? []);
-        dynamic = [...dynamic.filter((rule) => !removed.has(rule.id)), ...(update.addRules ?? [])];
+        const survivors = dynamic.filter((rule) => !removed.has(rule.id));
+        if (options.strictIds) {
+          const taken = new Set(survivors.map((rule) => rule.id));
+          for (const rule of update.addRules ?? []) {
+            if (taken.has(rule.id)) throw new Error(`Rule with id ${rule.id} already exists.`);
+          }
+        }
+        dynamic = [...survivors, ...(update.addRules ?? [])];
       },
       isRegexSupported: async (check: { regex: string }) => {
         stub.probed.push(check.regex);
@@ -115,7 +176,7 @@ export function priorityOf(rule: chrome.declarativeNetRequest.Rule): number {
  * wins, and `allow` beats `redirect` at equal priority. `null` when no rule
  * matches at all.
  *
- * A redirect rule's regex can still *match* one of our own marked searches —
+ * A redirect rule's regex can still *match* one of our own marked searches:
  * `blpass=1` sits past the end of the captured `q` value, where the pattern
  * happily swallows it as a trailing parameter. What makes the marker work is
  * the higher-priority allow rule claiming the url first, so "no redirect rule
@@ -173,7 +234,7 @@ export function escapeRulesOf(
   return rules.filter(isEscapeRule);
 }
 
-/** Redirect rules built from the keyword alternation — the escape rules excluded. */
+/** Redirect rules built from the keyword alternation: the escape rules excluded. */
 export function keywordRulesOf(
   rules: chrome.declarativeNetRequest.Rule[],
 ): chrome.declarativeNetRequest.Rule[] {

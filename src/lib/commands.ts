@@ -1,4 +1,4 @@
-import type { Command, SearchEngine } from './types';
+import type { BuiltinCommand, Command, SearchEngine } from './types';
 
 /**
  * Sites that expose no stable public search endpoint (login-walled apps,
@@ -16,7 +16,7 @@ function siteSearch(host: string): string {
  */
 const OPTIONS_PAGE = 'options.html';
 
-export const BUILTIN_COMMANDS: Command[] = [
+export const BUILTIN_COMMANDS: BuiltinCommand[] = [
   // ---------------------------------------------------------------- ai ----
   {
     keys: ['c', 'claude'],
@@ -61,16 +61,6 @@ export const BUILTIN_COMMANDS: Command[] = [
     category: 'ai',
     builtin: true,
     example: 'cc add a retry to the fetch helper',
-  },
-  {
-    keys: ['?'],
-    name: 'Default AI',
-    description: 'Send the prompt to whichever AI is set as default in settings.',
-    url: 'https://claude.ai/new',
-    handler: 'ai',
-    category: 'ai',
-    builtin: true,
-    example: '? what is a merkle tree',
   },
   {
     keys: ['grok'],
@@ -271,11 +261,20 @@ export const BUILTIN_COMMANDS: Command[] = [
   },
 
   // ------------------------------------------------------------ purdue ----
+  // For these two rows `url` is the HOST, not just a destination. Brightspace
+  // and Gradescope are multi-tenant products, so their handlers derive both the
+  // deep link and the `site:` degrade from `url` and `searchUrl`: editing them
+  // re-targets the command at another institution without touching any code.
+  // Hosts that ARE a handler's identity stay literal in `handlers.ts`
+  // instead: github.com, reddit.com, npmjs.com.
   {
     keys: ['bs', 'brightspace', 'd2l'],
     name: 'Purdue Brightspace',
     description: 'Purdue course pages in Brightspace.',
     url: 'https://purdue.brightspace.com/d2l/home',
+    // The D2L host is login-walled, but Purdue's course and Brightspace pages on
+    // purdue.edu are indexed: the same fallback `boilerconnect` already uses.
+    searchUrl: siteSearch('purdue.edu'),
     handler: 'brightspace',
     category: 'purdue',
     builtin: true,
@@ -286,6 +285,7 @@ export const BUILTIN_COMMANDS: Command[] = [
     name: 'Gradescope',
     description: 'Gradescope courses and assignments.',
     url: 'https://www.gradescope.com/',
+    searchUrl: siteSearch('gradescope.com'),
     handler: 'gradescope',
     category: 'purdue',
     builtin: true,
@@ -565,6 +565,16 @@ export const BUILTIN_COMMANDS: Command[] = [
     example: 'ebay thinkpad x1',
   },
   {
+    keys: ['gr', 'goodreads'],
+    name: 'Goodreads',
+    description: 'Search books and reviews.',
+    url: 'https://www.goodreads.com/',
+    searchUrl: 'https://www.goodreads.com/search?q={q}',
+    category: 'search',
+    builtin: true,
+    example: 'gr project hail mary',
+  },
+  {
     keys: ['hn', 'hackernews'],
     name: 'Hacker News',
     description: 'Search Hacker News via Algolia.',
@@ -730,8 +740,6 @@ export const BUILTIN_COMMANDS: Command[] = [
     builtin: true,
     example: 'whatsapp 15551234567',
   },
-
-  // ------------------------------------------------------------- media ----
 
   // ------------------------------------------------------ productivity ----
   {
@@ -934,6 +942,29 @@ export const BUILTIN_COMMANDS: Command[] = [
     builtin: true,
     example: 'usps 9400111899223197428490',
   },
+  {
+    keys: ['dhl'],
+    name: 'DHL Tracking',
+    description: 'Track a DHL shipment.',
+    url: 'https://www.dhl.com/global-en/home/tracking.html',
+    searchUrl: 'https://www.dhl.com/global-en/home/tracking.html?tracking-id={q}',
+    handler: 'tracking',
+    category: 'productivity',
+    builtin: true,
+    example: 'dhl 1234567890',
+  },
+  {
+    keys: ['track', 'pkg'],
+    name: 'Track a package',
+    description: 'Paste any tracking number; the carrier (UPS, USPS, FedEx or DHL) is read off its shape.',
+    // A bare `track` has no carrier to go to, so it lands on the one page that
+    // accepts every carrier's number.
+    url: 'https://parcelsapp.com/',
+    handler: 'track',
+    category: 'productivity',
+    builtin: true,
+    example: 'track 1Z999AA10123456784 -> ups.com',
+  },
 
   // -------------------------------------------------------------- meta ----
   {
@@ -959,7 +990,7 @@ export const BUILTIN_COMMANDS: Command[] = [
   {
     keys: ['set', 'settings', 'opts'],
     name: 'BunnyLol settings',
-    description: 'Default engine, default AI, GitHub user, interception.',
+    description: 'Default engine, GitHub user, interception.',
     url: `${OPTIONS_PAGE}#settings`,
     handler: 'meta',
     category: 'meta',
@@ -988,3 +1019,37 @@ export const SEARCH_ENGINES: SearchEngine[] = [
     urlPrefixPattern: '^https://duckduckgo\\.com/\\?(?:[^#]*&)?q=',
   },
 ];
+
+const SEARCH_ENGINE_HOSTS = new Set(SEARCH_ENGINES.map((engine) => engine.host));
+
+/**
+ * True for a template that runs on a search engine: a `site:` degrade for a
+ * login-walled destination, not a page on the command's own site.
+ */
+function isEngineSearch(template: string): boolean {
+  try {
+    return SEARCH_ENGINE_HOSTS.has(new URL(template).hostname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Which of a command's two urls to advertise as "where this goes": the search
+ * template when there is one, because that is where the keyword goes once it
+ * has arguments.
+ *
+ * Except when a handler owns the arguments AND its template is a plain web
+ * search: `bs 12345` opens a course on the Brightspace the row itself points
+ * at, and `site:purdue.edu` is only what the words degrade to. Showing that
+ * search would hide `url`, the one field a user at another institution has to
+ * edit, from the list they would look in for it.
+ *
+ * It lives beside the registry rather than in the options page because it is a
+ * fact about the rows, and because the options page has no test suite.
+ */
+export function destinationOf(cmd: Command): string {
+  const search = cmd.searchUrl;
+  if (!search) return cmd.url;
+  return cmd.handler && isEngineSearch(search) ? cmd.url : search;
+}

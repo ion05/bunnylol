@@ -1,0 +1,59 @@
+name: Bug report
+description: Something resolves to the wrong place, or not at all
+labels: [bug]
+body:
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: e.g. Chrome 131, Brave 1.72
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: BunnyLol version
+      description: Shown on chrome://extensions
+    validations:
+      required: true
+  - type: input
+    id: typed
+    attributes:
+      label: What you typed
+      description: Exactly what you typed in the address bar
+    validations:
+      required: true
+  - type: textarea
+    id: expected_actual
+    attributes:
+      label: Expected vs. actual
+      description: What you expected to happen, and what happened instead
+    validations:
+      required: true
+  - type: input
+    id: rule_status
+    attributes:
+      label: Rule status
+      description: >-
+        The rule-status text at the top of the options page, copied verbatim
+        (e.g. "Intercepting 148 keywords · 2 exempted by you")
+    validations:
+      required: true
+  - type: textarea
+    id: console
+    attributes:
+      label: Service worker console
+      description: >-
+        Any errors from the service worker console (chrome://extensions ->
+        Inspect views: service worker)
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: >-
+            I tried the escape prefix (`\` or `=`) and the behaviour still
+            looks wrong.
+          required: true

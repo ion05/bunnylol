@@ -1,0 +1,256 @@
+<!-- @dsCard group="Patterns" -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Settings</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../components.css" />
+    <link rel="stylesheet" href="../preview.css" />
+  </head>
+  <body>
+    <main class="sheet screens">
+      <header class="sheet-head">
+        <h1 class="sheet-title">Settings</h1>
+        <p class="sheet-note">Sections, packs, restore, engines and data on one route. The danger zone is outlined, not tinted — the intent is carried by the button and its two-step arm.</p>
+      </header>
+      <div class="pair stack">
+        <section class="scheme">
+          <div class="scheme-label">Light</div>
+          <div class="scheme-body flush">
+              <header class="topbar">
+                <div class="topbar-inner">
+                  <div class="brand"><h1 class="brand-name">BunnyLol</h1></div>
+                  <span class="status status-ok"><span class="status-dot"></span><span>All 14 keywords are intercepted.</span></span>
+                  <nav class="nav" aria-label="Sections">
+                    <a class="nav-link" href="#help">Shortcuts</a>
+                    <a class="nav-link" href="#new">New shortcut</a>
+                    <a class="nav-link" aria-current="page" href="#settings">Settings</a>
+                  </nav>
+                </div>
+              </header>
+              <div class="shell">
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2 class="panel-title">Sections</h2>
+                    <p class="panel-sub">Rename any section, or make your own. Deleting one moves everything in it to My shortcuts &mdash; nothing is lost.</p>
+                  </div>
+                  <div class="panel-body">
+                    <div class="row">
+                      <div class="row-body"><div class="row-name">My shortcuts</div><div class="row-desc">3 shortcuts</div></div>
+                      <div></div>
+                      <div class="row-actions"><button class="btn btn-sm btn-ghost" type="button">Rename</button></div>
+                    </div>
+                    <div class="row">
+                      <div class="row-body"><div class="row-name">Developer</div><div class="row-desc">15 shortcuts &middot; shipped</div></div>
+                      <div></div>
+                      <div class="row-actions"><button class="btn btn-sm btn-ghost" type="button">Rename</button></div>
+                    </div>
+                    <div class="row">
+                      <div class="row-body"><div class="row-name">Work<span class="badge">yours</span></div><div class="row-desc">7 shortcuts</div></div>
+                      <div></div>
+                      <div class="row-actions"><button class="btn btn-sm btn-ghost" type="button">Rename</button><button class="btn btn-sm btn-ghost" type="button">Delete</button></div>
+                    </div>
+                    <div class="spec-row">
+                      <input class="input" style="flex: 1 1 240px" placeholder="New section name" aria-label="New section name" />
+                      <button class="btn" type="button">Add section</button>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2 class="panel-title">Shortcut packs</h2>
+                    <p class="panel-sub">Turn a whole group of shipped shortcuts on or off at once. Continuing on that screen re-enables every shortcut in the packs you pick, including ones you had switched off by hand.</p>
+                  </div>
+                  <div class="panel-body">
+                    <div class="spec-row"><button class="btn" type="button">Choose shortcut packs&hellip;</button></div>
+                  </div>
+                </section>
+
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2 class="panel-title">Restore shipped shortcuts</h2>
+                    <p class="panel-sub">Shortcuts that ship with BunnyLol and that you deleted. Restoring one brings its shipped definition back, along with anything you had edited.</p>
+                  </div>
+                  <div class="panel-body">
+                    <div class="row">
+                      <div class="row-keys"><span class="chip">gm</span><span class="chip">gmail</span></div>
+                      <div class="row-body"><div class="row-name">Gmail</div><div class="row-desc">Search your mail, or compose.</div></div>
+                      <div class="row-actions"><button class="btn btn-sm" type="button">Restore</button></div>
+                    </div>
+                    <div class="row">
+                      <div class="row-keys"><span class="chip">bs</span></div>
+                      <div class="row-body"><div class="row-name">Brightspace</div><div class="row-desc">Open a course, or search Brightspace.</div></div>
+                      <div class="row-actions"><button class="btn btn-sm" type="button">Restore</button></div>
+                    </div>
+                    <div class="spec-row"><button class="btn" type="button">Restore all 2</button></div>
+                  </div>
+                </section>
+
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2 class="panel-title">Search engines to intercept</h2>
+                    <p class="panel-sub">BunnyLol can only catch a keyword if it can see the search you typed.</p>
+                  </div>
+                  <div class="panel-body">
+                    <label class="check"><input type="checkbox" checked /> <span>Google</span></label>
+                    <label class="check"><input type="checkbox" checked /> <span>DuckDuckGo</span></label>
+                    <label class="check"><input type="checkbox" /> <span>Bing</span></label>
+                  </div>
+                </section>
+
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2 class="panel-title">Your data</h2>
+                    <p class="panel-sub">Everything lives in this browser, in one key. Nothing is sent anywhere.</p>
+                  </div>
+                  <div class="panel-body">
+                    <div class="spec-row">
+                      <button class="btn" type="button">Export</button>
+                      <button class="btn" type="button">Import&hellip;</button>
+                    </div>
+                    <div class="import-choice">
+                      <div class="import-title">That file has 14 shortcuts and 2 sections.</div>
+                      <div class="import-line">Merging keeps everything you already have and adds what is new. Replacing throws away your current shortcuts.</div>
+                      <div class="spec-row">
+                        <button class="btn btn-primary" type="button">Merge</button>
+                        <button class="btn btn-danger" type="button">Replace</button>
+                        <button class="btn btn-ghost" type="button">Cancel</button>
+                      </div>
+                    </div>
+                    <div class="code-block"><code>{ "version": 2, "overrides": { "custom": [ { "id": "u:tix", "keys": ["tix"], "name": "Ticket" } ] } }</code></div>
+                    <div class="danger-zone">
+                      <p>Deletes every shortcut you made, every edit, every section and every setting, and puts BunnyLol back to how it shipped.</p>
+                      <div class="spec-row">
+                        <button class="btn btn-danger" type="button">Reset everything</button>
+                        <button class="btn btn-armed" type="button">Really reset?</button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+          </div>
+        </section>
+        <section class="scheme dark">
+          <div class="scheme-label">Dark</div>
+          <div class="scheme-body flush">
+              <header class="topbar">
+                <div class="topbar-inner">
+                  <div class="brand"><h1 class="brand-name">BunnyLol</h1></div>
+                  <span class="status status-ok"><span class="status-dot"></span><span>All 14 keywords are intercepted.</span></span>
+                  <nav class="nav" aria-label="Sections">
+                    <a class="nav-link" href="#help">Shortcuts</a>
+                    <a class="nav-link" href="#new">New shortcut</a>
+                    <a class="nav-link" aria-current="page" href="#settings">Settings</a>
+                  </nav>
+                </div>
+              </header>
+              <div class="shell">
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2 class="panel-title">Sections</h2>
+                    <p class="panel-sub">Rename any section, or make your own. Deleting one moves everything in it to My shortcuts &mdash; nothing is lost.</p>
+                  </div>
+                  <div class="panel-body">
+                    <div class="row">
+                      <div class="row-body"><div class="row-name">My shortcuts</div><div class="row-desc">3 shortcuts</div></div>
+                      <div></div>
+                      <div class="row-actions"><button class="btn btn-sm btn-ghost" type="button">Rename</button></div>
+                    </div>
+                    <div class="row">
+                      <div class="row-body"><div class="row-name">Developer</div><div class="row-desc">15 shortcuts &middot; shipped</div></div>
+                      <div></div>
+                      <div class="row-actions"><button class="btn btn-sm btn-ghost" type="button">Rename</button></div>
+                    </div>
+                    <div class="row">
+                      <div class="row-body"><div class="row-name">Work<span class="badge">yours</span></div><div class="row-desc">7 shortcuts</div></div>
+                      <div></div>
+                      <div class="row-actions"><button class="btn btn-sm btn-ghost" type="button">Rename</button><button class="btn btn-sm btn-ghost" type="button">Delete</button></div>
+                    </div>
+                    <div class="spec-row">
+                      <input class="input" style="flex: 1 1 240px" placeholder="New section name" aria-label="New section name" />
+                      <button class="btn" type="button">Add section</button>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2 class="panel-title">Shortcut packs</h2>
+                    <p class="panel-sub">Turn a whole group of shipped shortcuts on or off at once. Continuing on that screen re-enables every shortcut in the packs you pick, including ones you had switched off by hand.</p>
+                  </div>
+                  <div class="panel-body">
+                    <div class="spec-row"><button class="btn" type="button">Choose shortcut packs&hellip;</button></div>
+                  </div>
+                </section>
+
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2 class="panel-title">Restore shipped shortcuts</h2>
+                    <p class="panel-sub">Shortcuts that ship with BunnyLol and that you deleted. Restoring one brings its shipped definition back, along with anything you had edited.</p>
+                  </div>
+                  <div class="panel-body">
+                    <div class="row">
+                      <div class="row-keys"><span class="chip">gm</span><span class="chip">gmail</span></div>
+                      <div class="row-body"><div class="row-name">Gmail</div><div class="row-desc">Search your mail, or compose.</div></div>
+                      <div class="row-actions"><button class="btn btn-sm" type="button">Restore</button></div>
+                    </div>
+                    <div class="row">
+                      <div class="row-keys"><span class="chip">bs</span></div>
+                      <div class="row-body"><div class="row-name">Brightspace</div><div class="row-desc">Open a course, or search Brightspace.</div></div>
+                      <div class="row-actions"><button class="btn btn-sm" type="button">Restore</button></div>
+                    </div>
+                    <div class="spec-row"><button class="btn" type="button">Restore all 2</button></div>
+                  </div>
+                </section>
+
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2 class="panel-title">Search engines to intercept</h2>
+                    <p class="panel-sub">BunnyLol can only catch a keyword if it can see the search you typed.</p>
+                  </div>
+                  <div class="panel-body">
+                    <label class="check"><input type="checkbox" checked /> <span>Google</span></label>
+                    <label class="check"><input type="checkbox" checked /> <span>DuckDuckGo</span></label>
+                    <label class="check"><input type="checkbox" /> <span>Bing</span></label>
+                  </div>
+                </section>
+
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2 class="panel-title">Your data</h2>
+                    <p class="panel-sub">Everything lives in this browser, in one key. Nothing is sent anywhere.</p>
+                  </div>
+                  <div class="panel-body">
+                    <div class="spec-row">
+                      <button class="btn" type="button">Export</button>
+                      <button class="btn" type="button">Import&hellip;</button>
+                    </div>
+                    <div class="import-choice">
+                      <div class="import-title">That file has 14 shortcuts and 2 sections.</div>
+                      <div class="import-line">Merging keeps everything you already have and adds what is new. Replacing throws away your current shortcuts.</div>
+                      <div class="spec-row">
+                        <button class="btn btn-primary" type="button">Merge</button>
+                        <button class="btn btn-danger" type="button">Replace</button>
+                        <button class="btn btn-ghost" type="button">Cancel</button>
+                      </div>
+                    </div>
+                    <div class="code-block"><code>{ "version": 2, "overrides": { "custom": [ { "id": "u:tix", "keys": ["tix"], "name": "Ticket" } ] } }</code></div>
+                    <div class="danger-zone">
+                      <p>Deletes every shortcut you made, every edit, every section and every setting, and puts BunnyLol back to how it shipped.</p>
+                      <div class="spec-row">
+                        <button class="btn btn-danger" type="button">Reset everything</button>
+                        <button class="btn btn-armed" type="button">Really reset?</button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

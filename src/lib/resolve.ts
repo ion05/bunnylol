@@ -1,7 +1,7 @@
 /**
  * The brain: query string in, destination URL out.
  *
- * Pure and synchronous — no `chrome.*`, no DOM, no I/O — so the dispatch page,
+ * Pure and synchronous: no `chrome.*`, no DOM, no I/O. So the dispatch page,
  * the omnibox, the popup, the options live preview and the unit tests all run
  * the exact same code path.
  */
@@ -12,6 +12,10 @@ import { DEFAULT_SETTINGS, FORCE_SEARCH_PREFIXES, PASSTHROUGH_PARAM } from './ty
 // engine hosts have exactly one definition.
 import { SEARCH_ENGINES } from './commands';
 import { expandTemplate, HANDLERS } from './handlers';
+// Identity and the edit algebra live in one module so the resolver, storage and
+// the options page cannot disagree about which shortcut an override entry names
+// or about what it is allowed to change.
+import { applyEdit, knownCategoryIds, normalizeId, shortcutId } from './overrides';
 // Which aliases a DNR rule can carry is decided in one place; `activeKeywords`
 // and the storage boundary must not drift apart on it.
 import { isInterceptableAlias } from './validate';
@@ -42,7 +46,7 @@ const INTERCEPTED_HOSTS = new Set(SEARCH_ENGINES.map((engine) => bareHost(engine
  * Alias -> command, every alias lowercased.
  *
  * ORDERING CONTRACT: the FIRST command to claim an alias keeps it. This is only
- * correct because `mergeCommands` puts custom commands ahead of builtins — a
+ * correct because `mergeCommands` puts custom commands ahead of builtins: a
  * user who rebinds `gh` shadows the builtin. If the last writer won instead,
  * their custom command would be silently swallowed by the builtin behind it.
  */
@@ -64,22 +68,34 @@ export function buildKeyMap(commands: Command[]): Map<string, Command> {
  * `buildKeyMap`.
  */
 export function mergeCommands(builtins: Command[], overrides: Overrides): Command[] {
-  const disabled = new Set((overrides?.disabled ?? []).map((key) => key.trim().toLowerCase()));
-  const keyOverrides = overrides?.keyOverrides ?? {};
-  const merged: Command[] = (overrides?.custom ?? []).map((cmd) => ({
-    ...cmd,
-    keys: [...(cmd.keys ?? [])],
-  }));
+  // Read through `normalizeId`, the one reader of an id off untrusted storage:
+  // a second normalisation here is how a blob's `GH ` stops matching the `gh`
+  // the rest of the extension resolved it to.
+  const disabled = new Set((overrides?.disabled ?? []).map(normalizeId).filter(Boolean));
+  const deleted = new Set((overrides?.deleted ?? []).map(normalizeId).filter(Boolean));
+  const edits = overrides?.edits ?? {};
+  // An edit may file a shipped command under a user section, so the sections
+  // this profile declares are part of what an edit is allowed to say.
+  const known = knownCategoryIds(overrides?.sections);
+  const merged: Command[] = [];
+
+  // Custom first: `buildKeyMap` is first-writer-wins, so a user's own `gh`
+  // shadows the builtin rather than being ignored (invariant 10).
+  for (const cmd of overrides?.custom ?? []) {
+    // Every emitted command carries its resolved id: the browse rows, the
+    // override maps and the resolver then key off one string, and no surface
+    // has to know whether the command came from the registry or from storage.
+    const id = shortcutId(cmd);
+    if (disabled.has(id)) continue;
+    merged.push({ ...cmd, id, keys: [...(cmd.keys ?? [])] });
+  }
 
   for (const cmd of builtins) {
-    const canonical = canonicalKey(cmd);
-    if (disabled.has(canonical)) continue;
-    const replacement = (keyOverrides[canonical] ?? [])
-      .map((key) => key.trim())
-      .filter((key) => key.length > 0);
-    // An empty replacement list means "no override" rather than "no aliases",
-    // otherwise a half-finished edit in the options page would orphan a command.
-    merged.push({ ...cmd, keys: replacement.length > 0 ? replacement : [...(cmd.keys ?? [])] });
+    const id = shortcutId(cmd);
+    if (deleted.has(id) || disabled.has(id)) continue;
+    // AFTER the id and the keys copy: an edit's `keys` replaces the shipped
+    // ones, and it must land on the copy rather than on the registry entry.
+    merged.push(applyEdit({ ...cmd, id, keys: [...(cmd.keys ?? [])] }, edits[id], known));
   }
   return merged;
 }
@@ -88,8 +104,8 @@ export function mergeCommands(builtins: Command[], overrides: Overrides): Comman
  * Resolves a raw address-bar query. Never throws: every failure path degrades to
  * a real URL, because the caller has already committed to navigating somewhere.
  *
- * - A leading `FORCE_SEARCH_PREFIXES` character — `\<query>` or `=<query>`, with
- *   or without a following space — forces a plain default-engine search of the
+ * - A leading `FORCE_SEARCH_PREFIXES` character, `\<query>` or `=<query>`, with
+ *   or without a following space, forces a plain default-engine search of the
  *   remainder. Under true bunnylol semantics a registered first word is ALWAYS a
  *   command, so this is the only way to search for one, and the prefix itself
  *   must never survive into the search terms.
@@ -142,8 +158,8 @@ export function suggest(query: string, commands: Command[], limit = 8): Command[
  * so an alternation prefers `github` over `gh` when both would match.
  *
  * `stopList` is the user's EXEMPTION list and suppresses aliases from
- * ADDRESS-BAR INTERCEPTION ONLY. It is empty by default — every registered
- * keyword is intercepted — and `resolve()` deliberately ignores it, so an
+ * ADDRESS-BAR INTERCEPTION ONLY. It is empty by default, every registered
+ * keyword is intercepted, and `resolve()` deliberately ignores it, so an
  * exempted alias keeps working through the `bl` omnibox and the popup, where
  * the user has already said they mean a shortcut.
  */
@@ -200,7 +216,7 @@ export function stripPassthrough(query: string): string {
 }
 
 /**
- * True only for a whole url carrying our marker — the one shape whose marker is
+ * True only for a whole url carrying our marker: the one shape whose marker is
  * ours to remove. Arbitrary query text is never a candidate: a user who types
  * `gh foo&blpass=1` means those words, and stripping the marker out of them
  * would silently search for `gh foo` instead.
@@ -219,7 +235,7 @@ export function isBouncedUrl(value: string): boolean {
  * A command destination can itself be a search on an engine we intercept:
  * `weather` IS a google search, and so are `g`, `gimg`, `gem` and the `gsite`
  * handler. Navigating there unmarked re-enters our own redirect rule, which
- * hands the url back to go.html — `weather` loops forever, `g npm install`
+ * hands the url back to go.html: `weather` loops forever, `g npm install`
  * lands on the npm package page. Marking every destination in one place covers
  * `cmd.url`, `searchUrl` expansion and every handler return value alike.
  */
@@ -296,7 +312,7 @@ function engineHome(engine: string): string {
     const { origin } = new URL(engine);
     if (origin.startsWith('http')) return `${origin}/`;
   } catch {
-    // Not a parseable absolute URL — fall through to the template itself.
+    // Not a parseable absolute URL: fall through to the template itself.
   }
   return expandTemplate(engine, '');
 }
@@ -354,6 +370,12 @@ function isSubsequence(needle: string, haystack: string): boolean {
   return i === needle.length;
 }
 
+/**
+ * The alias `suggest()` breaks ties on: deliberately NOT `shortcutId`. A tie
+ * is settled alphabetically on what the user types; keying it off the id would
+ * clump every custom shortcut together under its `u:` prefix instead of
+ * ordering them by the alias the user actually typed.
+ */
 function canonicalKey(cmd: Command): string {
   return (cmd.keys?.[0] ?? '').trim().toLowerCase();
 }

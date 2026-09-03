@@ -1,0 +1,594 @@
+/* The approved component vocabulary for the options page. These rules are the
+ * design contract: PR 4 / 10 / 11 implement them in src/options/options.css
+ * against the same class names the existing TypeScript already renders.
+ *
+ * Every value is a token. No shadows, no tinted status surfaces, no color-mix
+ * hairlines, no uppercase headings, no icon glyphs on messages.
+ */
+
+/* ---- Focus ------------------------------------------------------------ */
+/* One global ring. --ring is --accent-text, so it is 6.26:1 in light and
+ * 9.11:1 in dark; the raw sand would have been 2.04:1 and illegal. */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* ---- Topbar and nav --------------------------------------------------- */
+/* Not sticky, not glass: no position: sticky, no backdrop-filter, no
+ * color-mix() background. */
+.topbar {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-inner {
+  max-width: var(--layout-max);
+  margin: 0 auto;
+  padding: var(--sp-5) var(--sp-7) 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-5);
+}
+
+.brand-name {
+  font-size: var(--fs-14);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.01em;
+}
+
+.nav {
+  display: flex;
+  gap: var(--sp-6);
+  width: 100%;
+  padding-top: var(--sp-5);
+}
+
+.nav-link {
+  padding: 0 0 var(--sp-4);
+  border-radius: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-13);
+  font-weight: var(--fw-medium);
+  text-decoration: none;
+  box-shadow: inset 0 -1px 0 transparent;
+}
+
+.nav-link:hover {
+  background: none;
+  color: var(--text);
+}
+
+/* The underline uses --accent-text because a selection indicator is bound by
+ * 1.4.11's 3:1. Colour and weight change together, so the state is never
+ * conveyed by colour alone. */
+.nav-link[aria-current='page'] {
+  color: var(--text);
+  font-weight: var(--fw-semibold);
+  box-shadow: inset 0 -2px 0 var(--accent-text);
+}
+
+/* ---- Status: text plus dot, no capsule -------------------------------- */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  max-width: 48ch;
+  font-size: var(--fs-12);
+  color: var(--text-dim);
+}
+
+/* The dot is the non-textual signal. It is decorative — the text already names
+ * the state — so --text-decor is legal for the neutral case. */
+.status-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--text-decor);
+}
+
+.status-ok .status-dot { background: var(--ok); }
+
+.status-warn { color: var(--warn); font-weight: var(--fw-medium); }
+.status-warn .status-dot { background: var(--warn); }
+
+.status-bad { color: var(--danger); font-weight: var(--fw-medium); }
+.status-bad .status-dot { background: var(--danger); }
+
+.status-detail {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- Shell and panels: flat sections, not cards ----------------------- */
+.shell {
+  max-width: var(--layout-max);
+  margin: 0 auto;
+  padding: var(--sp-8) var(--sp-7) 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.panel {
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+}
+
+.panel:first-child { border-top: 0; }
+
+.panel-head {
+  padding: var(--sp-7) 0 var(--sp-4);
+  border-bottom: 0;
+}
+
+.panel-title { font-size: var(--fs-14); font-weight: var(--fw-semibold); }
+.panel-sub { font-size: var(--fs-12); color: var(--text-dim); max-width: 64ch; }
+
+.panel-body {
+  padding: 0 0 var(--sp-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+/* A transient announcement, not a dimmed control — the opacity transition stays. */
+.saved { font-size: var(--fs-12); color: var(--ok); }
+
+/* ---- Toolbar and counts ----------------------------------------------- */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: var(--sp-4) var(--sp-5);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2);
+  gap: var(--sp-5);
+}
+
+/* tabular-nums stops the count jittering as the filter types. */
+.count {
+  font-size: var(--fs-12);
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Group headers: sentence case ------------------------------------- */
+.group { border-bottom: 0; }
+
+.group-head {
+  display: flex;
+  align-items: center;
+  padding: var(--sp-7) 0 var(--sp-2);
+  gap: var(--sp-3);
+}
+
+.group-title {
+  font-size: var(--fs-12);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-dim);
+}
+
+.group-count {
+  font-size: var(--fs-12);
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.group-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.group-chevron {
+  width: 0;
+  height: 0;
+  border-left: 5px solid var(--text-dim);
+  border-top: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+  transition: transform 120ms ease;
+}
+
+[aria-expanded='true'] .group-chevron { transform: rotate(90deg); }
+
+/* ---- Rows: compact, actions on hover, always keyboard-reachable ------- */
+.row {
+  display: grid;
+  grid-template-columns: minmax(88px, 150px) minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--sp-2) var(--sp-5);
+  min-height: var(--row-h);
+  padding: var(--sp-4) var(--sp-3);
+  border-top: 1px solid var(--border);
+}
+
+.row:hover { background: var(--bg-raised); }
+
+/* Dimmed by colour rather than `opacity: 0.45`, which took this text to
+   1.83:1. The `off` badge, not a wash, is what says the row is turned off. */
+.row.off .row-name,
+.row.off .chip {
+  color: var(--text-dim);
+}
+
+.row.off .row-desc,
+.row.off .row-url {
+  color: var(--text-faint);
+}
+
+.row-keys { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+
+.row-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.row-name { font-size: var(--fs-13); font-weight: var(--fw-medium); }
+.row-desc { font-size: var(--fs-12); color: var(--text-dim); }
+
+.row-url {
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-example { font-size: var(--fs-11); color: var(--text-faint); }
+
+.row-actions { display: flex; align-items: center; gap: var(--sp-2); }
+
+/* opacity, never visibility or display, so the buttons stay in the tab order;
+ * :focus-within reveals them the moment a keyboard reaches them. The switch is
+ * excluded — it conveys state and must always be visible. */
+.row-actions .btn { opacity: 0; transition: opacity 90ms ease; }
+.row:hover .row-actions .btn,
+.row:focus-within .row-actions .btn { opacity: 1; }
+
+@media (hover: none) {
+  .row-actions .btn { opacity: 1; }
+}
+
+/* ---- Keyword chips: 1px outlined mono --------------------------------- */
+.chip {
+  display: inline-block;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-1);
+  background: none;
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+  line-height: 18px;
+  color: var(--text);
+}
+
+/* ---- Badges: lowercase, untinted -------------------------------------- */
+.badge {
+  margin-left: var(--sp-3);
+  font-size: var(--fs-11);
+  font-weight: var(--fw-regular);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-dim);
+  background: none;
+  padding: 0;
+  vertical-align: baseline;
+}
+
+/* Outlined so it is still a visible non-colour marker. */
+.badge-quiet {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-1);
+  padding: 0 var(--sp-2);
+  background: none;
+  color: var(--text-dim);
+}
+
+/* ---- Buttons ---------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--btn-h);
+  padding: 0 var(--sp-4);
+  gap: var(--sp-3);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-2);
+  background: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-13);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+}
+
+.btn:hover { background: var(--bg-raised); }
+
+/* Colour, not opacity — the same discipline the rows use. opacity: 0.5 also
+ * fades the border below 3:1 and cannot be measured. */
+.btn:disabled {
+  color: var(--text-faint);
+  border-color: var(--border-strong);
+  background: none;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.btn-ghost { border-color: transparent; color: var(--text-dim); }
+.btn-ghost:hover { background: var(--bg-raised); color: var(--text); }
+
+/* No tinted border and no red hover wash: the old color-mix(--danger 40%)
+ * border measured 1.94:1. */
+.btn-danger { color: var(--danger); border-color: var(--control-border); background: none; }
+.btn-danger:hover { background: var(--bg-raised); }
+
+.btn-armed {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--danger-fg);
+}
+
+.btn-sm { height: var(--btn-h-sm); padding: 0 var(--sp-3); font-size: var(--fs-12); }
+
+/* ---- Inputs and select ------------------------------------------------ */
+.input,
+.select {
+  height: var(--control-h);
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-2);
+  background: var(--bg-sunken);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-13);
+}
+
+.input.mono { font-family: var(--font-mono); font-size: var(--fs-12); }
+.input.bad { border-color: var(--danger); }
+
+/* One SVG chevron, not two stacked gradients. A data URI cannot resolve
+ * currentColor and light-dark() takes colours, not images, so the stroke is a
+ * single mid grey instead of a light/dark pair: #8a8a82 is 3.10:1 on the light
+ * --bg-sunken and 5.07:1 on the dark one, clearing the 3:1 that WCAG 1.4.11
+ * asks of a control's affordance in both schemes. This is the one place the
+ * palette is inlined; tests/tokens.test.ts pins the hex. */
+.select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%238a8a82' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: right var(--sp-4) center;
+  background-size: 8px 5px;
+  background-repeat: no-repeat;
+  padding-right: var(--sp-8);
+}
+
+/* ---- Switch: flat, kept over a checkbox ------------------------------- */
+/* A switch means "this thing is on or off" (a shortcut). A checkbox means
+ * "include this in a set" (which engines to intercept, which packs to
+ * enable). Do not swap one for the other. */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  font-size: var(--fs-12);
+  color: var(--text-dim);
+}
+
+.switch input {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 28px;
+  height: 16px;
+  margin: 0;
+  border-radius: var(--radius-full);
+  background: var(--control-border);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.switch input::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-full);
+  background: var(--bg);
+  /* The knob is --bg on a --control-border track: 3.48:1 light, but only
+   * 2.4:1 against the sand when checked. The ring guarantees the knob edge
+   * regardless of which track it sits on. */
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 35%);
+  transition: transform 120ms ease;
+}
+
+.switch input:checked { background: var(--accent); }
+.switch input:checked::after { transform: translateX(12px); }
+
+/* ---- Form ------------------------------------------------------------- */
+.form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-6) var(--sp-6);
+}
+
+.field { display: flex; flex-direction: column; gap: var(--sp-2); }
+.field.wide { grid-column: 1 / -1; }
+
+.field-label {
+  font-size: var(--fs-12);
+  font-weight: var(--fw-medium);
+  color: var(--text-dim);
+}
+
+.field-hint { font-size: var(--fs-12); color: var(--text-faint); }
+
+.form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding-top: var(--sp-2);
+}
+
+/* ---- Messages: no bar, no icon, colour plus weight -------------------- */
+.msg { display: block; font-size: var(--fs-12); line-height: var(--lh-body); }
+.msg-error { color: var(--danger); font-weight: var(--fw-medium); }
+.msg-warn { color: var(--warn); }
+.msg-ok { color: var(--ok); }
+
+.msg-list,
+.field-errors { display: flex; flex-direction: column; gap: var(--sp-3); }
+
+.field-errors:empty { display: none; }
+
+/* ---- Preview block ---------------------------------------------------- */
+.preview {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2);
+  background: var(--bg-sunken);
+}
+
+.preview-head { padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--border); }
+
+.preview-head h3 {
+  margin: 0;
+  font-size: var(--fs-12);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-dim);
+}
+
+.preview-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-12);
+}
+
+.preview-row:first-of-type { border-top: 0; }
+
+/* Decorative, exempt from text contrast. */
+.preview-arrow { color: var(--text-decor); }
+
+.preview-url {
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-url.is-fallback { color: var(--warn); }
+
+/* ---- Checkboxes ------------------------------------------------------- */
+.check {
+  display: flex;
+  align-items: flex-start;
+  font-size: var(--fs-13);
+  gap: var(--sp-4);
+  cursor: pointer;
+}
+
+.check input {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+/* ---- Removable chips -------------------------------------------------- */
+.chip-row { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+
+.chip-x {
+  border: 0;
+  border-radius: var(--radius-1);
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--fs-12);
+  line-height: 1;
+  padding: 0 var(--sp-2);
+  cursor: pointer;
+}
+
+.chip-x:hover { background: var(--bg-raised); color: var(--danger); }
+
+/* ---- Import choice ---------------------------------------------------- */
+.import-choice {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-2);
+  background: var(--bg-sunken);
+  padding: var(--sp-5);
+  gap: var(--sp-4);
+}
+
+.import-title { font-size: var(--fs-13); font-weight: var(--fw-medium); }
+.import-line { font-size: var(--fs-12); color: var(--text-dim); }
+
+/* ---- Code block ------------------------------------------------------- */
+.code-block {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2);
+  background: var(--bg-sunken);
+  padding: var(--sp-4) var(--sp-5);
+  overflow-x: auto;
+}
+
+.code-block code { font-family: var(--font-mono); font-size: var(--fs-12); }
+
+/* ---- Danger zone: outlined, no tint ----------------------------------- */
+/* The destructive intent is carried by .btn-danger and by confirmButton's
+ * two-step arm, not by a red box. */
+.danger-zone {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2);
+  background: none;
+  padding: var(--sp-5);
+  gap: var(--sp-4);
+}
+
+.danger-zone p { margin: 0; font-size: var(--fs-12); color: var(--text-dim); max-width: 56ch; }
+
+/* ---- Empty state ------------------------------------------------------ */
+.empty { padding: var(--sp-9) var(--sp-7); font-size: var(--fs-13); color: var(--text-faint); }

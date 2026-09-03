@@ -1,0 +1,156 @@
+/* Preview harness only. Nothing here ships in the extension — it exists so each
+ * design card can render the light and the dark scheme side by side on one page.
+ * The tokens themselves live in tokens.css and are declared exactly once. */
+
+@font-face {
+  /* Same descriptors as tokens.css, relative URL. tokens.css must use a
+   * root-absolute /fonts/ path because that is what resolves inside a
+   * chrome-extension:// page; that path does not exist here, so this
+   * later-declared rule wins for the previews. Descriptors only — no colour,
+   * no palette, nothing that could drift. */
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../fonts/InterVariable.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC,
+    U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+body {
+  margin: 0;
+  background: #f4f4f2;
+  color: #1a1a19;
+  font: var(--fs-13) / var(--lh-body) var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.sheet {
+  padding: var(--sp-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+
+/* Screens mode. A pattern card is a real screen, not a specimen: it renders at
+ * the width the product actually uses (the options shell is 900px), light
+ * above dark, with the review chrome kept out of the way. Squeezing a screen
+ * into a side-by-side column makes it look like documentation of a layout
+ * rather than the layout. */
+.sheet.screens {
+  padding: var(--sp-6);
+  gap: var(--sp-5);
+  background: #ececea;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.sheet.screens .sheet-head { padding: 0 var(--sp-2) var(--sp-1); }
+.sheet.screens .sheet-title { font-size: var(--fs-16); }
+
+.sheet-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  max-width: 72ch;
+}
+
+.sheet-title {
+  margin: 0;
+  font-size: var(--fs-20);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.015em;
+}
+
+.sheet-note {
+  margin: 0;
+  font-size: var(--fs-12);
+  color: #5b5b57;
+}
+
+.sheet-note code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+}
+
+/* The two scheme columns. Setting color-scheme is the whole mechanism: every
+ * token in tokens.css is a light-dark() pair and resolves against it. */
+.pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: var(--sp-6);
+  align-items: start;
+}
+
+/* One screen per row, full width. */
+.pair.stack { grid-template-columns: 1fr; }
+
+/* Two fixed-width chrome popups, centred rather than stretched. */
+.pair.actual { grid-template-columns: repeat(auto-fit, minmax(380px, max-content)); justify-content: center; }
+
+.scheme {
+  color-scheme: light;
+  border: 1px solid #d3d3ce;
+  border-radius: var(--radius-2);
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.scheme.dark {
+  color-scheme: dark;
+  border-color: #3a3a36;
+}
+
+.scheme-label {
+  padding: var(--sp-3) var(--sp-5);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-sunken);
+  color: var(--text-faint);
+  font-size: var(--fs-11);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.scheme-body {
+  padding: var(--sp-6);
+}
+
+.scheme-body.flush {
+  padding: 0;
+}
+
+/* A labelled group of specimens inside one scheme column. */
+.spec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.spec + .spec {
+  margin-top: var(--sp-7);
+  padding-top: var(--sp-6);
+  border-top: 1px solid var(--border);
+}
+
+.spec-name {
+  font-size: var(--fs-11);
+  font-weight: var(--fw-medium);
+  color: var(--text-faint);
+}
+
+.spec-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.spec-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  align-items: flex-start;
+}

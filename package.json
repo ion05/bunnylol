@@ -1,12 +1,35 @@
 {
   "name": "bunnylol",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "BunnyLol-style keyword shortcuts for Chromium browsers",
   "private": true,
   "type": "module",
+  "license": "MIT",
+  "author": "Aayan Agarwal",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ion05/bunnylol.git"
+  },
+  "homepage": "https://github.com/ion05/bunnylol#readme",
+  "bugs": {
+    "url": "https://github.com/ion05/bunnylol/issues"
+  },
+  "keywords": [
+    "chrome-extension",
+    "manifest-v3",
+    "bunnylol",
+    "omnibox",
+    "address-bar",
+    "keyword-shortcuts",
+    "productivity"
+  ],
+  "engines": {
+    "node": ">=22.13"
+  },
   "scripts": {
     "build": "node scripts/gen-icons.mjs && tsc --noEmit && vite build",
     "build:fast": "vite build",
+    "package": "pnpm build && node scripts/package.mjs",
     "dev": "vite build --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

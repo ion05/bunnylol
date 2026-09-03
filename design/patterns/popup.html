@@ -1,0 +1,158 @@
+<!-- @dsCard group="Patterns" -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Popup</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../components.css" />
+    <link rel="stylesheet" href="../preview.css" />
+    <style>
+      /* Scoped to .popup so the popup's values for .row, .empty and .footer cannot
+         collide with the options vocabulary in components.css. In the product
+         this is src/popup/popup.css with no wrapper. */
+      .popup { width: var(--popup-w); background: var(--bg); color: var(--text); font: var(--fs-13)/var(--lh-body) var(--font-sans); }
+      .popup .bar { padding: var(--sp-4) var(--sp-4) 0; }
+      .popup .query { width: 100%; box-sizing: border-box; height: 32px; padding: 0 var(--sp-4); border: 1px solid var(--control-border); border-radius: var(--radius-2); background: var(--bg-sunken); color: var(--text); font: var(--fs-14)/1.3 var(--font-sans); }
+      /* A negative offset draws the ring inside the control, so it cannot be
+         clipped at the popup edge. This replaces the old outline: none plus a
+         3px accent-soft box-shadow substitute. */
+      .popup .query.is-focus { outline: 2px solid var(--ring); outline-offset: -2px; border-color: var(--ring); }
+      .popup .dest { padding: var(--sp-3) var(--sp-5) var(--sp-4); font: var(--fs-11)/1.4 var(--font-mono); color: var(--text-dim); display: flex; gap: var(--sp-2); }
+      .popup .dest.is-error { color: var(--danger); font-family: var(--font-sans); font-weight: var(--fw-medium); }
+      .popup .results { height: var(--popup-list-h); overflow-y: auto; margin: 0; padding: var(--sp-2); border-top: 1px solid var(--border); list-style: none; }
+      .popup .row { display: flex; min-height: var(--row-h-popup); padding: 0 var(--sp-4); border-radius: var(--radius-1); gap: var(--sp-5); align-items: center; border: 0; }
+      .popup .row.is-selected { background: var(--bg-sunken); }
+      .popup .row-key { flex: 0 0 68px; font: var(--fs-12)/1.4 var(--font-mono); color: var(--text-dim); }
+      .popup .row.is-selected .row-key { color: var(--text); }
+      /* The one place the accent appears as text in the popup, which is exactly
+         why --accent-text exists: 5.59:1 on the selected row's sunken fill.
+         The raw sand would be 1.82:1. */
+      .popup .row-key mark { background: none; color: var(--accent-text); font-weight: var(--fw-semibold); }
+      .popup .row-text { display: flex; gap: var(--sp-4); min-width: 0; align-items: baseline; overflow: hidden; }
+      .popup .row-name { font-weight: var(--fw-medium); white-space: nowrap; }
+      .popup .row-desc { font-size: var(--fs-12); color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .popup .empty { padding: var(--sp-5) var(--sp-4); color: var(--text-faint); font-size: var(--fs-12); }
+      .popup .footer { display: flex; align-items: center; justify-content: space-between; padding: var(--sp-4) var(--sp-5); border-top: 1px solid var(--border); background: var(--bg-sunken); font-size: var(--fs-11); }
+      .popup .link { border: 0; border-radius: var(--radius-1); background: none; color: var(--accent-text); font: inherit; cursor: pointer; padding: 0; }
+      .popup .hint { color: var(--text-faint); }
+      .popup + .popup { margin-top: var(--sp-6); }
+      .scheme-body.flush .popup { border-bottom: 1px solid var(--border); }
+    </style>
+  </head>
+  <body>
+    <main class="sheet">
+      <header class="sheet-head">
+        <h1 class="sheet-title">Popup</h1>
+        <p class="sheet-note">The toolbar popup at its real 380px, with the fixed 268px list. Rows are 32px — denser than the options page — and the key column is plain mono, not a chip. The selected row is a neutral sunken fill, never an accent tint.</p>
+      </header>
+      <div class="pair actual">
+        <section class="scheme">
+          <div class="scheme-label">Light</div>
+          <div class="scheme-body flush">
+              <div class="popup">
+                <div class="bar"><input class="query is-focus" value="g" aria-label="Query" /></div>
+                <div class="dest"><span class="dest-arrow">&rarr;</span><span class="dest-url">https://www.google.com</span></div>
+                <ul class="results">
+                  <li class="row is-selected">
+                    <span class="row-key"><mark>g</mark></span>
+                    <span class="row-text"><span class="row-name">Google</span><span class="row-desc">Plain Google search.</span></span>
+                  </li>
+                  <li class="row">
+                    <span class="row-key"><mark>g</mark>h</span>
+                    <span class="row-text"><span class="row-name">GitHub</span><span class="row-desc">Jump to a repo, or search.</span></span>
+                  </li>
+                  <li class="row">
+                    <span class="row-key"><mark>g</mark>hc</span>
+                    <span class="row-text"><span class="row-name">GitHub Code Search</span><span class="row-desc">Search code across GitHub.</span></span>
+                  </li>
+                  <li class="row">
+                    <span class="row-key"><mark>g</mark>ist</span>
+                    <span class="row-text"><span class="row-name">GitHub Gist</span><span class="row-desc">Your gists, or search public ones.</span></span>
+                  </li>
+                  <li class="row">
+                    <span class="row-key"><mark>g</mark>cal</span>
+                    <span class="row-text"><span class="row-name">Google Calendar</span><span class="row-desc">Open your calendar.</span></span>
+                  </li>
+                  <li class="row">
+                    <span class="row-key"><mark>g</mark>em</span>
+                    <span class="row-text"><span class="row-name">Gemini</span><span class="row-desc">Ask Google Gemini.</span></span>
+                  </li>
+                  <li class="row">
+                    <span class="row-key"><mark>g</mark>d</span>
+                    <span class="row-text"><span class="row-name">Google Drive</span><span class="row-desc">Search your Drive.</span></span>
+                  </li>
+                  <li class="row">
+                    <span class="row-key"><mark>g</mark>cp</span>
+                    <span class="row-text"><span class="row-name">Google Cloud</span><span class="row-desc">Google Cloud console.</span></span>
+                  </li>
+                </ul>
+                <footer class="footer"><button class="link" type="button">Manage shortcuts</button><span class="hint">Tab completes &middot; &#8984;/Ctrl+Enter new tab</span></footer>
+              </div>
+              <div class="popup">
+                <div class="bar"><input class="query" value="zzq" aria-label="Query" /></div>
+                <div class="dest is-error">No shortcut matches.</div>
+                <ul class="results">
+                  <li class="empty">No shortcut matches. Enter searches for it instead.</li>
+                </ul>
+                <footer class="footer"><button class="link" type="button">Manage shortcuts</button><span class="hint">Tab completes &middot; &#8984;/Ctrl+Enter new tab</span></footer>
+              </div>
+          </div>
+        </section>
+        <section class="scheme dark">
+          <div class="scheme-label">Dark</div>
+          <div class="scheme-body flush">
+              <div class="popup">
+                <div class="bar"><input class="query is-focus" value="g" aria-label="Query" /></div>
+                <div class="dest"><span class="dest-arrow">&rarr;</span><span class="dest-url">https://www.google.com</span></div>
+                <ul class="results">
+                  <li class="row is-selected">
+                    <span class="row-key"><mark>g</mark></span>
+                    <span class="row-text"><span class="row-name">Google</span><span class="row-desc">Plain Google search.</span></span>
+                  </li>
+                  <li class="row">
+                    <span class="row-key"><mark>g</mark>h</span>
+                    <span class="row-text"><span class="row-name">GitHub</span><span class="row-desc">Jump to a repo, or search.</span></span>
+                  </li>
+                  <li class="row">
+                    <span class="row-key"><mark>g</mark>hc</span>
+                    <span class="row-text"><span class="row-name">GitHub Code Search</span><span class="row-desc">Search code across GitHub.</span></span>
+                  </li>
+                  <li class="row">
+                    <span class="row-key"><mark>g</mark>ist</span>
+                    <span class="row-text"><span class="row-name">GitHub Gist</span><span class="row-desc">Your gists, or search public ones.</span></span>
+                  </li>
+                  <li class="row">
+                    <span class="row-key"><mark>g</mark>cal</span>
+                    <span class="row-text"><span class="row-name">Google Calendar</span><span class="row-desc">Open your calendar.</span></span>
+                  </li>
+                  <li class="row">
+                    <span class="row-key"><mark>g</mark>em</span>
+                    <span class="row-text"><span class="row-name">Gemini</span><span class="row-desc">Ask Google Gemini.</span></span>
+                  </li>
+                  <li class="row">
+                    <span class="row-key"><mark>g</mark>d</span>
+                    <span class="row-text"><span class="row-name">Google Drive</span><span class="row-desc">Search your Drive.</span></span>
+                  </li>
+                  <li class="row">
+                    <span class="row-key"><mark>g</mark>cp</span>
+                    <span class="row-text"><span class="row-name">Google Cloud</span><span class="row-desc">Google Cloud console.</span></span>
+                  </li>
+                </ul>
+                <footer class="footer"><button class="link" type="button">Manage shortcuts</button><span class="hint">Tab completes &middot; &#8984;/Ctrl+Enter new tab</span></footer>
+              </div>
+              <div class="popup">
+                <div class="bar"><input class="query" value="zzq" aria-label="Query" /></div>
+                <div class="dest is-error">No shortcut matches.</div>
+                <ul class="results">
+                  <li class="empty">No shortcut matches. Enter searches for it instead.</li>
+                </ul>
+                <footer class="footer"><button class="link" type="button">Manage shortcuts</button><span class="hint">Tab completes &middot; &#8984;/Ctrl+Enter new tab</span></footer>
+              </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

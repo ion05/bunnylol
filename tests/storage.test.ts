@@ -1,14 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { applyImport, exportJson, importJson } from '../src/lib/storage';
-import { DEFAULT_OVERRIDES, DEFAULT_SETTINGS, DEFAULT_STOP_LIST } from '../src/lib/types';
-import type { StoredState } from '../src/lib/types';
+import { BUILTIN_COMMANDS } from '../src/lib/commands';
+import { buildKeyMap, mergeCommands } from '../src/lib/resolve';
+import {
+  DEFAULT_OVERRIDES,
+  DEFAULT_SETTINGS,
+  DEFAULT_STOP_LIST,
+  FALLBACK_SECTION,
+} from '../src/lib/types';
+import type { Overrides, ShortcutEdit, StoredState } from '../src/lib/types';
 
 const STATE: StoredState = {
   overrides: {
     disabled: ['gh', 'npm'],
-    keyOverrides: { lh: ['local', 'l'] },
+    deleted: ['grok'],
+    edits: { lh: { keys: ['local', 'l'] }, g: { name: 'Web search', searchUrl: null } },
+    sections: [{ id: 'work', label: 'Work' }],
     custom: [
       {
+        id: 'u:tix',
         keys: ['tix', 'tickets'],
         name: 'Tickets',
         description: 'Internal ticket tracker',
@@ -19,11 +29,12 @@ const STATE: StoredState = {
         example: 'tix 4821',
       },
     ],
+    enabledCategories: ['search', 'dev', 'ai', 'meta'],
+    seenBuiltins: ['gh', 'npm', 'g'],
   },
   settings: {
     githubUser: 'octocat',
     defaultEngine: 'https://kagi.com/search?q={q}',
-    defaultAi: 'gpt',
     interceptEngines: ['google', 'duckduckgo'],
     aiTemplates: { chatgpt: 'https://chatgpt.com/?prompt={q}' },
     googleAccount: 2,
@@ -35,7 +46,7 @@ const STATE: StoredState = {
 describe('exportJson', () => {
   it('emits pretty-printed, versioned JSON holding only the user layer', () => {
     const parsed = JSON.parse(exportJson(STATE));
-    expect(parsed.version).toBe(1);
+    expect(parsed.version).toBe(2);
     expect(Object.keys(parsed).sort()).toEqual(['overrides', 'settings', 'version']);
     expect(exportJson(STATE)).toContain('\n  ');
   });
@@ -91,6 +102,18 @@ describe('importJson rejections', () => {
       '{"overrides":{"custom":[{"keys":["x"],"url":"javascript:alert(1)"}]}}',
       /will not open/i,
     ],
+    [
+      'a category that is not a string',
+      '{"overrides":{"custom":[{"keys":["x"],"url":"https://x.test/","category":7}]}}',
+      /The "category" of shortcut "x" must be a string/,
+    ],
+    [
+      "an edit's category that is not a string",
+      '{"overrides":{"edits":{"gh":{"category":["dev"]}}}}',
+      /"edits\.gh\.category" must be a string/,
+    ],
+    ['an onboarding pick that is not a list', '{"overrides":{"enabledCategories":"dev"}}', /enabledCategories/],
+    ['a seenBuiltins that is not a list', '{"overrides":{"seenBuiltins":{}}}', /seenBuiltins/],
   ];
 
   it.each(cases)('rejects %s with a readable message', (_label, input, pattern) => {
@@ -120,8 +143,62 @@ describe('importJson leniency', () => {
     // Null, not defaults: `applyImport` must keep whatever the user has now.
     expect(state.settings).toBeNull();
     expect(state.overrides.disabled).toEqual(['gh']);
-    expect(state.overrides.keyOverrides).toEqual({ lh: ['l'] });
+    // Format 1's rebinding map arrives as an edit; there is one writer for keys.
+    expect(state.overrides.edits).toEqual({ lh: { keys: ['l'] } });
     expect(state.overrides.custom[0].keys).toEqual(['tix']);
+  });
+
+  it('prunes deleted to ids this build actually ships', () => {
+    // `deleted` hides a shipped command. An id no build ever shipped hides
+    // nothing, and a `u:` id names a custom command, which is removed by not
+    // being in the file at all: keeping either would grow a list of ghosts
+    // that nothing on the page could ever clear.
+    expect(
+      importJson('{"overrides":{"deleted":["gh","no-such-command","u:tix"]}}').overrides.deleted,
+    ).toEqual(['gh']);
+  });
+
+  it('drops an edit keyed by a user id instead of refusing the file', () => {
+    // Edits are for shipped shortcuts; a custom command is edited in place. So
+    // this entry is inert, and inert is not wrong, but its `keys` would refuse
+    // the file on a shipped id, which means it must not be checked at all.
+    const state = importJson(
+      '{"overrides":{"edits":{"u:tix":{"keys":["foo bar"]},"gh":{"name":"Mine"}}}}',
+    );
+    expect(state.overrides.edits).toEqual({ gh: { name: 'Mine' } });
+  });
+
+  it('files a v1 export\'s media shortcut under My shortcuts instead of refusing it', () => {
+    // `media` was a shipped category until v1.1.0. Refusing the file would make
+    // every v1.0.0 backup that used it unimportable, and the only fix on offer
+    // would be hand-editing JSON the user did not write.
+    const state = importJson(
+      '{"version":1,"overrides":{"custom":[{"keys":["yt"],"url":"https://youtube.com/","category":"media"}]}}',
+    );
+    expect(state.overrides.custom[0].category).toBe(FALLBACK_SECTION);
+  });
+
+  it('drops an unknown category from an edit instead of refusing the file', () => {
+    // Asymmetric with the custom command above on purpose: a shipped shortcut
+    // has a category of its own, so it stays where the registry files it.
+    const state = importJson('{"overrides":{"edits":{"gh":{"category":"media","name":"Mine"}}}}');
+    expect(state.overrides.edits.gh).toEqual({ name: 'Mine' });
+  });
+
+  it('prunes seenBuiltins to ids this build actually ships, on both paths', () => {
+    // Mirrors `deleted`: an id here says "this profile has already been offered
+    // that shortcut", and one no build ships is a claim about nothing.
+    expect(
+      importJson('{"overrides":{"seenBuiltins":["gh","no-such-command","u:tix"]}}').overrides
+        .seenBuiltins,
+    ).toEqual(['gh']);
+    const stored = JSON.parse(
+      exportJson({
+        overrides: { ...DEFAULT_OVERRIDES, seenBuiltins: ['gh', 'no-such-command', 'u:tix'] },
+        settings: DEFAULT_SETTINGS,
+      }),
+    ) as StoredState;
+    expect(stored.overrides.seenBuiltins).toEqual(['gh']);
   });
 
   it('accepts a settings-only file', () => {
@@ -132,7 +209,17 @@ describe('importJson leniency', () => {
   });
 
   it('accepts the current format version', () => {
-    expect(() => importJson('{"version":1,"overrides":{},"settings":{}}')).not.toThrow();
+    expect(() => importJson('{"version":2,"overrides":{},"settings":{}}')).not.toThrow();
+  });
+
+  // `settings.defaultAi` shipped until the `?` command was removed. An export
+  // written by that build still has it, and a settings field this build has
+  // never heard of must not make the file unimportable.
+  it('ignores a settings field this build no longer has', () => {
+    const state = importJson('{"version":2,"settings":{"defaultAi":"gpt","githubUser":"octocat"}}');
+    expect(state.settings?.githubUser).toBe('octocat');
+    expect(state.settings).not.toHaveProperty('defaultAi');
+    expect(Object.keys(state.settings ?? {}).sort()).toEqual(Object.keys(DEFAULT_SETTINGS).sort());
   });
 
   it('strips builtin:true from imported custom commands', () => {
@@ -155,7 +242,7 @@ describe('importJson leniency', () => {
     const state = importJson(
       JSON.stringify({
         overrides: {
-          custom: [{ keys: ['  TiX  ', 'tix', ''], url: '  https://tix.example/  ', category: 'nonsense' }],
+          custom: [{ keys: ['  TiX  ', 'tix', ''], url: '  https://tix.example/  ', category: '  DEV ' }],
         },
       }),
     );
@@ -164,8 +251,32 @@ describe('importJson leniency', () => {
     expect(custom.url).toBe('https://tix.example/');
     expect(custom.name).toBe('tix');
     expect(custom.description).toBe('');
-    expect(custom.category).toBe('custom');
+    expect(custom.category).toBe('dev');
     expect(custom.searchUrl).toBeUndefined();
+  });
+
+  it('files a custom command under "custom" when the STORED blob names no section', () => {
+    // The lenient path, which a stored blob and `applyImport`'s output both go
+    // through: an orphaned category costs the user a group, not their data. The
+    // import parser refuses the same value instead, because a human is standing
+    // there: see 'importJson rejections'.
+    const orphan = exportJson({
+      overrides: {
+        ...DEFAULT_OVERRIDES,
+        custom: [
+          {
+            keys: ['tix'],
+            name: 'Tickets',
+            description: '',
+            url: 'https://tix.example/',
+            category: 'nonsense',
+            builtin: false,
+          },
+        ],
+      },
+      settings: DEFAULT_SETTINGS,
+    });
+    expect(JSON.parse(orphan).overrides.custom[0].category).toBe('custom');
   });
 
   it('discards settings values it does not recognize', () => {
@@ -185,7 +296,89 @@ describe('importJson leniency', () => {
 
   it('drops keyOverride entries with no replacement aliases', () => {
     const state = importJson('{"overrides":{"keyOverrides":{"gh":[],"lh":["l"],"  ":["x"]}}}');
-    expect(state.overrides.keyOverrides).toEqual({ lh: ['l'] });
+    expect(state.overrides.edits).toEqual({ lh: { keys: ['l'] } });
+  });
+
+  it('mints a stable id for custom commands that have none', () => {
+    const state = importJson(
+      JSON.stringify({
+        overrides: {
+          custom: [
+            { keys: ['tix'], url: 'https://tix.example/' },
+            { keys: ['tix2'], name: 'Tickets', url: 'https://tix.example/2' },
+          ],
+        },
+      }),
+    );
+    expect(state.overrides.custom.map((cmd) => cmd.id)).toEqual(['u:tix', 'u:tix2']);
+  });
+
+  it('assigns the same ids on a second normalization', () => {
+    const once = importJson('{"overrides":{"custom":[{"keys":["tix"],"url":"https://tix.example/"}]}}');
+    const twice = importJson(exportJson({ overrides: once.overrides, settings: DEFAULT_SETTINGS }));
+    expect(twice.overrides.custom[0].id).toBe('u:tix');
+  });
+
+  it('gives two shortcuts with the same keyword different ids', () => {
+    const state = importJson(
+      JSON.stringify({
+        overrides: {
+          custom: [
+            { keys: ['tix'], url: 'https://tix.example/' },
+            { keys: ['tix'], url: 'https://tix.example/2' },
+          ],
+        },
+      }),
+    );
+    expect(state.overrides.custom.map((cmd) => cmd.id)).toEqual(['u:tix', 'u:tix-2']);
+  });
+
+  it('re-mints a user id a sibling already claimed', () => {
+    const state = importJson(
+      JSON.stringify({
+        overrides: {
+          custom: [
+            { keys: ['tix'], url: 'https://tix.example/', id: 'u:tix' },
+            { keys: ['tickets'], url: 'https://tix.example/2', id: 'u:tix' },
+          ],
+        },
+      }),
+    );
+    // Two shortcuts on one id would share every override entry keyed by it.
+    expect(state.overrides.custom.map((cmd) => cmd.id)).toEqual(['u:tix', 'u:tickets']);
+  });
+
+  it('lets a claimed id beat an id-less sibling that would have minted it', () => {
+    const state = importJson(
+      JSON.stringify({
+        overrides: {
+          custom: [
+            { keys: ['tix'], url: 'https://tix.example/' },
+            { keys: ['zed'], url: 'https://tix.example/2', id: 'u:tix' },
+          ],
+        },
+      }),
+    );
+    // The claim is reserved before anything mints, so the shortcut that owns
+    // `u:tix`, and every override entry keyed by it, keeps it wherever it
+    // sits in the file. Minting in list order would hand it to the first entry.
+    expect(state.overrides.custom.map((cmd) => cmd.id)).toEqual(['u:tix-2', 'u:tix']);
+  });
+
+  it('keeps a user id across a key edit', () => {
+    const state = importJson(
+      '{"overrides":{"custom":[{"keys":["tickets"],"url":"https://tix.example/","id":"u:tix"}]}}',
+    );
+    expect(state.overrides.custom[0].id).toBe('u:tix');
+  });
+
+  it('mints over an id that is not a string', () => {
+    // Not a claim but a type error, and this reader forgives those; only a
+    // written id it cannot honour is worth refusing the file over.
+    const state = importJson(
+      '{"overrides":{"custom":[{"keys":["tix"],"url":"https://tix.example/","id":42}]}}',
+    );
+    expect(state.overrides.custom[0].id).toBe('u:tix');
   });
 });
 
@@ -199,6 +392,91 @@ describe('importJson leniency', () => {
  * an extension-relative path. A file that says something impossible now gets
  * refused with a message naming the field.
  */
+describe('sections and the categories filed against them', () => {
+  it('accepts a category naming a section the same file declares', () => {
+    const state = importJson(
+      '{"overrides":{"sections":[{"id":"sec-work","label":"Work"}],"custom":[{"keys":["w"],"url":"https://w.test/","category":"sec-work"}]}}',
+    );
+    expect(state.overrides.custom[0].category).toBe('sec-work');
+    // And the section travels with it, or the group the shortcut names would
+    // exist only in the file it came from.
+    const saved = JSON.parse(
+      exportJson({ overrides: state.overrides, settings: DEFAULT_SETTINGS }),
+    );
+    expect(saved.overrides.sections).toEqual([{ id: 'sec-work', label: 'Work' }]);
+    expect(saved.overrides.custom[0].category).toBe('sec-work');
+  });
+
+  it('files a shortcut under "custom" when the STORED blob lost the section', () => {
+    const orphaned = exportJson({
+      overrides: {
+        ...DEFAULT_OVERRIDES,
+        custom: [
+          {
+            keys: ['w'],
+            name: 'W',
+            description: '',
+            url: 'https://w.test/',
+            category: 'sec-work',
+            builtin: false,
+          },
+        ],
+      },
+      settings: DEFAULT_SETTINGS,
+    });
+    expect(JSON.parse(orphaned).overrides.custom[0].category).toBe('custom');
+  });
+
+  it('an edit whose category names no section loses the category, not the command', () => {
+    const blob = exportJson({
+      overrides: { ...DEFAULT_OVERRIDES, edits: { gh: { category: 'ghost', name: 'Mine' } } },
+      settings: DEFAULT_SETTINGS,
+    });
+    expect(JSON.parse(blob).overrides.edits).toEqual({ gh: { name: 'Mine' } });
+  });
+
+  it('normalizes and dedupes the section list', () => {
+    const state = importJson(
+      '{"overrides":{"sections":[{"id":"  SEC-WORK ","label":" Work "},{"id":"sec-work","label":"Other"}]}}',
+    );
+    expect(state.overrides.sections).toEqual([{ id: 'sec-work', label: 'Work' }]);
+  });
+});
+
+describe('the onboarding pick', () => {
+  it('reads as "never onboarded" when the profile has no list', () => {
+    expect(importJson('{"overrides":{}}').overrides.enabledCategories).toBeNull();
+    expect(importJson('{"overrides":{"enabledCategories":null}}').overrides.enabledCategories).toBeNull();
+  });
+
+  it('keeps an empty pick, which is a real answer', () => {
+    expect(importJson('{"overrides":{"enabledCategories":[]}}').overrides.enabledCategories).toEqual(
+      [],
+    );
+  });
+
+  it('drops an id that names no shipped category, and dedupes the rest', () => {
+    expect(
+      importJson('{"overrides":{"enabledCategories":["dev","dev","ghost"," AI "]}}').overrides
+        .enabledCategories,
+    ).toEqual(['dev', 'ai']);
+  });
+
+  it('survives an export round trip with seenBuiltins', () => {
+    const state: StoredState = {
+      overrides: { ...DEFAULT_OVERRIDES, enabledCategories: ['dev'], seenBuiltins: ['gh', 'gh'] },
+      settings: DEFAULT_SETTINGS,
+    };
+    const back = importJson(exportJson(state)).overrides;
+    expect(back.enabledCategories).toEqual(['dev']);
+    expect(back.seenBuiltins).toEqual(['gh']);
+  });
+
+  it('is recognized as BunnyLol data in a bare snippet', () => {
+    expect(importJson('{"enabledCategories":["dev"]}').overrides.enabledCategories).toEqual(['dev']);
+  });
+});
+
 describe('an import that could never work', () => {
   const rejected: Array<[string, string, RegExp]> = [
     [
@@ -225,6 +503,105 @@ describe('an import that could never work', () => {
       'a rebinding whose replacements are not a list',
       '{"overrides":{"keyOverrides":{"gh":"x"}}}',
       /keyOverrides\.gh/,
+    ],
+    [
+      'an edit rebinding to a keyword with a space',
+      '{"overrides":{"edits":{"gh":{"keys":["foo bar"]}}}}',
+      /"edits\.gh\.keys"/,
+    ],
+    [
+      'an edit whose keys are not a list',
+      '{"overrides":{"edits":{"gh":{"keys":"hub"}}}}',
+      /"edits\.gh\.keys"/,
+    ],
+    [
+      'an edit whose url is not a url',
+      '{"overrides":{"edits":{"gh":{"url":"not a url"}}}}',
+      /"edits\.gh\.url"/,
+    ],
+    [
+      'an edit whose searchUrl is not a url',
+      '{"overrides":{"edits":{"gh":{"searchUrl":"github.com/search?q={q}"}}}}',
+      /"edits\.gh\.searchUrl"/,
+    ],
+    [
+      'an edit keyed by something that could never be an id',
+      '{"overrides":{"edits":{"foo bar":{"name":"x"}}}}',
+      /"edits" has a shortcut id/,
+    ],
+    [
+      'an edit that is not an object',
+      '{"overrides":{"edits":{"gh":"hub"}}}',
+      /"edits\.gh" must be an object/,
+    ],
+    [
+      'an edits map that is not an object',
+      '{"overrides":{"edits":[]}}',
+      /"edits" must be an object/,
+    ],
+    [
+      'a deleted list that is not an array',
+      '{"overrides":{"deleted":{}}}',
+      /"deleted" must be an array/,
+    ],
+    [
+      'two edits whose ids collide once lowercased',
+      '{"overrides":{"edits":{"GH":{"name":"Mine"},"gh":{"name":"Theirs"}}}}',
+      /"edits" names the shortcut "gh" twice/,
+    ],
+    [
+      'a section entry that is not an object',
+      '{"overrides":{"sections":[["work"]]}}',
+      /"sections" has an entry that is not a JSON object/,
+    ],
+    [
+      'more sections than BunnyLol keeps',
+      `{"overrides":{"sections":${JSON.stringify(
+        Array.from({ length: 65 }, (_, i) => ({ id: `s${i}`, label: `S${i}` })),
+      )}}}`,
+      /"sections" has 65 entries\. BunnyLol keeps at most 64/,
+    ],
+    [
+      'a section id that is not a slug',
+      '{"overrides":{"sections":[{"id":"my work","label":"x"}]}}',
+      /"sections" has an id that/,
+    ],
+    [
+      'a section with no visible label',
+      '{"overrides":{"sections":[{"id":"work","label":"  "}]}}',
+      /"sections\.work\.label"/,
+    ],
+    [
+      'a sections list that is not an array',
+      '{"overrides":{"sections":{}}}',
+      /"sections" must be an array/,
+    ],
+    [
+      'a custom command claiming a shipped id',
+      '{"overrides":{"custom":[{"keys":["x"],"url":"https://x.test/","id":"gh"}]}}',
+      // Named by its keyword like every other message here, `gh` is the
+      // offence, not the entry, and by the rule it broke, since `gh` is only
+      // one of infinitely many ids outside the `u:` namespace.
+      /Shortcut "x" claims the id "gh", which is reserved for shipped shortcuts/,
+    ],
+    [
+      'a custom command claiming an id outside the user namespace',
+      '{"overrides":{"custom":[{"keys":["x"],"url":"https://x.test/","id":"not-shipped-yet"}]}}',
+      /Shortcut "x" claims the id "not-shipped-yet"/,
+    ],
+    [
+      'a custom command claiming an id no minting could have produced',
+      '{"overrides":{"custom":[{"keys":["x"],"url":"https://x.test/","id":"u:has space"}]}}',
+      // Malformed, so it is not a user id either: re-minting it here would
+      // import clean under a different id than the one the user hand-wrote.
+      // Refused for a different reason than a shipped claim, and said so:
+      // this id IS in the `u:` namespace.
+      /Shortcut "x" has an "id" BunnyLol cannot use: "u:has space"/,
+    ],
+    [
+      'a custom command claiming an over-long id',
+      `{"overrides":{"custom":[{"keys":["x"],"url":"https://x.test/","id":"u:${'y'.repeat(40)}"}]}}`,
+      /cannot use: "u:y+"/,
     ],
     [
       'a keyword past the length cap',
@@ -290,6 +667,9 @@ describe('an import that could never work', () => {
               { keys: ['tix', 'ticket-2'], url: 'https://tix.example/', searchUrl: 'https://tix.example/?q={q}' },
             ],
             keyOverrides: { lh: ['local'] },
+            deleted: ['grok'],
+            edits: { gh: { keys: ['hub'], name: 'Hub', searchUrl: null, example: null } },
+            sections: [{ id: 'work', label: 'Work' }],
           },
           settings: { defaultEngine: 'https://kagi.com/search?q=%s', aiTemplates: { claude: 'https://c.test/?q={q}' } },
         }),
@@ -300,7 +680,7 @@ describe('an import that could never work', () => {
 
 /**
  * The lenient half of the same boundary. Already-stored state goes through
- * `normalizeState`, which must never throw — a blob written by an older build,
+ * `normalizeState`, which must never throw: a blob written by an older build,
  * or half-written by an interrupted save, has to degrade to something usable or
  * the extension is bricked on every surface at once.
  */
@@ -308,7 +688,16 @@ describe('lenient recovery from a corrupt stored blob', () => {
   const corrupt = {
     overrides: {
       disabled: ['gh', 'foo bar'],
+      deleted: ['grok', 'foo bar', 'no-such-command'],
       keyOverrides: { lh: ['local', 'foo bar'], 'bad key': ['x'] },
+      edits: {
+        gh: { url: 'not a url', name: 'Mine' },
+        'bad id': { name: 'x' },
+        npm: { url: 'javascript:alert(1)' },
+        tix: {},
+        'u:tix': { name: 'Mine too' },
+      },
+      sections: [{ id: 'work', label: 'Work' }, { id: 'my work', label: 'x' }, { id: 'work', label: 'Twin' }],
       custom: [
         { keys: ['foo bar'], url: 'https://x.test/' },
         { keys: ['tix'], url: 'not a url' },
@@ -320,16 +709,83 @@ describe('lenient recovery from a corrupt stored blob', () => {
 
   /**
    * `exportJson` normalizes on the way out, which is the same code path
-   * `loadState` runs on the way in — so this asserts the recovery without
+   * `loadState` runs on the way in, so this asserts the recovery without
    * needing a `chrome.storage` stub.
    */
   const recovered = JSON.parse(exportJson(corrupt as unknown as StoredState));
 
+  it('re-mints a stored custom command whose id could not have been minted', () => {
+    const state = JSON.parse(
+      exportJson({
+        overrides: {
+          custom: [{ keys: ['x'], url: 'https://x.test/', id: 'u:has space' }],
+        },
+      } as unknown as StoredState),
+    );
+    expect(state.overrides.custom[0].id).toBe('u:x');
+  });
+
+  it('re-mints a stored custom command that claims a shipped id', () => {
+    // The stored path cannot refuse, refusing here would brick every surface,
+    // so the claim is overwritten instead. `gh` keeps its own override entries.
+    const state = JSON.parse(
+      exportJson({
+        overrides: {
+          custom: [{ keys: ['x'], url: 'https://x.test/', id: 'gh' }],
+        },
+      } as unknown as StoredState),
+    );
+    expect(state.overrides.custom[0].id).toBe('u:x');
+  });
+
   it('drops what it cannot use instead of throwing', () => {
     expect(recovered.overrides.disabled).toEqual(['gh']);
-    expect(recovered.overrides.keyOverrides).toEqual({ lh: ['local'] });
     expect(recovered.overrides.custom.map((cmd: { keys: string[] }) => cmd.keys[0])).toEqual(['ok']);
     expect(recovered.overrides.custom[0].searchUrl).toBeUndefined();
+  });
+
+  it('keeps the usable half of an edit and drops the rest', () => {
+    expect(recovered.overrides.edits).toEqual({
+      // The url is prose and dies here rather than at the merge layer; the name
+      // beside it is fine and survives.
+      gh: { name: 'Mine' },
+      // A key nothing could look up again, an edit with nothing in it, a
+      // `javascript:` destination and an edit on a user id: all gone.
+      lh: { keys: ['local'] },
+    });
+  });
+
+  it('prunes deleted down to shortcuts this build actually ships', () => {
+    // A tombstone for a command that no longer exists is a shortcut nobody can
+    // restore, so it is not kept forever.
+    expect(recovered.overrides.deleted).toEqual(['grok']);
+  });
+
+  it('keeps only well-formed, unique sections', () => {
+    expect(recovered.overrides.sections).toEqual([{ id: 'work', label: 'Work' }]);
+  });
+
+  it('spends the section cap on sections it can actually use', () => {
+    // A blob padded with junk ahead of a real section: capping the input before
+    // filtering would read nothing but the junk and drop every usable section
+    // behind it.
+    const padded = [
+      ...Array.from({ length: 64 }, () => ({ id: 'not a slug', label: 'x' })),
+      { id: 'work', label: 'Work' },
+    ];
+    const state = JSON.parse(
+      exportJson({ overrides: { sections: padded } } as unknown as StoredState),
+    );
+    expect(state.overrides.sections).toEqual([{ id: 'work', label: 'Work' }]);
+  });
+
+  it('still stops at the cap once the unusable entries are gone', () => {
+    const many = Array.from({ length: 70 }, (_, i) => ({ id: `s${i}`, label: `S${i}` }));
+    const state = JSON.parse(
+      exportJson({ overrides: { sections: many } } as unknown as StoredState),
+    );
+    expect(state.overrides.sections).toHaveLength(64);
+    expect(state.overrides.sections[63]).toEqual({ id: 's63', label: 'S63' });
   });
 
   it('falls back to the shipped default engine rather than breaking every search', () => {
@@ -390,5 +846,133 @@ describe('interceptStopList', () => {
   it('round trips through export', () => {
     const state = importJson(exportJson(STATE));
     expect(state.settings?.interceptStopList).toEqual(['new', 'r']);
+  });
+});
+
+/**
+ * The format-1 reader. `keyOverrides` was the only place a v1 file recorded a
+ * rebinding, so losing it would silently un-rebind every keyword the user
+ * changed: the failure they would notice last and trust least.
+ */
+describe('a format 1 file', () => {
+  it('is accepted and its keyOverrides arrive as an edit', () => {
+    const state = importJson('{"version":1,"overrides":{"keyOverrides":{"gh":["hub"]}}}');
+    expect(state.overrides.edits.gh.keys).toEqual(['hub']);
+    expect(mergeCommands(BUILTIN_COMMANDS, state.overrides).find((cmd) => cmd.id === 'gh')?.keys).toEqual([
+      'hub',
+    ]);
+  });
+
+  it('is recognized as a bare overrides snippet too', () => {
+    expect(importJson('{"keyOverrides":{"gh":["hub"]}}').overrides.edits.gh.keys).toEqual(['hub']);
+  });
+
+  it('lets an explicit edit win over the legacy map', () => {
+    const state = importJson(
+      '{"overrides":{"keyOverrides":{"gh":["hub"]},"edits":{"gh":{"keys":["octo"],"name":"Mine"}}}}',
+    );
+    expect(state.overrides.edits.gh).toEqual({ keys: ['octo'], name: 'Mine' });
+  });
+
+  it('folds the legacy map alongside an edit that does not name keys', () => {
+    const state = importJson(
+      '{"overrides":{"keyOverrides":{"gh":["hub"]},"edits":{"gh":{"name":"Mine"}}}}',
+    );
+    expect(state.overrides.edits.gh).toEqual({ name: 'Mine', keys: ['hub'] });
+  });
+
+  it('refuses a format 3 file', () => {
+    expect(() => importJson('{"version":3,"overrides":{}}')).toThrow(/newer version/i);
+  });
+});
+
+/**
+ * SECURITY. `handler`, `provider`, `builtin` and `id` select behaviour and
+ * identity. An import file is untrusted input, so the whole path from JSON to
+ * resolved command is driven here rather than asserting on `applyEdit` alone.
+ */
+describe('an edit cannot smuggle behaviour through the import', () => {
+  const file = JSON.stringify({
+    overrides: {
+      edits: {
+        gh: {
+          handler: 'ai',
+          provider: 'chatgpt',
+          builtin: true,
+          id: 'evil',
+          url: 'https://evil.test/',
+        },
+      },
+    },
+  });
+
+  /** The production step between the parser and the merge: skipping it would
+   *  test a path no surface actually runs. */
+  const imported = (): Overrides =>
+    applyImport(importJson(file), { overrides: DEFAULT_OVERRIDES, settings: DEFAULT_SETTINGS })
+      .overrides;
+
+  it('keeps only the fields an edit is allowed to name', () => {
+    expect(Object.keys(imported().edits.gh)).toEqual(['url']);
+  });
+
+  it('leaves the merged command\'s handler, builtin flag and id alone', () => {
+    const gh = buildKeyMap(mergeCommands(BUILTIN_COMMANDS, imported())).get('gh');
+    expect(gh?.handler).toBe('github');
+    expect(gh?.builtin).toBe(true);
+    expect(gh?.id).toBe('gh');
+    expect(gh?.provider).toBeUndefined();
+    // The one field it WAS allowed to change did change.
+    expect(gh?.url).toBe('https://evil.test/');
+  });
+
+  it('holds even when the edit reaches the merge unparsed', () => {
+    // The storage boundary strips these fields, so the two cases above stay
+    // green even if `applyEdit` spread the edit onto the command. The merge is
+    // the second lock, and this is the only place that turns it: an override
+    // blob handed straight to `mergeCommands`: a stored blob written by an
+    // older build, or the options page's own in-memory state.
+    const overrides: Overrides = {
+      ...DEFAULT_OVERRIDES,
+      edits: {
+        gh: {
+          handler: 'ai',
+          provider: 'chatgpt',
+          builtin: false,
+          id: 'evil',
+          name: 'Mine',
+        } as unknown as ShortcutEdit,
+      },
+    };
+    const gh = buildKeyMap(mergeCommands(BUILTIN_COMMANDS, overrides)).get('gh');
+    expect(gh?.handler).toBe('github');
+    expect(gh?.provider).toBeUndefined();
+    expect(gh?.builtin).toBe(true);
+    expect(gh?.id).toBe('gh');
+    expect(gh?.name).toBe('Mine');
+  });
+});
+
+describe('deleting a shipped shortcut', () => {
+  const state = importJson('{"overrides":{"deleted":["gh"],"edits":{"gh":{"name":"Mine"}}}}');
+
+  it('takes it and every alias out of the merge', () => {
+    const keys = buildKeyMap(mergeCommands(BUILTIN_COMMANDS, state.overrides));
+    expect(keys.has('gh')).toBe(false);
+    expect(keys.has('github')).toBe(false);
+  });
+
+  it('keeps the edit, so restoring it restores what the user had', () => {
+    expect(state.overrides.edits.gh).toEqual({ name: 'Mine' });
+  });
+
+  it('survives an export round trip, edit and all', () => {
+    const round = importJson(exportJson({ overrides: state.overrides, settings: DEFAULT_SETTINGS }));
+    expect(round.overrides.deleted).toEqual(['gh']);
+    // Read through to the merge rather than stopping at the stored list: a
+    // round trip that dropped the id would quietly bring the shortcut back,
+    // and one that dropped the edit would bring back the shipped name.
+    expect(buildKeyMap(mergeCommands(BUILTIN_COMMANDS, round.overrides)).has('gh')).toBe(false);
+    expect(round.overrides.edits.gh).toEqual({ name: 'Mine' });
   });
 });
