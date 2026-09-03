@@ -309,6 +309,28 @@ the obvious edit reverses it.
   by the import parser; it is edited through an exported JSON file. Do not delete the plumbing
   because no card writes it, and do not reintroduce a settings field the resolver would have to read
   to answer a keyword.
+- **Meta shortcuts ship a RELATIVE url.** `bl`, `add` and `set` point at `options.html#…` and the
+  dispatch page absolutises it. Applying `withScheme` unconditionally on save turned a no-change
+  Save into a stored `https://options.html#help` that opened nothing, permanently. See `keptUrl` in
+  `src/lib/draft.ts`.
+- **The live preview substitutes a shipped command at its own registry index.** `buildKeyMap` is
+  first-writer-wins, so appending the draft instead would preview a resolution the save does not
+  produce. See `previewCommands` in `src/options/model/form.ts`.
+- **A re-minted custom id has to be rewritten in `disabled` and `deleted` too.** Otherwise those
+  entries follow the wrong shortcut and a newly imported command inherits the incumbent's history.
+  See `landedAs` in `src/lib/merge-import.ts`.
+- **`?raw` CSS imports need `css: true` in `vitest.config.ts`.** Vitest stubs anything matching
+  `*.css` to an empty module and that stub beats the raw loader, so without the flag the sheets
+  arrive as empty strings and every token assertion passes vacuously.
+- **`--accent` and `--accent-fg` must stay flat hexes.** `scripts/gen-icons.mjs` parses those exact
+  declarations to colour the icon, so wrapping either in `light-dark()` throws the build. The same
+  reason pins `minimum_chrome_version` to 123: `light-dark()` needs it.
+- **`.spec-row` is a harness class.** It belongs to `design/preview.css` and to the artboards. The
+  product renders `.row`. A harness class must never reach the shipped sheet.
+- **`hasOnboarded` is true on every real install** by the time the welcome tab opens, because the
+  starter pick is written first. It comes apart from "a pick is live" for a format 1 profile
+  arriving from Settings, or an install whose write failed: those have every shipped shortcut on and
+  no pick on record, so `initialPicks` opens the starter set ticked rather than an empty screen.
 
 ## Verify by executing, not by reading
 
