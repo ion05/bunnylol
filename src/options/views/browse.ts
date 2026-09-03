@@ -76,6 +76,17 @@ function collapse(): CollapseState {
   return collapseState;
 }
 
+/**
+ * Forgets every fold, for a reset that is putting the profile back to how it
+ * was installed. It goes through the same state the page folds with, rather
+ * than clearing `localStorage` from the outside: the singleton above outlives
+ * a reset, so a cleared store alone would leave the old set in memory and the
+ * next fold would write all of it back.
+ */
+export function forgetCollapsed(): void {
+  collapse().expandAll();
+}
+
 export function renderBrowse(): Node[] {
   const entries = browseEntries(BUILTIN_COMMANDS, getState().overrides);
   // The same list the DNR rules are built from, so the marker below cannot

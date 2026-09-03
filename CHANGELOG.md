@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the carrier (UPS, USPS, FedEx or DHL) off the shape of the number and opens
   that carrier's own tracking page. A number nobody recognises is searched
   for instead. A `dhl` shortcut joins `ups`, `fedex` and `usps`.
+- **Start over**, in Settings → Data. It erases every shortcut, edit,
+  section and setting, then runs the first-install setup again and opens the
+  welcome screen, so the profile ends up exactly as a fresh install leaves it.
+  Two clicks, the second one confirming.
 - A first-run picker. Installing now opens a welcome screen that asks which
   packs of shipped shortcuts you want, and each pack unfolds to list the
   shortcuts a tick turns on. Search, Developer and AI are ticked. Every other

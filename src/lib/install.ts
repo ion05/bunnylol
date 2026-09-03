@@ -11,7 +11,7 @@
  */
 
 import { BUILTIN_COMMANDS } from './commands';
-import { syncRules } from './dnr';
+import { forgetRuleStatus, syncRules } from './dnr';
 import {
   STARTER_CATEGORIES,
   applyCategoryPick,
@@ -19,6 +19,7 @@ import {
   migrateNewBuiltins,
 } from './onboarding';
 import { loadState, saveOverrides } from './storage';
+import { STORAGE_KEY } from './types';
 
 /**
  * The picker, as a page the worker can open. `chrome.runtime.openOptionsPage()`
@@ -79,6 +80,35 @@ export async function writeStarterPick(): Promise<boolean> {
   if (hasOnboarded(state.overrides)) return false;
   await saveOverrides(applyCategoryPick(BUILTIN_COMMANDS, STARTER_CATEGORIES, state.overrides));
   return true;
+}
+
+/**
+ * Everything the profile holds, thrown away, and the first-install path run
+ * over the empty profile: the state a fresh install leaves behind, in a profile
+ * that has been used.
+ *
+ * The state is REMOVED rather than overwritten with the defaults. A fresh
+ * profile has no key at all, so `enabledCategories` is absent rather than
+ * stored as null, and `writeStarterPick` below is then answering the same
+ * question `onInstalled` answers on a real install instead of one that only
+ * looks like it. It also means a field this build does not know about, written
+ * by a newer one, goes with it.
+ *
+ * The last sync's status is cleared before the rules are rebuilt, because it
+ * describes rules built from the state that was just deleted.
+ *
+ * Then the first-install path, in its order: the pick is written BEFORE
+ * `syncRules`, so the rules Chrome is handed already match the starter set (the
+ * same reason `onInstalled` does it that way), and the sync is `.catch`-guarded
+ * for the same reason it is there: it reads `chrome.runtime.id` before its own
+ * try. No tab is opened. The one caller is the options page, which navigates
+ * itself to the picker afterwards.
+ */
+export async function startOver(): Promise<void> {
+  await chrome.storage.local.remove(STORAGE_KEY);
+  await forgetRuleStatus();
+  await writeStarterPick();
+  await syncRules().catch((err) => console.error('[bunnylol] start-over sync failed', err));
 }
 
 /**

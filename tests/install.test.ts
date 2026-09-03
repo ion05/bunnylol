@@ -12,14 +12,21 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BUILTIN_COMMANDS, SEARCH_ENGINES } from '../src/lib/commands';
-import { WELCOME_PATH, adoptNewBuiltins, onInstalled, writeStarterPick } from '../src/lib/install';
+import { lastRuleStatus, syncRules } from '../src/lib/dnr';
+import {
+  WELCOME_PATH,
+  adoptNewBuiltins,
+  onInstalled,
+  startOver,
+  writeStarterPick,
+} from '../src/lib/install';
 import { STARTER_CATEGORIES, effectiveCategories } from '../src/lib/onboarding';
 import { shortcutId } from '../src/lib/overrides';
 import { loadState } from '../src/lib/storage';
-import { DEFAULT_OVERRIDES, DEFAULT_SETTINGS } from '../src/lib/types';
-import type { Overrides, StoredState } from '../src/lib/types';
+import { DEFAULT_OVERRIDES, DEFAULT_SETTINGS, STORAGE_KEY } from '../src/lib/types';
+import type { Command, Overrides, StoredState } from '../src/lib/types';
 import { parseRoute } from '../src/options/router';
-import { EXT_ID, claim, installChromeStub, resultsUrl } from './helpers/rules';
+import { EXT_ID, claim, installChromeStub, redirectTo, resultsUrl } from './helpers/rules';
 import type { ChromeStub } from './helpers/rules';
 
 let stub: ChromeStub | null = null;
@@ -220,6 +227,109 @@ describe('any other reason', () => {
     expect(stub.writes).toBe(0);
     expect(stub.opened).toEqual([]);
     expect(stub.rules().length).toBeGreaterThan(0);
+  });
+});
+
+describe('starting over', () => {
+  const mine: Command = {
+    id: 'u:tix',
+    keys: ['tix'],
+    name: 'Tickets',
+    description: 'Buy tickets.',
+    url: 'https://example.com',
+    category: 'sec-mine',
+    builtin: false,
+  };
+
+  /** A profile that has been lived in: a pick, a shortcut of their own, an
+   *  edit, a section, a deletion, a switched-off builtin and settings. */
+  function usedProfile(): StoredState {
+    const [first, second] = BUILTIN_COMMANDS;
+    return {
+      overrides: {
+        ...DEFAULT_OVERRIDES,
+        enabledCategories: ['purdue'],
+        seenBuiltins: allBuiltinIds(),
+        disabled: [shortcutId(first)],
+        deleted: [shortcutId(second)],
+        edits: { [shortcutId(first)]: { name: 'Renamed by hand' } },
+        sections: [{ id: 'sec-mine', label: 'Mine' }],
+        custom: [mine],
+      },
+      settings: { ...DEFAULT_SETTINGS, githubUser: 'octocat', googleAccount: 3 },
+    };
+  }
+
+  it('leaves the profile in the state a fresh install leaves it in', async () => {
+    stub = installChromeStub({ state: usedProfile() });
+
+    await startOver();
+
+    const { overrides, settings } = await loadState();
+    expect(overrides.enabledCategories).toEqual(effectiveCategories(STARTER_CATEGORIES));
+    expect(overrides.custom).toEqual([]);
+    expect(overrides.edits).toEqual({});
+    expect(overrides.sections).toEqual([]);
+    expect(overrides.deleted).toEqual([]);
+    expect(settings).toEqual(DEFAULT_SETTINGS);
+
+    // The same projection `applyCategoryPick` makes on a real install: every
+    // builtin outside the starter packs is off, and every one inside them is
+    // on, including the builtin this profile had switched off by hand.
+    const picked = new Set(effectiveCategories(STARTER_CATEGORIES));
+    const off = new Set(overrides.disabled);
+    for (const cmd of BUILTIN_COMMANDS) {
+      expect(off.has(shortcutId(cmd))).toBe(!picked.has(cmd.category));
+    }
+    // One write, the pick, as on a fresh install: a burst is what collides on
+    // DNR rule ids.
+    expect(stub.writes).toBe(1);
+  });
+
+  it('clears the stale rule status before the rebuild writes a new one', async () => {
+    stub = installChromeStub({ state: usedProfile() });
+    // A status describing rules built from the state this is about to delete.
+    await syncRules();
+    expect(await lastRuleStatus()).not.toBeNull();
+    stub.ops.length = 0;
+
+    await startOver();
+
+    // The state key goes first: `writeStarterPick` has to be answering for a
+    // profile that has never onboarded, which is only true once it is gone.
+    expect(stub.ops[0]).toBe(`local.remove ${STORAGE_KEY}`);
+    const session = stub.ops.filter((op) => op.startsWith('session.'));
+    expect(session[0]?.startsWith('session.remove')).toBe(true);
+    expect(session.slice(1).every((op) => op.startsWith('session.set'))).toBe(true);
+    // And the sync that follows leaves a status of its own, so the page has
+    // something to report rather than "checking".
+    expect(await lastRuleStatus()).not.toBeNull();
+  });
+
+  it('rebuilds the address bar around the starter pick', async () => {
+    stub = installChromeStub({ state: usedProfile() });
+    await syncRules();
+    // What this profile had: its own keyword live, and Purdue picked.
+    expect(addressBar('tix')).toBe('redirect');
+    expect(addressBar('bs')).toBe('redirect');
+
+    await startOver();
+
+    expect(addressBar('tix')).not.toBe('redirect');
+    expect(addressBar('bs')).not.toBe('redirect');
+    expect(addressBar('gh')).toBe('redirect');
+    expect(redirectTo(stub.rules(), resultsUrl(GOOGLE, 'gh+facebook%2Freact'))).toBe(
+      `chrome-extension://${EXT_ID}/go.html?q=gh+facebook%2Freact`,
+    );
+  });
+
+  it('opens nothing: the page it runs from navigates itself', async () => {
+    stub = installChromeStub({ state: usedProfile() });
+
+    await startOver();
+
+    expect(stub.opened).toEqual([]);
+    expect(stub.optionsPages).toBe(0);
   });
 });
 

@@ -33,6 +33,10 @@ export interface ChromeStub {
   opened: string[];
   /** How many times `chrome.runtime.openOptionsPage` was called. */
   optionsPages: number;
+  /** Every storage call, in order, as `<area>.<verb> <key>`. A count cannot
+   *  answer "was the stale status cleared BEFORE the new one was written",
+   *  which is the whole question for a path that resets and then re-syncs. */
+  ops: string[];
   restore(): void;
 }
 
@@ -85,16 +89,26 @@ export function installChromeStub(options: StubOptions = {}): ChromeStub {
     writes: 0,
     opened: [],
     optionsPages: 0,
+    ops: [],
     restore: () => {
       globals.chrome = previous;
     },
   };
 
-  const area = (bag: Map<string, unknown>, counted = false) => ({
+  const area = (name: string, bag: Map<string, unknown>, counted = false) => ({
     get: async (key: string) => (bag.has(key) ? { [key]: bag.get(key) } : {}),
     set: async (values: Record<string, unknown>) => {
       if (counted) stub.writes += 1;
-      for (const [key, value] of Object.entries(values)) bag.set(key, value);
+      for (const [key, value] of Object.entries(values)) {
+        stub.ops.push(`${name}.set ${key}`);
+        bag.set(key, value);
+      }
+    },
+    remove: async (keys: string | string[]) => {
+      for (const key of Array.isArray(keys) ? keys : [keys]) {
+        stub.ops.push(`${name}.remove ${key}`);
+        bag.delete(key);
+      }
     },
   });
 
@@ -114,7 +128,7 @@ export function installChromeStub(options: StubOptions = {}): ChromeStub {
         stub.opened.push(info.url ?? '');
       },
     },
-    storage: { local: area(local, true), session: area(session) },
+    storage: { local: area('local', local, true), session: area('session', session) },
     declarativeNetRequest: {
       getDynamicRules: async () => [...dynamic],
       updateDynamicRules: async (update: DynamicRuleUpdate) => {

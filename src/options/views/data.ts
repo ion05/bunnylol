@@ -3,16 +3,19 @@
  */
 
 import { BUILTIN_COMMANDS } from '../../lib/commands';
+import { startOver } from '../../lib/install';
 import { mergeOverrides } from '../../lib/merge-import';
 import { MAX_SECTIONS, shortcutId } from '../../lib/overrides';
 import type { ImportedState } from '../../lib/storage';
-import { applyImport, exportJson, importJson } from '../../lib/storage';
+import { applyImport, exportJson, importJson, loadState } from '../../lib/storage';
 import { clone, countShipped, errorText, joinClauses } from '../../lib/text';
 import { DEFAULT_OVERRIDES, DEFAULT_SETTINGS } from '../../lib/types';
 import { el } from '../../ui/dom';
 import { button, confirmButton, panelCard } from '../dom';
 import { go } from '../router';
-import { commitState, getCommands, getState, setNotice } from '../store';
+import { scheduleStatusRefresh } from '../rule-status';
+import { applyState, commitState, getCommands, getState, setNotice } from '../store';
+import { forgetCollapsed } from './browse';
 
 export function renderData(): HTMLElement {
   const card = panelCard(
@@ -174,6 +177,38 @@ export function renderData(): HTMLElement {
     choice.querySelector('button')?.focus();
   }
 
+  /**
+   * The profile, thrown away, and the first install run over what is left.
+   *
+   * Not `commitState(defaults)`: that writes a state that only looks fresh,
+   * with `enabledCategories` recorded rather than never answered, which is the
+   * one thing the picker reads to decide whether it has been answered.
+   * `startOver` deletes the key instead and reruns the install path, so the
+   * page below really is opening on a profile that has never onboarded.
+   */
+  async function firstRunAgain(): Promise<void> {
+    try {
+      // Folds are per-machine view state in `localStorage`, so they are outside
+      // everything `startOver` touches and would outlive the groups they were
+      // about.
+      forgetCollapsed();
+      await startOver();
+      // Written through `chrome.storage` rather than through `commitState`, so
+      // the page's own copy is re-read instead of assumed, and the navigation
+      // below happens after it: the welcome route's early return in the
+      // storage listener means the echo of these writes cannot repaint the
+      // picker underneath the user.
+      applyState(await loadState());
+      go('#welcome');
+      // The rules were rebuilt behind the page's back; the pill is still
+      // reporting coverage for the profile that was just deleted.
+      scheduleStatusRefresh();
+    } catch (err) {
+      error.textContent = errorText(err);
+      error.hidden = false;
+    }
+  }
+
   card.body.append(
     el('div', {
       class: 'btn-row',
@@ -203,6 +238,20 @@ export function renderData(): HTMLElement {
               error.hidden = false;
             },
           );
+        }),
+      ],
+    }),
+    // Its own box, below Reset: this is the stronger of the two, and the
+    // sentence has to sit next to the button it describes rather than sharing
+    // a row with another one.
+    el('div', {
+      class: 'danger-zone',
+      children: [
+        el('p', {
+          text: 'Start over erases every shortcut, edit, section and setting, and runs the first-install setup again. The welcome screen opens next.',
+        }),
+        confirmButton('Start over', 'Click again to erase everything', 'btn btn-danger', () => {
+          void firstRunAgain();
         }),
       ],
     }),

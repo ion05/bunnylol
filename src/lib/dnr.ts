@@ -501,6 +501,27 @@ export async function lastRuleStatus(): Promise<RuleStatus | null> {
 }
 
 /**
+ * Forgets the last sync's outcome, both copies of it.
+ *
+ * For the one caller that is putting the profile back to how it was installed:
+ * a status left behind describes rules built from state that no longer exists,
+ * and the options page would report it as the current coverage until the next
+ * sync answers. The module copy has to go too, because it is what
+ * `lastRuleStatus` falls back to when session storage is missing.
+ */
+export async function forgetRuleStatus(): Promise<void> {
+  cachedStatus = null;
+  const area = sessionArea();
+  if (!area) return;
+  try {
+    await area.remove(STATUS_KEY);
+  } catch {
+    // A status that could not be cleared is overwritten by the sync that
+    // follows it; it must not fail the reset.
+  }
+}
+
+/**
  * An MV3 worker is torn down after ~30s idle, so a module-level variable alone
  * would forget the last sync almost immediately. `chrome.storage.session` is
  * per-browser-session and never hits disk, which is exactly the lifetime a rule

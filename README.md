@@ -49,7 +49,8 @@ pick is written before the screen opens, so it is already live.
 
 Nothing there is final. You can rename, move, switch off or delete every shortcut afterwards. To
 reopen the screen, go to **Settings → Sections → Shortcut packs → Choose shortcut packs…**. That is
-how you turn a pack on later. Note what Continue means when you do. It turns *on* every shipped
+how you turn a pack on later. To see the first run itself again, on an empty profile, use
+**Settings → Data → Start over**. Note what Continue means when you do. It turns *on* every shipped
 shortcut in the packs you tick, including ones you had switched off by hand. It turns off the ones
 in the packs you leave unticked. It never touches shortcuts you made yourself.
 
@@ -229,6 +230,11 @@ README](extras/packs/README.md) documents the format if you want to write one.
 **Reset to defaults**, in the same card, deletes every shortcut you made. It restores every shipped
 one you turned off or deleted, forgets your sections, and puts settings back.
 
+**Start over**, below it, goes further. It erases every shortcut, edit, section and setting, then
+runs the first-install setup again and opens the welcome screen. The profile ends up exactly as it
+is after a fresh install, so this is also how you see the welcome screen a second time. Export
+first if you want your shortcuts back.
+
 ### Settings
 
 | Card | What is in it |
@@ -239,7 +245,7 @@ one you turned off or deleted, forgets your sections, and puts settings back.
 | **Search interception** | Which engines are intercepted (untick them all to leave every search alone), the dispatch-page URL to paste in as a custom search engine, and **Confirm before opening a shortcut** |
 | **Address-bar interception** | The exemption list |
 | **AI prompt templates** | The `?q=` prefill URL for each AI provider. These parameters are undocumented and providers change them, so they are editable without a rebuild |
-| **Data** | Export, import, reset |
+| **Data** | Export, import, reset, and **Start over**, which erases everything and reruns the first install |
 
 ### Rule status
 
