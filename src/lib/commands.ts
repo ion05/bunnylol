@@ -592,7 +592,7 @@ export const BUILTIN_COMMANDS: BuiltinCommand[] = [
     searchUrl: 'https://www.wolframalpha.com/input?i={q}',
     category: 'search',
     builtin: true,
-    example: 'wa 42 miles in km',
+    example: 'wolfram 42 miles in km',
   },
   {
     keys: ['def', 'dict', 'define'],
@@ -738,7 +738,7 @@ export const BUILTIN_COMMANDS: BuiltinCommand[] = [
     handler: 'whatsapp',
     category: 'social',
     builtin: true,
-    example: 'whatsapp 15551234567',
+    example: 'wa 15551234567',
   },
 
   // ------------------------------------------------------ productivity ----

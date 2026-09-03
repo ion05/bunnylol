@@ -177,6 +177,19 @@ describe('argument slots', () => {
     },
   );
 
+  it('starts every example with a keyword the command actually answers to', () => {
+    // WolframAlpha shipped `example: 'wa 42 miles in km'` while its only key
+    // was `wolfram`, and `wa` belongs to WhatsApp. The browse list prints
+    // `example` verbatim under the row, so the page was telling people to type
+    // a keyword that opens somebody else's site. Collected rather than run per
+    // command: one failure should name every row that drifted.
+    const wrong = BUILTIN_COMMANDS.filter((cmd) => {
+      const first = (cmd.example ?? '').trim().split(/\s+/)[0];
+      return first !== '' && !cmd.keys.includes(first);
+    }).map((cmd) => `${cmd.keys[0]}: ${cmd.example}`);
+    expect(wrong).toEqual([]);
+  });
+
   it('guards every searchUrl that fills a non-query slot with a handler', () => {
     const unguarded: string[] = [];
     for (const cmd of BUILTIN_COMMANDS) {
