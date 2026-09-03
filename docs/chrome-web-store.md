@@ -5,8 +5,9 @@ fresh act of composition. The strings below are the answers, word for word. If t
 matching one of them, change the code or change this file. Do not soften a justification to fit.
 
 This repo produces the manifest, the release zip (`pnpm package`), the privacy policy
-([PRIVACY.md](../PRIVACY.md)) and the listing icon (`store/icon128.png`). It does not produce
-screenshots or listing copy. See [Assets](#assets).
+([PRIVACY.md](../PRIVACY.md)), the listing icon (`store/icon128.png`) and the listing copy
+([store/listing.md](../store/listing.md)). It does not produce screenshots. See
+[Assets](#assets).
 
 ## Category
 
@@ -62,8 +63,9 @@ that runs ships in the package.
   `chrome.storage.local`, plus a session-lifetime rule-status cache in `chrome.storage.session`.
 - **Limited use:** certify all three statements. Nothing is sold, transferred or used for anything
   but the single purpose above, because nothing leaves the machine.
-- **Privacy policy URL:** the published URL for [PRIVACY.md](../PRIVACY.md). Use the GitHub Pages
-  copy, or the raw file over https. The field requires a URL, not a file.
+- **Privacy policy URL:** `https://github.com/ion05/bunnylol/blob/master/PRIVACY.md`. The field
+  requires a URL rather than a file, and the dashboard accepts that one, so hosting a copy on
+  GitHub Pages just to satisfy it is not worth doing.
 
 ## Search-behaviour disclosure
 
@@ -95,8 +97,9 @@ above exists to close. Have a fallback name ready in case review objects to the 
   so it is never copied into `dist/` or the release zip.
 - **Screenshots are a hard submission blocker, and this repo does not produce them.** At least one
   1280x800 PNG is required. A suggested set: the address bar mid-type, the options page showing the
-  shortcut list and the rule-status pill, and the toolbar popup. A 440x280 small promo tile is
-  needed to be eligible for featuring.
+  shortcut list with a group folded, the edit form with its live preview, and the toolbar popup. Do
+  not plan a shot around the rule-status pill: it is silent on a healthy profile, so there is
+  nothing to capture. A 440x280 small promo tile is needed to be eligible for featuring.
 - Keep every listing asset out of `dist/`, so none of it reaches the upload.
 
 ## Upload checklist

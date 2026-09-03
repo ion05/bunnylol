@@ -1,4 +1,9 @@
 # Store assets
 
-Chrome Web Store listing assets. `scripts/gen-icons.mjs` generates them. They are uploaded by hand,
-and never packed into `dist/` or the release zip.
+Chrome Web Store listing assets and copy. `scripts/gen-icons.mjs` generates the icon. Everything
+here is uploaded by hand, and none of it is packed into `dist/` or the release zip.
+
+- `icon128.png` the listing icon, which is not the toolbar icon: this one is padded, and the
+  toolbar copy in `public/icons/` is deliberately full-bleed.
+- `listing.md` the dashboard text. Two of its paragraphs are compliance wording that is quoted
+  verbatim from `docs/chrome-web-store.md` and must not be reworded when it is pasted in.

@@ -105,3 +105,26 @@ auto-closes the PR that targets it.
 
 Do not open a public issue for a vulnerability. [SECURITY.md](SECURITY.md) has the private reporting
 route.
+
+## Maintenance and releases
+
+This project is maintained by one person, [@ion05](https://github.com/ion05). Issues and pull
+requests are read, but a reply may take a week. That is the honest expectation rather than a
+promise of anything faster.
+
+Versions follow [semantic versioning](https://semver.org), and the stored state format is the
+compatibility surface. A new field that older builds ignore is a minor. A change that makes an
+older export unreadable is a major. Adding or removing a shipped shortcut is a minor, since a
+profile that never touched it still resolves.
+
+A release is:
+
+1. Bump `version` in `package.json` and `public/manifest.json` in the same commit. They are checked
+   against each other by `tests/manifest.test.ts`, so they cannot drift.
+2. Add the section to [CHANGELOG.md](CHANGELOG.md) and the link at the foot of that file.
+3. Run the gate, then `pnpm package`, which rebuilds and writes `release/bunnylol-<version>.zip`.
+   Build fresh rather than trusting a zip already sitting in `release/`: the Web Store enforces
+   monotonic versions, so uploading a stale build under a new version costs you the next one too.
+4. Tag `vX.Y.Z`, push the tag, and attach that zip to a GitHub release.
+5. Upload the same zip to the Web Store. [docs/chrome-web-store.md](docs/chrome-web-store.md) has
+   the dashboard answers, and [store/listing.md](store/listing.md) has the copy.
