@@ -10,9 +10,12 @@ import {
   firstKey,
   knownCategoryIds,
   normalizeId,
+  sectionKey,
+  sectionLabel,
+  sectionOrder,
   shortcutId,
 } from '../../lib/overrides';
-import type { Command, Overrides } from '../../lib/types';
+import type { Command, Overrides, Section } from '../../lib/types';
 
 /** A browse row. Disabled builtins are missing from the merged list, so the
  *  browse view is built from the raw registry plus the override layer. */
@@ -82,28 +85,61 @@ export function browseEntries(builtins: Command[], overrides: Overrides): Entry[
   return entries;
 }
 
-/** What the two count labels are told: the rows the filter left on screen, how
+/** What the toolbar count line is told: the rows the filter left on screen, how
  *  many of those are switched on, and how many rows the list holds in all. */
 export interface BrowseCounts {
-  /** Rows the filter is showing. Every row, when no query is live. */
+  /** Rows the filter is showing, the ones under "Hidden shortcuts" included.
+   *  Every row, when no query is live. */
   shown: number;
-  /** Of those, the ones that are not switched off. */
+  /** Of those, the ones that are not switched off, so the ones still drawn in
+   *  their own section. */
   on: number;
-  /** Every row in the list, filtered out or not. */
+  /** Every row in the list, filtered out or switched off or not. */
   total: number;
 }
 
 /**
- * The number beside a group heading.
+ * The id the "Hidden shortcuts" group folds under.
  *
- * A pack the user declined leaves its group listed at full strength with every
- * row dimmed, and a bare "12" beside twelve switched-off shortcuts reads as
- * twelve live ones: the picker looked like it did nothing. The bare number
- * stays for a group with nothing off, because "12 of 12 on" on every heading is
- * noise in the ordinary case.
+ * A section id is minted from its label through `validateSectionId`, which
+ * takes `^[a-z0-9][a-z0-9-]*$`, so nothing the user can type mints an id
+ * starting with `@`. That is the whole point of the character: the fold lives
+ * in the same `localStorage` set as the real sections, and a key a user could
+ * mint would let a section called "Hidden" inherit this group's fold, or fold
+ * this group by being renamed.
  */
-export function groupCountLabel(on: number, shown: number): string {
-  return on === shown ? String(shown) : `${on} of ${shown} on`;
+export const HIDDEN_GROUP_ID = '@hidden';
+
+/** A section heading and the shortcuts filed under it. */
+export interface BrowseGroup {
+  /** The section id, which is also what the fold is remembered under. */
+  id: string;
+  label: string;
+  /** Every shortcut in the section, switched off or not. The view draws the
+   *  live ones here and the switched-off ones under "Hidden shortcuts", but a
+   *  row switched back on has to know which section it belongs in, so the
+   *  grouping cannot drop them. */
+  entries: Entry[];
+}
+
+/**
+ * The section groups, in the order the page draws them.
+ *
+ * Sections with nothing in them at all are skipped; a section whose shortcuts
+ * are ALL switched off is kept, because it is still a section, and the row that
+ * the user switches back on has to have somewhere to land without a re-render.
+ */
+export function browseGroups(entries: Entry[], sections: Section[] | undefined): BrowseGroup[] {
+  const groups: BrowseGroup[] = [];
+  for (const id of sectionOrder(sections, entries.map((entry) => entry.cmd))) {
+    // Through `sectionKey`, because that is what `sectionOrder` minted the id
+    // with: comparing the raw strings drops a row whose stored category
+    // differs only in case, and it would be dropped silently.
+    const members = entries.filter((entry) => sectionKey(entry.cmd.category) === id);
+    if (members.length === 0) continue;
+    groups.push({ id, label: sectionLabel(id, sections), entries: members });
+  }
+  return groups;
 }
 
 /**

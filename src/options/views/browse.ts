@@ -8,13 +8,19 @@
  * is which override map Delete and Save write to, and that is decided inside
  * the handlers rather than by building two kinds of row.
  *
+ * A switched-off shortcut is NOT drawn in its section. It is drawn last on the
+ * page, under one folded "Hidden shortcuts" heading, so a user who declined
+ * three packs on the welcome picker sees a shorter page rather than a page of
+ * dead rows. The section groups and their counts are therefore about live
+ * shortcuts only, and the switch moves a row between the two places.
+ *
  * Every string that reaches the DOM goes through `textContent`: a shortcut name
  * is user input, and this view renders it next to the URL it will navigate to
  * (AGENTS.md invariant 11).
  */
 
 import { BUILTIN_COMMANDS, destinationOf } from '../../lib/commands';
-import { firstKey, sectionLabel, sectionOrder, shortcutId } from '../../lib/overrides';
+import { firstKey, shortcutId } from '../../lib/overrides';
 import { activeKeywords, suggest } from '../../lib/resolve';
 import { stripScheme } from '../../lib/text';
 import type { Overrides, ShortcutEdit } from '../../lib/types';
@@ -22,10 +28,11 @@ import { el, nextId } from '../../ui/dom';
 import { button, confirmButton, iconButton, switchControl } from '../dom';
 import {
   browseEntries,
+  browseGroups,
   countLabel,
   exampleOf,
-  groupCountLabel,
   haystackOf,
+  HIDDEN_GROUP_ID,
 } from '../model/browse';
 import type { Entry } from '../model/browse';
 import type { CollapseState } from '../model/collapse';
@@ -41,11 +48,20 @@ import {
   takeNotice,
 } from '../store';
 
-/** The one sentence the master plan fixes for a meta shortcut's Delete button:
- *  `bl`, `add` and `set` are deletable like everything else, and this says
- *  where they come back from and what still works while they are gone. */
-const META_DELETE_TITLE =
-  'Restore from Settings → Restore shipped shortcuts; the toolbar popup still opens this page.';
+/** The one sentence a meta shortcut's Delete button adds: `bl`, `add` and `set`
+ *  are deletable like everything else, and deleting one is worth a word because
+ *  it reads as though it takes the options page with it. It does not, and this
+ *  says so without promising the keyword itself comes back. */
+const META_DELETE_TITLE = 'The toolbar popup still opens this page without this keyword.';
+
+/** The group every switched-off shortcut is drawn under, last on the page. */
+const HIDDEN_TITLE = 'Hidden shortcuts';
+
+/** One sentence, under the heading rather than inside the fold, because the
+ *  group is folded by default and the question it answers is asked by the
+ *  heading being there at all. */
+const HIDDEN_NOTE =
+  'Shortcuts you switched off, plus the shipped packs you did not turn on: switch one back on to put it in its section.';
 
 /** Why a heading refuses to fold while the filter is live. */
 const FOLD_LOCKED_TITLE = 'Clear the filter to fold groups';
@@ -55,6 +71,12 @@ interface RowRef {
   haystack: string;
   order: number;
   node: HTMLElement;
+  /** The section group this row belongs to whenever it is switched on. A
+   *  switched-off row is drawn under "Hidden shortcuts" and still remembers
+   *  this, because that is where switching it back on has to return it. */
+  home: GroupRef;
+  /** The group the row is drawn in right now: `home`, or the hidden group. */
+  group: GroupRef;
 }
 
 interface GroupRef {
@@ -66,6 +88,8 @@ interface GroupRef {
   /** The element `toggle` controls: the only thing collapsing hides. */
   rowsHost: HTMLElement;
   count: HTMLElement;
+  /** Reassigned as rows move between groups, so it is always the rows this
+   *  group actually holds. */
   rows: RowRef[];
 }
 
@@ -78,7 +102,10 @@ interface GroupRef {
 let collapseState: CollapseState | null = null;
 
 function collapse(): CollapseState {
-  collapseState ??= createCollapseState(safeLocalStorage());
+  // "Hidden shortcuts" is the one group that starts folded: a user who declined
+  // three packs on the picker would otherwise land on a page of switched-off
+  // rows, which is the thing this group exists to get out of the way.
+  collapseState ??= createCollapseState(safeLocalStorage(), [HIDDEN_GROUP_ID]);
   return collapseState;
 }
 
@@ -146,61 +173,25 @@ export function renderBrowse(): Node[] {
    *  they are still listed in `groupRefs`, and the counts must skip them. */
   const removed = new WeakSet<HTMLElement>();
 
-  const order = sectionOrder(
-    getState().overrides.sections,
-    entries.map((entry) => entry.cmd),
-  );
-  for (const category of order) {
-    const inGroup = entries.filter((entry) => entry.cmd.category === category);
-    if (inGroup.length === 0) continue;
+  // Built on every render, whether or not anything is switched off, and hidden
+  // by `applyFilter` when it holds no rows: exactly what already happens to a
+  // section whose rows the filter took away. Building it on demand instead
+  // would put a second decider of whether a group is on screen inside the
+  // switch handler, next to the one that is supposed to be the only one.
+  const hiddenGroup = makeGroup(HIDDEN_GROUP_ID, HIDDEN_TITLE, HIDDEN_NOTE);
+  const anyHidden = entries.some((entry) => entry.disabled);
 
-    // Left empty: `applyFilter` writes every count, and a number rendered here
-    // would be the one thing on the page that had not been through it.
-    const countNode = el('span', { class: 'group-count' });
-    const rows = el('div', { class: 'rows', id: nextId('rows') });
-    // The contract's shape: `.group-head` is the heading that carries the
-    // layout, the groups are this page's outline, and `.group-toggle` is the
-    // button inside it. An h3, because the panel's own h2 is its parent in the
-    // outline. The whole heading strip folds the group rather than a chevron
-    // beside it: a 12px triangle is not a target, and the label is what the
-    // user aims at.
-    const toggle = el('button', {
-      class: 'group-toggle',
-      attrs: { type: 'button', 'aria-expanded': 'true', 'aria-controls': rows.id },
-      children: [
-        el('span', { class: 'group-chevron', attrs: { 'aria-hidden': 'true' } }),
-        el('span', {
-          class: 'group-title',
-          text: sectionLabel(category, getState().overrides.sections),
-        }),
-        countNode,
-      ],
-    });
-    const group = el('section', {
-      class: 'group',
-      children: [el('h3', { class: 'group-head', children: [toggle] }), rows],
-    });
-
-    toggle.addEventListener('click', () => {
-      // Inert while a query is live, because `applyFilter` force-expands every
-      // group then: the fold would be recorded and nothing on screen would
-      // move, so the click would read as a control that did not take.
-      if (filtering()) return;
-      collapse().set(category, !collapse().isCollapsed(category));
-      // The toggle records the intent and nothing else; `applyFilter` is the
-      // only writer of what is on screen.
-      applyFilter();
-    });
-
-    const ref: GroupRef = {
-      id: category,
-      node: group,
-      toggle,
-      rowsHost: rows,
-      count: countNode,
-      rows: [],
-    };
-    inGroup.forEach((entry, index) => {
+  // One counter across every section rather than an index per group, because a
+  // row's `order` also has to sort it inside the hidden group, where rows from
+  // several sections meet. Counting through the sections in order keeps them
+  // together there.
+  let position = 0;
+  for (const section of browseGroups(entries, getState().overrides.sections)) {
+    const home = makeGroup(section.id, section.label);
+    for (const entry of section.entries) {
+      // Declared before the row so the switch can close over it. The handler
+      // only ever runs from a click, long after the assignment below.
+      let ref: RowRef;
       const node = renderRow(
         entry,
         intercepted,
@@ -208,28 +199,48 @@ export function renderBrowse(): Node[] {
           removed.add(deleted);
           applyFilter();
         },
-        // Switching a row off changes both counts, and the switch is the only
-        // control on this page that changes one without a re-render.
-        applyFilter,
+        // Moving the one node the switch is about, rather than re-rendering
+        // the view. A re-render would be correct, `commitOverrides` applies the
+        // new state before it awaits storage, but it would repaint ~170 rows
+        // for a one-row change and throw away the control the user is still
+        // touching. Moving parentage keeps `applyFilter` the only thing that
+        // writes `row.hidden` and `rowsHost.hidden`: it runs straight after and
+        // decides the counts, the two headings and what is on screen.
+        (on) => {
+          move(ref, on ? ref.home : hiddenGroup);
+          applyFilter();
+        },
       );
-      rows.append(node);
-      ref.rows.push({
+      ref = {
         matchKey: entry.matchKey,
         haystack: haystackOf(entry.cmd),
-        order: index,
+        order: position++,
         node,
-      });
-    });
-    groupRefs.push(ref);
-    groups.append(group);
+        home,
+        group: home,
+      };
+      place(ref, entry.disabled ? hiddenGroup : home);
+    }
+    groupRefs.push(home);
+    groups.append(home.node);
   }
+
+  // Last, after every section: a pack the user declined is meant to be out of
+  // the way, not a dead stretch in the middle of the list.
+  groupRefs.push(hiddenGroup);
+  groups.append(hiddenGroup.node);
 
   // A section id is minted from its label, so deleting `Client work` and making
   // another one by the same name mints `sec-client-work` again, and the fold
   // the first one left behind would land on the second as a group the user
   // never folded. Pruning to what was actually drawn, before anything reads the
-  // state, is what stops a fold outliving the group it was about.
-  collapse().prune(groupRefs.map((group) => group.id));
+  // state, is what stops a fold outliving the group it was about. The hidden
+  // group counts as drawn only while something is in it, so a profile that
+  // switches its last hidden shortcut back on gets the folded default again
+  // when the group next appears.
+  collapse().prune(
+    groupRefs.filter((group) => group !== hiddenGroup || anyHidden).map((group) => group.id),
+  );
 
   const toolbarActions = el('div', {
     class: 'toolbar-actions',
@@ -326,7 +337,6 @@ export function renderBrowse(): Node[] {
     let total = 0;
     for (const group of groupRefs) {
       let inGroup = 0;
-      let onInGroup = 0;
       for (const row of group.rows) {
         if (removed.has(row.node)) continue;
         total += 1;
@@ -336,14 +346,12 @@ export function renderBrowse(): Node[] {
         // Reordering with `order` keeps the DOM untouched, so filtering ~170
         // rows costs a style recalc instead of a re-render.
         row.node.style.order = String(rank ?? (query ? 10000 + row.order : row.order));
-        if (!match) continue;
-        inGroup += 1;
-        // Read off the row rather than off `entry.disabled`: the switch writes
-        // the class optimistically and the page does not re-render for its own
-        // save, so the class is what "on" means by the time this runs again.
-        if (!row.node.classList.contains('off')) onInGroup += 1;
+        if (match) inGroup += 1;
       }
-      group.count.textContent = groupCountLabel(onInGroup, inGroup);
+      // A bare number on every heading, the hidden group included: which group
+      // a row is in is now the whole of what "off" means, so no heading has a
+      // mixture to describe.
+      group.count.textContent = String(inGroup);
       group.node.hidden = inGroup === 0;
       // The one place `rowsHost.hidden` is written, for the same reason
       // `row.hidden` is written only here: the filter and the fold both decide
@@ -363,7 +371,9 @@ export function renderBrowse(): Node[] {
         group.toggle.removeAttribute('title');
       }
       visible += inGroup;
-      visibleOn += onInGroup;
+      // Which group the row sits in IS its on-off state, so nothing here has to
+      // read a class back off a row to find out.
+      if (group !== hiddenGroup) visibleOn += inGroup;
     }
 
     count.textContent = countLabel({ on: visibleOn, shown: visible, total }, query !== '');
@@ -387,6 +397,74 @@ export function renderBrowse(): Node[] {
     }
   }
 
+  /**
+   * A group heading, its disclosure and the host its rows live in. Sections and
+   * "Hidden shortcuts" are built by the same function on purpose: Collapse all,
+   * Expand all and the fold-locked-while-filtering rule are written once, and
+   * the hidden group cannot drift into being a special case of them.
+   */
+  function makeGroup(id: string, title: string, note?: string): GroupRef {
+    // Left empty: `applyFilter` writes every count, and a number rendered here
+    // would be the one thing on the page that had not been through it.
+    const countNode = el('span', { class: 'group-count' });
+    const rows = el('div', { class: 'rows', id: nextId('rows') });
+    // The contract's shape: `.group-head` is the heading that carries the
+    // layout, the groups are this page's outline, and `.group-toggle` is the
+    // button inside it. An h3, because the panel's own h2 is its parent in the
+    // outline. The whole heading strip folds the group rather than a chevron
+    // beside it: a 12px triangle is not a target, and the label is what the
+    // user aims at.
+    const toggle = el('button', {
+      class: 'group-toggle',
+      attrs: { type: 'button', 'aria-expanded': 'true', 'aria-controls': rows.id },
+      children: [
+        el('span', { class: 'group-chevron', attrs: { 'aria-hidden': 'true' } }),
+        el('span', { class: 'group-title', text: title }),
+        countNode,
+      ],
+    });
+    const children: Node[] = [el('h3', { class: 'group-head', children: [toggle] })];
+    // Outside the rows host, so it is still readable with the group folded,
+    // which is how the hidden group starts.
+    if (note) children.push(el('p', { class: 'group-note', text: note }));
+    children.push(rows);
+    const group = el('section', { class: 'group', children });
+
+    toggle.addEventListener('click', () => {
+      // Inert while a query is live, because `applyFilter` force-expands every
+      // group then: the fold would be recorded and nothing on screen would
+      // move, so the click would read as a control that did not take.
+      if (filtering()) return;
+      collapse().set(id, !collapse().isCollapsed(id));
+      // The toggle records the intent and nothing else; `applyFilter` is the
+      // only writer of what is on screen.
+      applyFilter();
+    });
+
+    return { id, node: group, toggle, rowsHost: rows, count: countNode, rows: [] };
+  }
+
+  /** Files a row under a group: the row's node, the group's list and the row's
+   *  idea of where it is, written in one place so they cannot disagree. */
+  function place(ref: RowRef, to: GroupRef): void {
+    ref.group = to;
+    to.rows.push(ref);
+    to.rowsHost.append(ref.node);
+  }
+
+  function move(ref: RowRef, to: GroupRef): void {
+    if (ref.group === to) return;
+    // `append` on a node that is already in the document is a removal and an
+    // insertion, and removing the focused element sends focus to the body. A
+    // keyboard user who pressed Space on the switch would lose their place, so
+    // the focus is put back. `preventScroll`, because the row has just moved to
+    // the bottom of the page and refocusing it would drag the page after it.
+    const focused = ref.node.contains(document.activeElement) ? document.activeElement : null;
+    ref.group.rows = ref.group.rows.filter((row) => row !== ref);
+    place(ref, to);
+    if (focused instanceof HTMLElement) focused.focus({ preventScroll: true });
+  }
+
   filter.addEventListener('input', applyFilter);
   applyFilter();
 
@@ -398,7 +476,7 @@ function renderRow(
   entry: Entry,
   intercepted: Set<string>,
   onRemoved: (row: HTMLElement) => void,
-  onToggled: () => void,
+  onToggled: (on: boolean) => void,
 ): HTMLElement {
   const row = el('div', { class: entry.disabled ? 'row off' : 'row' });
   row.dataset.id = entry.id;
@@ -417,12 +495,10 @@ function renderRow(
       }),
     );
   }
-  // The row is dimmed rather than greyed out, so the off state needs a label
-  // that does not depend on noticing a colour.
-  const offBadge = el('span', { class: 'badge badge-quiet', text: 'off' });
-  offBadge.title = 'Turned off. It resolves nowhere until you switch it back on.';
-  offBadge.hidden = !entry.disabled;
-  name.append(offBadge);
+  // No "off" badge: a switched-off row is drawn under the "Hidden shortcuts"
+  // heading, which says the same thing once for the whole group. The dimming
+  // stays, so a row on its way between the two groups still does not read like
+  // a live one the moment the switch moves.
   if (!entry.disabled && !entry.cmd.keys.some((key) => intercepted.has(key))) {
     const marker = el('span', { class: 'badge badge-quiet', text: 'omnibox only' });
     marker.title =
@@ -485,9 +561,9 @@ function renderRow(
       // moved under the pointer, and a row that waits for storage to answer
       // reads as a control that did not take.
       row.classList.toggle('off', !on);
-      offBadge.hidden = on;
-      // After the class is written, since that is what the counts read.
-      onToggled();
+      // Moves the row between its section and "Hidden shortcuts", and repaints
+      // the counts on both headings.
+      onToggled(on);
       void commitOverrides({ ...getState().overrides, disabled: next }).catch(reportFailure);
     }),
   );

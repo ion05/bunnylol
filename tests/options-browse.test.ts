@@ -9,17 +9,19 @@
 
 import { describe, expect, it } from 'vitest';
 import { BUILTIN_COMMANDS } from '../src/lib/commands';
-import { restorableShipped, shortcutId } from '../src/lib/overrides';
+import { restorableShipped, sectionKey, shortcutId } from '../src/lib/overrides';
 import { mergeCommands } from '../src/lib/resolve';
+import { validateSectionId } from '../src/lib/validate';
 import { DEFAULT_OVERRIDES } from '../src/lib/types';
 import type { BuiltinCommand, Command, Overrides } from '../src/lib/types';
 import {
   browseEntries,
+  browseGroups,
   buildKeyOwner,
   countLabel,
   exampleOf,
-  groupCountLabel,
   haystackOf,
+  HIDDEN_GROUP_ID,
 } from '../src/options/model/browse';
 
 const github: BuiltinCommand = {
@@ -245,17 +247,48 @@ describe('buildKeyOwner', () => {
   });
 });
 
-describe('groupCountLabel', () => {
-  it('is the bare number when every row in the group is on', () => {
-    expect(groupCountLabel(12, 12)).toBe('12');
-    expect(groupCountLabel(0, 0)).toBe('0');
+describe('browseGroups', () => {
+  const sections = [{ id: 'sec-work', label: 'Client work' }];
+
+  it('lists the sections that hold something, in page order, with their labels', () => {
+    const groups = browseGroups(browseEntries(builtins, overridesWith({ custom: [ticket] })), []);
+    expect(groups.map((group) => group.id)).toEqual(['custom', 'dev', 'social']);
+    expect(groups.map((group) => group.label)).toEqual(['My shortcuts', 'Developer', 'Social']);
   });
 
-  it('says how many are on when some are off', () => {
-    // The state a declined pack leaves behind: the group is still listed at
-    // full strength, and the bare number read as twelve live shortcuts.
-    expect(groupCountLabel(0, 12)).toBe('0 of 12 on');
-    expect(groupCountLabel(11, 12)).toBe('11 of 12 on');
+  it('files every entry under exactly one group', () => {
+    const entries = browseEntries(builtins, overridesWith({ custom: [ticket] }));
+    const filed = browseGroups(entries, []).flatMap((group) => group.entries);
+    expect(filed.map((entry) => entry.id).sort()).toEqual(entries.map((entry) => entry.id).sort());
+  });
+
+  it('keeps a switched-off entry filed under its own section', () => {
+    // The hidden group draws it, but the section is where switching it back on
+    // has to return it, and the view learns that from here.
+    const entries = browseEntries(builtins, overridesWith({ disabled: ['gh'] }));
+    const dev = browseGroups(entries, []).find((group) => group.id === 'dev');
+    expect(dev?.entries.map((entry) => entry.id)).toEqual(['gh']);
+  });
+
+  it('keeps a section whose shortcuts are all off, and drops one holding nothing', () => {
+    // A declined pack leaves its section empty on screen, and `applyFilter`
+    // hides the heading. Dropping the group here instead would leave the rows
+    // it owns with nowhere to go back to.
+    const entries = browseEntries(builtins, overridesWith({ disabled: ['gh'], sections }));
+    const ids = browseGroups(entries, sections).map((group) => group.id);
+    expect(ids).toContain('dev');
+    expect(ids).not.toContain('sec-work');
+  });
+});
+
+describe('HIDDEN_GROUP_ID', () => {
+  it('is an id the section editor could never mint', () => {
+    // The fold of "Hidden shortcuts" shares one localStorage set with the real
+    // sections, so a user-mintable key would let a section called "Hidden"
+    // inherit this group's fold.
+    expect(validateSectionId(HIDDEN_GROUP_ID).ok).toBe(false);
+    // And it still survives the reader every fold is compared through.
+    expect(sectionKey(HIDDEN_GROUP_ID)).toBe(HIDDEN_GROUP_ID);
   });
 });
 
@@ -280,5 +313,11 @@ describe('countLabel', () => {
 
   it('says nothing extra when a query matches nothing', () => {
     expect(countLabel({ on: 0, shown: 0, total: 170 }, true)).toBe('0 of 170 shortcuts');
+  });
+
+  it('says none are on when every match is under Hidden shortcuts', () => {
+    // A query for a declined pack's keyword: the rows are found, and the line
+    // has to say that none of what it found is live.
+    expect(countLabel({ on: 0, shown: 3, total: 170 }, true)).toBe('3 of 170 shortcuts, 0 on');
   });
 });

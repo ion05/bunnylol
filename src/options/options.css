@@ -493,6 +493,17 @@ a {
   font-variant-numeric: tabular-nums;
 }
 
+/* The sentence under the "Hidden shortcuts" heading. It sits between
+   `.group-head` and `.rows`, so it is still readable with the group folded,
+   which is how that group starts. `--text-faint` and `--fs-12` match
+   `.group-count`: the line explains a heading, it is not a second heading. */
+.group-note {
+  margin: 0;
+  padding: 0 var(--sp-3) var(--sp-3);
+  font-size: var(--fs-12);
+  color: var(--text-faint);
+}
+
 .rows {
   display: flex;
   flex-direction: column;
@@ -513,7 +524,10 @@ a {
 }
 
 /* Dimmed by colour rather than `opacity: 0.45`, which took this text to
-   1.83:1. The `off` badge, not a wash, is what says the row is turned off. */
+   1.83:1. The dimming is a second reading of the "Hidden shortcuts" heading
+   the row now sits under, not the only thing that says the row is off: a row
+   just switched off is dimmed the instant the switch flips, before the eye
+   follows it down the page. */
 .row.off .row-name,
 .row.off .chip {
   color: var(--text-dim);

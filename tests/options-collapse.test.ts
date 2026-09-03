@@ -195,6 +195,51 @@ describe('createCollapseState', () => {
     expect(store.map.get(COLLAPSE_KEY)).toBe('[]');
   });
 
+  it('a default-collapsed group starts folded and remembers being opened', () => {
+    // "Hidden shortcuts" is the group this exists for. The persisted set holds
+    // the ids whose fold DIFFERS from the default, so opening this one is what
+    // gets written down and closing it again is what gets forgotten.
+    const store = fakeStore();
+    const state = createCollapseState(store, ['@hidden']);
+    expect(state.isCollapsed('@hidden')).toBe(true);
+    expect(state.isCollapsed('dev')).toBe(false);
+
+    state.set('@hidden', false);
+    expect(state.isCollapsed('@hidden')).toBe(false);
+    expect(store.map.get(COLLAPSE_KEY)).toBe('["@hidden"]');
+    expect(createCollapseState(store, ['@hidden']).isCollapsed('@hidden')).toBe(false);
+
+    state.set('@hidden', true);
+    expect(state.isCollapsed('@hidden')).toBe(true);
+    expect(store.map.get(COLLAPSE_KEY)).toBe('[]');
+  });
+
+  it('Expand all opens a default-collapsed group, Collapse all puts it back', () => {
+    const store = fakeStore();
+    const state = createCollapseState(store, ['@hidden']);
+
+    state.expandAll();
+    expect(state.isCollapsed('@hidden')).toBe(false);
+    expect(state.isCollapsed('dev')).toBe(false);
+
+    state.collapseAll(['dev', '@hidden']);
+    expect(state.isCollapsed('@hidden')).toBe(true);
+    expect(state.isCollapsed('dev')).toBe(true);
+    // Only the section is written down: the other one is folded by default.
+    expect(store.map.get(COLLAPSE_KEY)).toBe('["dev"]');
+  });
+
+  it('prune forgets that a default-collapsed group was opened', () => {
+    // The hidden group counts as drawn only while something is in it, so a
+    // profile that switches its last hidden shortcut back on gets the folded
+    // default again when the group next appears.
+    const store = fakeStore('["@hidden"]');
+    const state = createCollapseState(store, ['@hidden']);
+    expect(state.isCollapsed('@hidden')).toBe(false);
+    state.prune(['dev']);
+    expect(state.isCollapsed('@hidden')).toBe(true);
+  });
+
   it('still toggles in memory when the store throws on both reads and writes', () => {
     const state = createCollapseState(throwingStore());
     expect(state.snapshot()).toEqual([]);

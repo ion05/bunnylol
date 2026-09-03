@@ -30,9 +30,9 @@ export interface CollapseState {
   set(id: string, collapsed: boolean): void;
   collapseAll(ids: string[]): void;
   expandAll(): void;
-  /** Forgets every collapsed id that is not in `keep`. */
+  /** Forgets every remembered id that is not in `keep`. */
   prune(keep: string[]): void;
-  /** The collapsed ids, sorted: for tests and for anything that needs to read
+  /** The remembered ids, sorted: for tests and for anything that needs to read
    *  the whole set without a second source of truth. */
   snapshot(): string[];
 }
@@ -80,8 +80,34 @@ export function groupExpanded(query: string, collapsed: boolean): boolean {
   return query.trim() !== '' || !collapsed;
 }
 
-export function createCollapseState(store: CollapseStore | null): CollapseState {
-  const collapsed = new Set<string>(read(store));
+/**
+ * The fold state, seeded from `store`.
+ *
+ * The persisted set holds the ids whose fold DIFFERS from the default, not the
+ * ids that are folded. For every section that is the same thing, since a
+ * section starts expanded. It stops being the same thing for a group like
+ * "Hidden shortcuts", which starts folded: a set that could only mean "folded"
+ * has no way to say the user opened it, so it would spring shut on every load.
+ * Storing the departures makes the default the thing that is not written down,
+ * which is also what keeps an existing stored list readable: it names sections,
+ * and sections still default to open.
+ */
+export function createCollapseState(
+  store: CollapseStore | null,
+  defaultCollapsed: string[] = [],
+): CollapseState {
+  const defaults = new Set(defaultCollapsed.map(sectionKey).filter(Boolean));
+  const flipped = new Set<string>(read(store));
+
+  /** The fold, read as the default XOR whether the user moved it. */
+  const isFolded = (key: string): boolean => flipped.has(key) !== defaults.has(key);
+
+  /** Records a wanted fold as a departure from the default, so setting a group
+   *  back to how it starts forgets it rather than remembering the default. */
+  const want = (key: string, folded: boolean): void => {
+    if (folded === defaults.has(key)) flipped.delete(key);
+    else flipped.add(key);
+  };
 
   // A profile with storage blocked mid-session, a quota that fills, a private
   // window: every one of them throws from a setter that used to work. Folding a
@@ -89,7 +115,7 @@ export function createCollapseState(store: CollapseStore | null): CollapseState 
   const persist = (): void => {
     if (!store) return;
     try {
-      store.setItem(COLLAPSE_KEY, serializeCollapsed(collapsed));
+      store.setItem(COLLAPSE_KEY, serializeCollapsed(flipped));
     } catch {
       // In-memory only from here on.
     }
@@ -97,28 +123,29 @@ export function createCollapseState(store: CollapseStore | null): CollapseState 
 
   return {
     isCollapsed(id: string): boolean {
-      return collapsed.has(sectionKey(id));
+      return isFolded(sectionKey(id));
     },
     set(id: string, on: boolean): void {
       const wanted = sectionKey(id);
       if (!wanted) return;
-      if (on) collapsed.add(wanted);
-      else collapsed.delete(wanted);
+      want(wanted, on);
       persist();
     },
     collapseAll(ids: string[]): void {
       for (const id of ids) {
         const wanted = sectionKey(id);
-        if (wanted) collapsed.add(wanted);
+        if (wanted) want(wanted, true);
       }
       persist();
     },
-    // Clears the whole set rather than the ids it was handed: a group that is
-    // not on screen right now (its shortcuts are all deleted, its section was
-    // removed) would otherwise stay folded forever with no control that reaches
-    // it, and "Expand all" is the only thing that could have.
+    // Every id, not the ones it was handed: a group that is not on screen right
+    // now (its shortcuts are all deleted, its section was removed) would
+    // otherwise stay folded forever with no control that reaches it, and
+    // "Expand all" is the only thing that could have. What is left is exactly
+    // the default-folded groups, since being open is a departure for those.
     expandAll(): void {
-      collapsed.clear();
+      flipped.clear();
+      for (const id of defaults) flipped.add(id);
       persist();
     },
     // Section ids are reused: deleting `Client work` and making another one by
@@ -129,9 +156,9 @@ export function createCollapseState(store: CollapseStore | null): CollapseState 
     prune(keep: string[]): void {
       const wanted = new Set(keep.map(sectionKey));
       let dropped = false;
-      for (const id of [...collapsed]) {
+      for (const id of [...flipped]) {
         if (wanted.has(id)) continue;
-        collapsed.delete(id);
+        flipped.delete(id);
         dropped = true;
       }
       // A write per render would be a `localStorage` round trip on every
@@ -139,7 +166,7 @@ export function createCollapseState(store: CollapseStore | null): CollapseState 
       if (dropped) persist();
     },
     snapshot(): string[] {
-      return [...collapsed].sort();
+      return [...flipped].sort();
     },
   };
 }
