@@ -20,7 +20,13 @@ import { stripScheme } from '../../lib/text';
 import type { Overrides, ShortcutEdit } from '../../lib/types';
 import { el, nextId } from '../../ui/dom';
 import { button, confirmButton, iconButton, switchControl } from '../dom';
-import { browseEntries, exampleOf, haystackOf } from '../model/browse';
+import {
+  browseEntries,
+  countLabel,
+  exampleOf,
+  groupCountLabel,
+  haystackOf,
+} from '../model/browse';
 import type { Entry } from '../model/browse';
 import type { CollapseState } from '../model/collapse';
 import { createCollapseState, groupExpanded, safeLocalStorage } from '../model/collapse';
@@ -148,7 +154,9 @@ export function renderBrowse(): Node[] {
     const inGroup = entries.filter((entry) => entry.cmd.category === category);
     if (inGroup.length === 0) continue;
 
-    const countNode = el('span', { class: 'group-count', text: String(inGroup.length) });
+    // Left empty: `applyFilter` writes every count, and a number rendered here
+    // would be the one thing on the page that had not been through it.
+    const countNode = el('span', { class: 'group-count' });
     const rows = el('div', { class: 'rows', id: nextId('rows') });
     // The contract's shape: `.group-head` is the heading that carries the
     // layout, the groups are this page's outline, and `.group-toggle` is the
@@ -193,10 +201,17 @@ export function renderBrowse(): Node[] {
       rows: [],
     };
     inGroup.forEach((entry, index) => {
-      const node = renderRow(entry, intercepted, (deleted) => {
-        removed.add(deleted);
-        applyFilter();
-      });
+      const node = renderRow(
+        entry,
+        intercepted,
+        (deleted) => {
+          removed.add(deleted);
+          applyFilter();
+        },
+        // Switching a row off changes both counts, and the switch is the only
+        // control on this page that changes one without a re-render.
+        applyFilter,
+      );
       rows.append(node);
       ref.rows.push({
         matchKey: entry.matchKey,
@@ -307,9 +322,11 @@ export function renderBrowse(): Node[] {
     }
 
     let visible = 0;
+    let visibleOn = 0;
     let total = 0;
     for (const group of groupRefs) {
       let inGroup = 0;
+      let onInGroup = 0;
       for (const row of group.rows) {
         if (removed.has(row.node)) continue;
         total += 1;
@@ -319,9 +336,14 @@ export function renderBrowse(): Node[] {
         // Reordering with `order` keeps the DOM untouched, so filtering ~170
         // rows costs a style recalc instead of a re-render.
         row.node.style.order = String(rank ?? (query ? 10000 + row.order : row.order));
-        if (match) inGroup += 1;
+        if (!match) continue;
+        inGroup += 1;
+        // Read off the row rather than off `entry.disabled`: the switch writes
+        // the class optimistically and the page does not re-render for its own
+        // save, so the class is what "on" means by the time this runs again.
+        if (!row.node.classList.contains('off')) onInGroup += 1;
       }
-      group.count.textContent = String(inGroup);
+      group.count.textContent = groupCountLabel(onInGroup, inGroup);
       group.node.hidden = inGroup === 0;
       // The one place `rowsHost.hidden` is written, for the same reason
       // `row.hidden` is written only here: the filter and the fold both decide
@@ -341,9 +363,10 @@ export function renderBrowse(): Node[] {
         group.toggle.removeAttribute('title');
       }
       visible += inGroup;
+      visibleOn += onInGroup;
     }
 
-    count.textContent = query ? `${visible} of ${total} shortcuts` : `${total} shortcuts`;
+    count.textContent = countLabel({ on: visibleOn, shown: visible, total }, query !== '');
 
     empty.textContent = '';
     empty.hidden = visible > 0;
@@ -375,6 +398,7 @@ function renderRow(
   entry: Entry,
   intercepted: Set<string>,
   onRemoved: (row: HTMLElement) => void,
+  onToggled: () => void,
 ): HTMLElement {
   const row = el('div', { class: entry.disabled ? 'row off' : 'row' });
   row.dataset.id = entry.id;
@@ -462,6 +486,8 @@ function renderRow(
       // reads as a control that did not take.
       row.classList.toggle('off', !on);
       offBadge.hidden = on;
+      // After the class is written, since that is what the counts read.
+      onToggled();
       void commitOverrides({ ...getState().overrides, disabled: next }).catch(reportFailure);
     }),
   );

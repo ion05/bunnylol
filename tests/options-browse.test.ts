@@ -16,7 +16,9 @@ import type { BuiltinCommand, Command, Overrides } from '../src/lib/types';
 import {
   browseEntries,
   buildKeyOwner,
+  countLabel,
   exampleOf,
+  groupCountLabel,
   haystackOf,
 } from '../src/options/model/browse';
 
@@ -240,5 +242,43 @@ describe('buildKeyOwner', () => {
     const entries = browseEntries(builtins, overridesWith({ disabled: ['r'] }));
     const owners = buildKeyOwner(entries);
     expect(owners.has('r')).toBe(false);
+  });
+});
+
+describe('groupCountLabel', () => {
+  it('is the bare number when every row in the group is on', () => {
+    expect(groupCountLabel(12, 12)).toBe('12');
+    expect(groupCountLabel(0, 0)).toBe('0');
+  });
+
+  it('says how many are on when some are off', () => {
+    // The state a declined pack leaves behind: the group is still listed at
+    // full strength, and the bare number read as twelve live shortcuts.
+    expect(groupCountLabel(0, 12)).toBe('0 of 12 on');
+    expect(groupCountLabel(11, 12)).toBe('11 of 12 on');
+  });
+});
+
+describe('countLabel', () => {
+  it('counts shortcuts when nothing is off and no query is live', () => {
+    expect(countLabel({ on: 170, shown: 170, total: 170 }, false)).toBe('170 shortcuts');
+  });
+
+  it('counts what is on when some are off', () => {
+    expect(countLabel({ on: 96, shown: 170, total: 170 }, false)).toBe('96 of 170 shortcuts on');
+  });
+
+  it('keeps meaning matched out of all while a query is live', () => {
+    expect(countLabel({ on: 4, shown: 4, total: 170 }, true)).toBe('4 of 170 shortcuts');
+  });
+
+  it('adds what is on as its own clause, so the two pairs cannot be confused', () => {
+    // Without the clause this would read "2 of 170 shortcuts" for four matches,
+    // or claim four live ones when two of them are switched off.
+    expect(countLabel({ on: 2, shown: 4, total: 170 }, true)).toBe('4 of 170 shortcuts, 2 on');
+  });
+
+  it('says nothing extra when a query matches nothing', () => {
+    expect(countLabel({ on: 0, shown: 0, total: 170 }, true)).toBe('0 of 170 shortcuts');
   });
 });

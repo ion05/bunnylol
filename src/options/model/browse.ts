@@ -82,6 +82,46 @@ export function browseEntries(builtins: Command[], overrides: Overrides): Entry[
   return entries;
 }
 
+/** What the two count labels are told: the rows the filter left on screen, how
+ *  many of those are switched on, and how many rows the list holds in all. */
+export interface BrowseCounts {
+  /** Rows the filter is showing. Every row, when no query is live. */
+  shown: number;
+  /** Of those, the ones that are not switched off. */
+  on: number;
+  /** Every row in the list, filtered out or not. */
+  total: number;
+}
+
+/**
+ * The number beside a group heading.
+ *
+ * A pack the user declined leaves its group listed at full strength with every
+ * row dimmed, and a bare "12" beside twelve switched-off shortcuts reads as
+ * twelve live ones: the picker looked like it did nothing. The bare number
+ * stays for a group with nothing off, because "12 of 12 on" on every heading is
+ * noise in the ordinary case.
+ */
+export function groupCountLabel(on: number, shown: number): string {
+  return on === shown ? String(shown) : `${on} of ${shown} on`;
+}
+
+/**
+ * The toolbar's count line. It answers two different questions and asks each
+ * one only when it has something to say.
+ *
+ * "N of M" means matched out of all while a query is live, and on out of all
+ * when there is none, so the two cannot share a phrase: with a query up, the
+ * count of what is on is a separate clause rather than a second reading of the
+ * same pair of numbers.
+ */
+export function countLabel(counts: BrowseCounts, filtered: boolean): string {
+  const { on, shown, total } = counts;
+  if (!filtered) return on === total ? `${total} shortcuts` : `${on} of ${total} shortcuts on`;
+  const matched = `${shown} of ${total} shortcuts`;
+  return on === shown ? matched : `${matched}, ${on} on`;
+}
+
 export function haystackOf(cmd: Command): string {
   const destinations = `${cmd.url} ${cmd.searchUrl ?? ''}`;
   return `${cmd.keys.join(' ')} ${cmd.name} ${cmd.description} ${destinations}`.toLowerCase();
