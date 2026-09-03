@@ -205,7 +205,7 @@ export function renderForm(): HTMLElement {
   // blank, so it is not marked required even though a row is always filed
   // under one.
   const slots: Record<FormField, FieldSlot> = {
-    keys: errorField('Keywords', keysInput, 'err-keys', 'Comma-separated.', false, true),
+    keys: errorField('Keywords', keysInput, 'err-keys', undefined, false, true),
     url: errorField('Destination URL', urlInput, 'err-url', undefined, true, true),
     searchUrl: errorField(
       'Search URL',
