@@ -162,8 +162,9 @@ export function renderDefaults(): HTMLElement {
  * shipped category id), renaming or deleting one the user made, and adding one.
  *
  * They are one card because to the user they are one list: the same groups in
- * the same order the browse page shows them, with the ones that ship marked so
- * it is clear why they cannot be deleted.
+ * the same order the browse page shows them. A section that ships is not
+ * labelled as one; it simply has no Delete, which is the whole of what the
+ * distinction means here.
  */
 export function renderSections(): HTMLElement {
   const card = panelCard('Sections');
@@ -308,20 +309,12 @@ export function renderSections(): HTMLElement {
       stopEdit();
     });
 
-    // "15 shortcuts · shipped": the count and what kind of section it is, in
-    // the row's own description line rather than as a badge.
+    // Just the count. Which sections ship with BunnyLol is already legible from
+    // the row: a shipped one has no Delete, because it cannot be deleted.
     const desc = el('div', {
       class: 'row-desc',
       children: [el('span', { class: 'count', text: countShortcuts(members) })],
     });
-    if (shipped) {
-      desc.append(
-        el('span', {
-          text: ' · shipped',
-          title: 'Ships with BunnyLol. It can be renamed, but not deleted.',
-        }),
-      );
-    }
 
     // Rename, then Delete, in the order and with the glyphs the shortcut rows
     // use. Restore-default-name sits between them and only for a shipped
