@@ -293,7 +293,11 @@ function normalizeEngines(raw: unknown): SearchEngineId[] {
 
 function normalizeTemplates(raw: unknown): Record<string, string> {
   const source = asRecord(raw);
-  const templates: Record<string, string> = {};
+  // Null-prototype, like every other override map the parser builds. A string
+  // assigned to `__proto__` on a plain object is swallowed by the inherited
+  // setter rather than stored, so this map was the one place a key could go
+  // missing without the parser saying so.
+  const templates: Record<string, string> = Object.create(null) as Record<string, string>;
   if (!source) return templates;
   for (const [id, template] of Object.entries(source)) {
     const value = safeUrl(template);

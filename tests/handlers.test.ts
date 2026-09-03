@@ -88,6 +88,19 @@ describe('github', () => {
     expect(github('/facebook/react/', GH, settings())).toBe('https://github.com/facebook/react');
   });
 
+  it('treats an Object.prototype key as an ordinary search word', () => {
+    // `GITHUB_TABS['constructor']` on a plain object literal is truthy, and
+    // `gh facebook/react constructor` interpolated `function Object() { … }`
+    // into the path. The tables are null-prototype now, so these fall through
+    // to the tab search like any other word.
+    expect(github('facebook/react constructor', GH, settings())).toBe(
+      'https://github.com/facebook/react/search?q=constructor',
+    );
+    expect(github('facebook/react __proto__', GH, settings())).toBe(
+      'https://github.com/facebook/react/search?q=__proto__',
+    );
+  });
+
   it('maps a trailing tab word onto the repo tab', () => {
     expect(github('facebook/react issues', GH, settings())).toBe('https://github.com/facebook/react/issues');
     expect(github('facebook/react pr', GH, settings())).toBe('https://github.com/facebook/react/pulls');

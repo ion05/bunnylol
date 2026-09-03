@@ -59,11 +59,25 @@ export const AI_PROVIDERS: AiProvider[] = [
 ];
 
 /**
+ * A lookup table a hostile key cannot answer out of `Object.prototype`.
+ *
+ * Every table below is indexed with text the user controls: a word typed after
+ * a shortcut, or a path segment of a URL they edited. On a plain object literal
+ * `TABLE['constructor']` is truthy and interpolates `function Object() { … }`
+ * into the destination. Nothing escaped an origin, but this is the shape
+ * AGENTS.md invariant 17 exists for, and it is cheaper to close than to keep
+ * checking. `Object.create(null)` inherits nothing, so a miss is a miss.
+ */
+function lookup(entries: Record<string, string>): Record<string, string> {
+  return Object.assign(Object.create(null) as Record<string, string>, entries);
+}
+
+/**
  * Fallback dispatch for AI commands with no `provider`: imported or
  * hand-written commands that name the `ai` handler but predate that field.
  * Builtins carry `provider` and never consult this.
  */
-const AI_KEYS: Record<string, string> = {
+const AI_KEYS: Record<string, string> = lookup({
   c: 'claude',
   cl: 'claude',
   claude: 'claude',
@@ -73,7 +87,7 @@ const AI_KEYS: Record<string, string> = {
   gemini: 'gemini',
   cc: 'claudecode',
   claudecode: 'claudecode',
-};
+});
 
 /** Unpaired surrogates, which `encodeURIComponent` throws on. */
 const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
@@ -264,12 +278,12 @@ const GITHUB_HOME = 'https://github.com/';
  * item path differ for pull requests, `/pulls` but `/pull/123`, so the
  * mapping cannot just append the number to the tab.
  */
-const GITHUB_NUMBERED: Record<string, string> = {
+const GITHUB_NUMBERED: Record<string, string> = lookup({
   pulls: 'pull',
   issues: 'issues',
-};
+});
 
-const GITHUB_TABS: Record<string, string> = {
+const GITHUB_TABS: Record<string, string> = lookup({
   issues: 'issues',
   issue: 'issues',
   i: 'issues',
@@ -285,7 +299,7 @@ const GITHUB_TABS: Record<string, string> = {
   branches: 'branches',
   commits: 'commits',
   tags: 'tags',
-};
+});
 
 function stripGithubHost(value: string): string {
   return value.replace(/^(?:https?:\/\/)?(?:www\.)?github\.com(?:\/|$)/i, '');
@@ -437,12 +451,12 @@ function gdrive(args: string, _cmd: Command, settings: Settings): string {
  * of the app's own URL: the commands stay plain data and the account index
  * lives in one place.
  */
-const GOOGLE_APP_TYPES: Record<string, string> = {
+const GOOGLE_APP_TYPES: Record<string, string> = lookup({
   document: 'document',
   spreadsheets: 'spreadsheet',
   presentation: 'presentation',
   forms: 'form',
-};
+});
 
 function googleApp(args: string, cmd: Command, settings: Settings): string {
   const { account, query } = splitGoogleAccount(args, settings);
@@ -552,10 +566,10 @@ function ai(args: string, cmd: Command, settings: Settings): string {
  * `#settings` has no field for one, so appending a parameter there would build
  * a url the page ignores.
  */
-const META_PARAMS: Record<string, string> = {
+const META_PARAMS: Record<string, string> = lookup({
   help: 'q',
   new: 'prefill',
-};
+});
 
 function meta(args: string, cmd: Command, _settings: Settings): string {
   const base = (cmd.url || 'options.html').trim().replace(/^\.?\//, '');
