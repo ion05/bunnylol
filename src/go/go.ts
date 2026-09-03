@@ -2,6 +2,13 @@
  * The dispatch page. Every intercepted address-bar query lands here, resolves,
  * and leaves again before it can be seen. Nothing renders on the happy path,
  * except a placeholder for a storage read slow enough to be noticed.
+ *
+ * `settings.dispatchToast`, "Confirm before opening a shortcut", is the one
+ * exception, and it is opt-in. It stops the dispatch and shows what resolved,
+ * the alias that fired and the URL it is going to, with a button that opens it
+ * and a link that searches for what was typed instead. It waits for the user:
+ * there is no timer, because a confirmation the page navigates away from on its
+ * own is not a confirmation, it is a delay.
  */
 
 import { expandTemplate, isBouncedUrl, resolve, stripPassthrough, withPassthrough } from '../lib/resolve';
@@ -20,21 +27,6 @@ const SAFE_PROTOCOLS = new Set(['http:', 'https:', 'chrome-extension:']);
  * case still shows nothing at all.
  */
 const STATUS_DELAY_MS = 150;
-
-/**
- * How long the dispatch toast holds the navigation when `settings.dispatchToast`
- * is on.
- *
- * IT REALLY DOES HOLD IT, and that is why the setting ships OFF. The intent was
- * a toast rendered here and then seen on the DESTINATION page, but nothing in
- * this document survives `location.replace`: showing a banner on the page we
- * navigate to would mean a content script on every site the user visits, which
- * is a permission the feature does not justify. So the honest version is an
- * opt-in delay: a user who keeps mistyping into commands can pay 1.2s per
- * dispatch to see what fired and click through to a search instead, and
- * everybody else keeps the fast path.
- */
-const TOAST_MS = 1200;
 
 /**
  * The settings the failing dispatch was working from, so the error page can
@@ -60,8 +52,11 @@ async function dispatch(query: string): Promise<void> {
     throw new Error('Refusing to open a page belonging to another extension.');
   }
 
-  // The default path never touches the DOM: no toast, no reflow, straight out.
-  if (settings.dispatchToast && result.command) await announce(query, target);
+  // The default path never touches the DOM: no confirmation, no reflow,
+  // straight out.
+  if (settings.dispatchToast && result.command) {
+    await confirmOpen(query, target, result.command.name);
+  }
 
   // replace(), not assign(): this page never enters history, so Back returns to
   // wherever the user was when they typed the query.
@@ -69,50 +64,53 @@ async function dispatch(query: string): Promise<void> {
 }
 
 /**
- * "gh → github.com · search instead", for `TOAST_MS`, then resolve so the caller
- * navigates. Resolves early when the user dismisses it, and never resolves once
- * they click through to a search: that anchor's own navigation is the outcome,
- * and letting the timer fire too would race it.
+ * The confirmation: what fired, where it goes, and the two ways out. Resolves
+ * when the user asks for the navigation, and never resolves if they take the
+ * search link instead, because that anchor's own navigation is the outcome and
+ * a second one would race it.
+ *
+ * The Open button takes focus, so the whole interaction is one Enter for a user
+ * who is reading rather than reaching for the mouse.
  */
-function announce(query: string, target: URL): Promise<void> {
-  const host = document.getElementById('toast');
+function confirmOpen(query: string, target: URL, name: string): Promise<void> {
+  const host = document.getElementById('confirm');
   if (!host) return Promise.resolve();
   hideStatus();
 
   return new Promise<void>((navigate) => {
-    let done = false;
-    const timer = setTimeout(() => {
-      if (!done) navigate();
-    }, TOAST_MS);
-    const stop = (): void => {
-      done = true;
-      clearTimeout(timer);
-    };
+    const proceed = document.createElement('button');
+    proceed.type = 'button';
+    proceed.className = 'confirm-go';
+    proceed.textContent = `Open ${destinationLabel(target)}`;
+    proceed.addEventListener('click', () => navigate());
 
-    const search = link(searchUrl(query), 'search instead');
-    // The anchor navigates on its own; we only have to stop competing with it.
-    search.addEventListener('click', stop);
-
-    const dismiss = document.createElement('button');
-    dismiss.type = 'button';
-    dismiss.textContent = '\u00d7';
-    dismiss.setAttribute('aria-label', 'Dismiss and continue');
-    dismiss.className = 'toast-x';
-    dismiss.addEventListener('click', () => {
-      stop();
-      navigate();
+    const what = el('p', {
+      class: 'confirm-what',
+      id: 'confirm-what',
+      children: [
+        // The alias that fired: a command matched, so the first token is that alias.
+        el('code', { text: firstToken(query) }),
+        el('span', { text: ' \u2192 ' }),
+        el('strong', { text: name }),
+      ],
     });
 
     host.replaceChildren(
-      // The alias that fired: a command matched, so the first token is that alias.
-      el('strong', { text: firstToken(query) }),
-      el('span', { text: ' \u2192 ' }),
-      el('span', { text: destinationLabel(target) }),
-      el('span', { text: ' \u00b7 ' }),
-      search,
-      dismiss,
+      what,
+      // The whole URL, not just the host: the point of the screen is that the
+      // user can see the destination before they are on it.
+      el('p', { class: 'confirm-url', text: target.href }),
+      el('p', {
+        class: 'confirm-actions',
+        children: [proceed, link(searchUrl(query), 'Search for what you typed instead')],
+      }),
     );
+    // Focus lands on the button, so the group and its label are what a screen
+    // reader reads on arrival: without them the whole page is "Open github.com".
+    host.setAttribute('role', 'group');
+    host.setAttribute('aria-labelledby', what.id);
     host.hidden = false;
+    proceed.focus();
   });
 }
 
@@ -123,7 +121,7 @@ function destinationLabel(target: URL): string {
 
 function fail(query: string, error: unknown): void {
   hideStatus();
-  hideToast();
+  hideConfirm();
   // The error page is the only thing left; render it into the body rather than
   // leave a blank window if `#err` was edited away.
   const box = document.getElementById('err') ?? document.body;
@@ -180,7 +178,7 @@ function safeHref(href: string, fallback: string): string {
   return fallback;
 }
 
-/** Both of the error page's actions and the toast's "search instead". */
+/** Both of the error page's actions and the confirmation's search escape. */
 function link(href: string, text: string): HTMLAnchorElement {
   const a = document.createElement('a');
   a.href = href;
@@ -208,9 +206,9 @@ function hideStatus(): void {
   if (status) status.hidden = true;
 }
 
-function hideToast(): void {
-  const toast = document.getElementById('toast');
-  if (toast) toast.hidden = true;
+function hideConfirm(): void {
+  const host = document.getElementById('confirm');
+  if (host) host.hidden = true;
 }
 
 const params = new URLSearchParams(location.search);

@@ -158,9 +158,10 @@ export interface Settings {
    */
   interceptStopList: string[];
   /**
-   * Show a dismissible toast on the dispatch page naming the command that
-   * fired, with a link to search instead. Off by default because it costs
-   * ~1.2s on every dispatch; see `TOAST_MS` in go.ts.
+   * Hold the dispatch page on a confirmation naming the command that fired,
+   * with the destination, a button that opens it and a link to search for what
+   * was typed instead. Off by default, because the ordinary dispatch must not
+   * ask a question. Nothing auto-navigates: see `confirmOpen` in go.ts.
    */
   dispatchToast: boolean;
 }
