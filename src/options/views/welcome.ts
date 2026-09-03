@@ -8,9 +8,8 @@
  * (`lib/install.ts` writes the starter pick before the rules are ever built).
  *
  * The pick is authoritative, not additive: Continue re-enables every shipped
- * shortcut in a pack it picks, including ones switched off by hand. The page
- * says so in as many words, because the Settings card that links here promises
- * it does.
+ * shortcut in a pack it picks, including ones switched off by hand, matching
+ * what the Settings card that links here promises.
  */
 
 import { BUILTIN_COMMANDS } from '../../lib/commands';
@@ -19,7 +18,7 @@ import type { PickRow } from '../../lib/onboarding';
 import { FORCE_SEARCH_PREFIXES } from '../../lib/types';
 import { el, nextId } from '../../ui/dom';
 import { button } from '../dom';
-import { closingLine, initialPicks, pickToState } from '../model/welcome';
+import { initialPicks, pickToState } from '../model/welcome';
 import { go } from '../router';
 import { applyState, commitState, getState, reportFailure } from '../store';
 
@@ -38,10 +37,10 @@ export function renderWelcome(): Node[] {
     el('h1', { text: 'Welcome to BunnyLol' }),
     el('p', {
       text:
-        'Type a keyword in the address bar and BunnyLol takes you straight there.' +
-        ' Turn on the packs you want. None of it is final. You can rename, move,' +
-        ' switch off or delete every shortcut afterwards, and you can come back' +
-        ' to this screen from Settings.',
+        "A rebuild of an internal tool at Meta that lets you set custom keywords and" +
+        ' search functions for your browser. Default packs cover a lot of developer' +
+        ' tools, AI tools, and general Google and Microsoft suite tools, but feel' +
+        ' free to add your own or edit/remove any of the default ones.',
     }),
     el('div', {
       class: 'picks',
@@ -60,7 +59,7 @@ export function renderWelcome(): Node[] {
       head,
       el('p', {
         class: 'faint',
-        text: 'School-specific shortcuts. Leave these off unless you go there.',
+        text: 'School Specific Packs',
       }),
       el('div', {
         class: 'picks',
@@ -74,15 +73,6 @@ export function renderWelcome(): Node[] {
 
   nodes.push(escapeNote());
 
-  nodes.push(
-    el('p', {
-      text:
-        'Continue turns on every shipped shortcut in the packs you tick, including' +
-        ' any you had switched off by hand. It turns off the ones in the packs you' +
-        ' leave unticked. Shortcuts you made yourself are never touched.',
-    }),
-  );
-
   const skip = button('Skip', () => go('#help'), 'btn btn-ghost');
   // Both buttons are captured by the handler so it can lock them for the one
   // write; the closure only runs on a click, long after both are bound.
@@ -92,11 +82,7 @@ export function renderWelcome(): Node[] {
     'btn btn-primary',
   );
 
-  nodes.push(
-    el('div', { class: 'form-actions', children: [proceed, skip] }),
-    error,
-    el('p', { class: 'faint', text: closingLine(overrides) }),
-  );
+  nodes.push(el('div', { class: 'form-actions', children: [proceed, skip] }), error);
 
   return [el('section', { class: 'welcome', children: nodes })];
 }
