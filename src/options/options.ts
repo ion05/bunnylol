@@ -149,10 +149,10 @@ function renderView(): Node[] {
 }
 
 function renderTopbar(): HTMLElement {
-  const statusHost = el('span', {
-    class: 'status',
-    attrs: { role: 'status', 'aria-live': 'polite' },
-  });
+  // No class and no content until `paintStatus` has something to report: the
+  // pill is silent on a healthy profile, which is most of them.
+  const statusHost = el('span', { attrs: { role: 'status', 'aria-live': 'polite' } });
+  statusHost.hidden = true;
   setStatusHost(statusHost);
   const resyncButton = button('Re-sync', () => void resync(), 'btn btn-sm');
   resyncButton.title = 'Rebuild the redirect rules from your current shortcuts';

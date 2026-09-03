@@ -52,6 +52,16 @@ export function paintStatus(): void {
   });
 
   host.textContent = '';
+  // Nothing to report empties the host AND drops the class: `.status` is a flex
+  // row, so an empty node still wearing it would hold a gap open in the topbar
+  // where the pill used to be.
+  if (!view) {
+    host.className = '';
+    host.hidden = true;
+    if (resyncButton) resyncButton.disabled = statusBusy;
+    return;
+  }
+  host.hidden = false;
   host.className = PILL_CLASS[view.tone];
   // The detail is nested inside the message rather than beside it, so it takes
   // its own line under the text and truncates there instead of competing with

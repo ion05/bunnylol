@@ -31,10 +31,18 @@ export interface PillInput {
  * sync that failed intercepts nothing, while partial coverage still intercepts
  * everything Chrome accepted. Collapsing them paints the red state over a
  * working setup that merely dropped a keyword.
+ *
+ * `null` means there is nothing to say, and the topbar shows nothing at all.
+ * Working software does not need a label announcing that it is working, and
+ * that label was on screen on every page, for everybody, permanently. The pill
+ * exists for the states somebody has to act on, so a healthy sync is silent,
+ * and so is the wait for the first reply, which would otherwise be a word that
+ * flashes up and vanishes on every render.
  */
-export function pillView({ status, busy, engineCount }: PillInput): PillView {
+export function pillView({ status, busy, engineCount }: PillInput): PillView | null {
+  // The one busy state kept: it answers a button the user just pressed.
   if (busy) return { tone: 'busy', text: 'Syncing rules…', detail: '' };
-  if (!status) return { tone: 'busy', text: 'Checking rules…', detail: '' };
+  if (!status) return null;
 
   const error = messageOf(status, 'error');
   if (error) return { tone: 'bad', text: 'Rules not registered', detail: error };
@@ -55,11 +63,10 @@ export function pillView({ status, busy, engineCount }: PillInput): PillView {
     // acts on, and it moved every time a shortcut was toggled. The counts that
     // matter, what was exempted, what Chrome refused, stay in the detail.
     const partial = Boolean(warning) || dropped > 0;
-    return {
-      tone: partial ? 'warn' : 'ok',
-      text: partial ? 'Some keywords not intercepted' : 'Shortcuts active',
-      detail: notes.join(' · '),
-    };
+    // Healthy is silent, exemptions and all: an exemption is the user's own
+    // choice, and Settings already counts them under the list that made them.
+    if (!partial) return null;
+    return { tone: 'warn', text: 'Some keywords not intercepted', detail: notes.join(' · ') };
   }
 
   if (engineCount === 0) return { tone: 'warn', text: 'Interception off', detail: '' };
