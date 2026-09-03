@@ -8,8 +8,10 @@ Context for AI coding agents working in this repo. Read this before changing any
 
 A Chrome Manifest V3 extension that turns the address bar into a command line, in the style of the
 bunnylol command bar used inside Meta. Type `gh facebook/react` and land on the repo, not on a
-search results page. It is not affiliated with Meta, and the README and any listing copy have to
-say so.
+search results page. It is not affiliated with Meta, and the README, any listing copy AND the extension's own UI have
+to say so. The welcome screen is the one place a user or a store reviewer meets the claim at
+runtime, so the disclaimer lives next to it in `src/options/views/welcome.ts` rather than only in
+the documentation.
 
 The shipped shortcuts are plain data in `src/lib/commands.ts`, grouped into packs the user picks
 from on first run. Everything a user then does to one (rename, re-key, move, switch off, delete) is

@@ -28,10 +28,21 @@ export function renderWelcome(): Node[] {
     el('h1', { text: 'Welcome to BunnyLol' }),
     el('p', {
       text:
-        "A rebuild of an internal tool at Meta that lets you set custom keywords and" +
-        ' search functions for your browser. Default packs cover a lot of developer' +
-        ' tools, AI tools, and general Google and Microsoft suite tools, but feel' +
-        ' free to add your own or edit/remove any of the default ones.',
+        'An independent rebuild of the bunnylol command bar used inside Meta, which lets' +
+        ' you set custom keywords and search functions for your browser. Default packs' +
+        ' cover a lot of developer tools, AI tools, and general Google and Microsoft' +
+        ' suite tools, but feel free to add your own or edit/remove any of the default' +
+        ' ones.',
+    }),
+    // The disclaimer belongs on this screen, not only in the README and the
+    // store listing. This paragraph is the strongest claim the project makes
+    // about Meta and the only one a user or a store reviewer actually meets at
+    // runtime, so the sentence that disclaims it has to be next to it.
+    el('p', {
+      class: 'faint',
+      text:
+        'Not affiliated with, endorsed by, or sponsored by Meta Platforms, Inc.' +
+        ' BunnyLol is an independent open-source project.',
     }),
     ...choice.nodes,
     escapeNote(),
