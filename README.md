@@ -188,6 +188,12 @@ toolbar icon → **Options**.
   shortcuts** group at the foot of the page, which is where the packs you did not tick are too. It
   is the one group that starts folded. Switching a row back on there moves it to its own section
   immediately, and switching one off sends it down here.
+- **You can take a whole section back at once.** Inside **Hidden shortcuts** the rows are grouped by
+  the section they go back to, and each of those runs has one button. It says **Turn on all of
+  Developer** when nothing in that section is on, and **Turn on the rest of Developer** when some of
+  it already is, because a section is often only partly switched off. When more than one section has
+  rows down here, **Turn them all on** empties the whole group. Nothing asks you to confirm: the
+  switches it puts back are the way to undo it.
 - **Every shortcut is editable, whether it ships with BunnyLol or you made it.** A row's actions are
   Edit and Delete, as icons labelled on hover, followed by the on/off switch. They mean the same
   thing on both kinds. The form takes keys, name, description, URL, an optional search URL

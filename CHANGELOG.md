@@ -45,7 +45,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   until you clear the filter. Switched-off shortcuts are not listed in their
   section: they are all in one **Hidden shortcuts** group at the foot of the
   page, folded by default, and switching one back on returns it to its
-  section.
+  section. In that group they are gathered under the section they came from,
+  and each of those runs has one button that switches all of it back on:
+  **Turn on all of Developer** when none of the section is on, **Turn on the
+  rest of Developer** when part of it already is. **Turn them all on** empties
+  the group when more than one section is in it.
 - Export format 2, which carries edits, deletions and sections. Files written
   by the previous format still import.
 - `pnpm package`: a deterministic, zero-dependency release zip with

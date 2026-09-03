@@ -504,9 +504,43 @@ a {
   color: var(--text-faint);
 }
 
+/* The whole-group action, between the note and the rows so it is reachable with
+   the group folded, which is how "Hidden shortcuts" starts. Lined up with the
+   note above it rather than with the rows below, because it belongs to the
+   sentence, not to any one of them. */
+.group-actions {
+  padding: 0 var(--sp-3) var(--sp-4);
+}
+
 .rows {
   display: flex;
   flex-direction: column;
+}
+
+/* The heading over one section's worth of switched-off rows inside "Hidden
+   shortcuts". It is a flex item ordered into the list rather than a box around
+   it, so a row switched off later lands back under it without needing a new
+   parent (`makeRun` in views/browse.ts). Deliberately not a heading element and
+   not foldable: the section it names already has one of each further up the
+   page, and a second outline entry per section would double the list. */
+.run-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-6) var(--sp-3) var(--sp-2);
+}
+
+/* Quieter than `.group-title`: this names a section that already has its own
+   heading, and the row beneath draws the line that separates them. */
+.run-title {
+  font-size: var(--fs-12);
+  color: var(--text-faint);
+}
+
+/* Out to the edge the row switches sit on, so the control that switches a whole
+   run on shares a column with the ones that do it a row at a time. */
+.run-head .btn {
+  margin-left: auto;
 }
 
 .row {

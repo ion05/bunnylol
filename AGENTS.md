@@ -243,6 +243,26 @@ the obvious edit reverses it.
   hand-edited import cannot mint one either: `normalizeCategory` files a category no section answers
   to under `FALLBACK_SECTION`. `browseGroups` still files a switched-off row under its own section,
   because switching it back on has to return it there without a re-render.
+- **The runs inside "Hidden shortcuts" are a visual grouping, not groups.** The switched-off rows
+  are drawn under a small heading per section, and a run of more than one offers the single action
+  that switches all of it back on. A run owns no fold: it registers no id with `collapse()`, so
+  nothing of it can collide with the section fold ids sharing that `localStorage` set. Its heading
+  is a flex item ordered into the hidden group's one rows host rather than a box around its rows,
+  which is what lets a row switched off later land back under the right heading without a new
+  parent, and what keeps every row in the group in ONE list, which is what keeps `applyFilter` the
+  only thing that counts. `applyFilter` writes the headings and the wording too, for the same
+  reason it writes the counts: it is the one function that runs after every change.
+- **A run's action says which of the two things it is doing.** `hiddenActions` in `model/browse.ts`
+  answers with "Turn on all of Developer" when none of that section is live and "Turn on the rest of
+  Developer" when some of it is. A button reading "Turn on Developer" would be claiming to switch on
+  a section half of which is already on, and a section is usually only partly switched off. No label
+  carries a count, because every number on that page comes from `applyFilter` and one baked into a
+  label is the one figure that goes stale when a row moves. There is no confirm step: the action
+  reveals the switches that undo it.
+- **A bulk switch-on is exactly ONE write.** `enableAll` builds the whole next `disabled` list and
+  `turnOn` commits it once. Calling the per-row switch handler in a loop instead would be a burst of
+  saves, one `onStateChanged` each, which is the pattern invariant 15 exists to survive. Same rule,
+  same reason, as the picker below.
 - **Collapse state lives in `localStorage` (`bunnylol.collapsed`), never in `Settings`.** It is
   per-machine view state that changes several times a minute. In the state blob every fold would be
   a storage write, and every write re-syncs the DNR rules.

@@ -30,8 +30,10 @@ import {
   browseEntries,
   browseGroups,
   countLabel,
+  enableAll,
   exampleOf,
   haystackOf,
+  hiddenActions,
   HIDDEN_GROUP_ID,
 } from '../model/browse';
 import type { Entry } from '../model/browse';
@@ -67,10 +69,16 @@ const HIDDEN_NOTE =
 const FOLD_LOCKED_TITLE = 'Clear the filter to fold groups';
 
 interface RowRef {
+  /** The shortcut's identity in the override layer, so a bulk action can build
+   *  the next `disabled` list without reading it back off the node. */
+  id: string;
   matchKey: string;
   haystack: string;
   order: number;
   node: HTMLElement;
+  /** Puts the row's own switch and dimming into a state the user did not click
+   *  it into, for the bulk actions in the hidden group. */
+  setOn: (on: boolean) => void;
   /** The section group this row belongs to whenever it is switched on. A
    *  switched-off row is drawn under "Hidden shortcuts" and still remembers
    *  this, because that is where switching it back on has to return it. */
@@ -82,6 +90,9 @@ interface RowRef {
 interface GroupRef {
   /** The section id, which is what the collapsed state is remembered under. */
   id: string;
+  /** The heading's words, which a run of this section's switched-off rows
+   *  repeats inside the hidden group. */
+  label: string;
   node: HTMLElement;
   /** The disclosure button inside the heading; it owns `aria-expanded`. */
   toggle: HTMLElement;
@@ -91,6 +102,25 @@ interface GroupRef {
   /** Reassigned as rows move between groups, so it is always the rows this
    *  group actually holds. */
   rows: RowRef[];
+}
+
+/**
+ * One section's worth of switched-off rows inside "Hidden shortcuts": a small
+ * heading, and the one action that switches all of them back on.
+ *
+ * A run is a VISUAL grouping inside one collapsible group, not a group of its
+ * own. It owns no fold, registers no id with `collapse()`, and its rows stay
+ * filed under `hiddenGroup` so the counts keep coming from one list. The
+ * heading is a flex item ordered into the run it names, which is why
+ * `renderBrowse`'s single `position` counter also allocates a slot for it.
+ */
+interface RunRef {
+  /** The section this run's rows return to. It is a section id, but it is used
+   *  only to tally rows by their home; nothing folds under it. */
+  id: string;
+  head: HTMLElement;
+  action: HTMLButtonElement;
+  home: GroupRef;
 }
 
 /**
@@ -169,30 +199,45 @@ export function renderBrowse(): Node[] {
   empty.hidden = true;
 
   const groupRefs: GroupRef[] = [];
+  const runRefs: RunRef[] = [];
   /** Rows whose shortcut was deleted; their nodes are gone from the DOM but
    *  they are still listed in `groupRefs`, and the counts must skip them. */
   const removed = new WeakSet<HTMLElement>();
+
+  // Left wordless, like the counts: `applyFilter` writes what every control in
+  // the hidden group says, so no label on the page has skipped the one function
+  // that runs after every change.
+  const enableEverything = button(
+    '',
+    // A copy of the list, because `turnOn` empties the one it is walking. The
+    // filter box is where focus lands: this action makes the whole group
+    // disappear, and the button running it goes with it.
+    () => turnOn(hiddenGroup.rows.slice(), filter),
+    'btn btn-sm btn-ghost',
+  );
+  const groupActions = el('div', { class: 'group-actions', children: [enableEverything] });
 
   // Built on every render, whether or not anything is switched off, and hidden
   // by `applyFilter` when it holds no rows: exactly what already happens to a
   // section whose rows the filter took away. Building it on demand instead
   // would put a second decider of whether a group is on screen inside the
   // switch handler, next to the one that is supposed to be the only one.
-  const hiddenGroup = makeGroup(HIDDEN_GROUP_ID, HIDDEN_TITLE, HIDDEN_NOTE);
+  const hiddenGroup = makeGroup(HIDDEN_GROUP_ID, HIDDEN_TITLE, HIDDEN_NOTE, groupActions);
   const anyHidden = entries.some((entry) => entry.disabled);
 
   // One counter across every section rather than an index per group, because a
   // row's `order` also has to sort it inside the hidden group, where rows from
   // several sections meet. Counting through the sections in order keeps them
-  // together there.
+  // together there, and gives each run's heading the slot just above its rows.
   let position = 0;
   for (const section of browseGroups(entries, getState().overrides.sections)) {
     const home = makeGroup(section.id, section.label);
+    makeRun(home, position++);
     for (const entry of section.entries) {
       // Declared before the row so the switch can close over it. The handler
       // only ever runs from a click, long after the assignment below.
       let ref: RowRef;
-      const node = renderRow(
+      const row = renderRow(
         entry,
         intercepted,
         (deleted) => {
@@ -212,10 +257,12 @@ export function renderBrowse(): Node[] {
         },
       );
       ref = {
+        id: entry.id,
         matchKey: entry.matchKey,
         haystack: haystackOf(entry.cmd),
         order: position++,
-        node,
+        node: row.node,
+        setOn: row.setOn,
         home,
         group: home,
       };
@@ -335,11 +382,19 @@ export function renderBrowse(): Node[] {
     let visible = 0;
     let visibleOn = 0;
     let total = 0;
+    /** Rows in the hidden group, tallied by the section they return to, and
+     *  rows filed in each group whether the filter matched them or not: what
+     *  the runs' headings and actions are decided from below. */
+    const inRun = new Map<string, number>();
+    const filed = new Map<GroupRef, number>();
     for (const group of groupRefs) {
       let inGroup = 0;
+      let held = 0;
       for (const row of group.rows) {
         if (removed.has(row.node)) continue;
         total += 1;
+        held += 1;
+        if (group === hiddenGroup) inRun.set(row.home.id, (inRun.get(row.home.id) ?? 0) + 1);
         const rank = ranks.get(row.matchKey);
         const match = !query || rank !== undefined || row.haystack.includes(query);
         row.node.hidden = !match;
@@ -348,6 +403,7 @@ export function renderBrowse(): Node[] {
         row.node.style.order = String(rank ?? (query ? 10000 + row.order : row.order));
         if (match) inGroup += 1;
       }
+      filed.set(group, held);
       // A bare number on every heading, the hidden group included: which group
       // a row is in is now the whole of what "off" means, so no heading has a
       // mixture to describe.
@@ -376,6 +432,32 @@ export function renderBrowse(): Node[] {
       if (group !== hiddenGroup) visibleOn += inGroup;
     }
 
+    // The runs, from the same pass and by the same writer as the counts: a run
+    // appears when its section has anything switched off, and its wording turns
+    // on whether that section still has anything live, which the row switches
+    // change several times a minute. Nothing here folds, so no run touches
+    // `collapse()`.
+    const painted = hiddenActions(
+      runRefs.map((run) => ({
+        label: run.home.label,
+        hidden: inRun.get(run.id) ?? 0,
+        live: filed.get(run.home) ?? 0,
+      })),
+    );
+    runRefs.forEach((run, index) => {
+      // Silent while a query is live: the filter's answer is one ranked list
+      // across every section, so a heading claiming to name a run of the rows
+      // under it would be naming a run the ranking has already broken up. The
+      // whole-group action goes with them, for the reason `toolbarActions`
+      // does: it would act on rows the query is not showing.
+      run.head.hidden = query !== '' || !painted.runs[index].shown;
+      const label = painted.runs[index].label;
+      run.action.hidden = label === null;
+      if (label !== null) run.action.textContent = label;
+    });
+    groupActions.hidden = query !== '' || painted.all === null;
+    if (painted.all !== null) enableEverything.textContent = painted.all;
+
     count.textContent = countLabel({ on: visibleOn, shown: visible, total }, query !== '');
 
     empty.textContent = '';
@@ -403,7 +485,7 @@ export function renderBrowse(): Node[] {
    * Expand all and the fold-locked-while-filtering rule are written once, and
    * the hidden group cannot drift into being a special case of them.
    */
-  function makeGroup(id: string, title: string, note?: string): GroupRef {
+  function makeGroup(id: string, title: string, note?: string, extra?: HTMLElement): GroupRef {
     // Left empty: `applyFilter` writes every count, and a number rendered here
     // would be the one thing on the page that had not been through it.
     const countNode = el('span', { class: 'group-count' });
@@ -424,9 +506,12 @@ export function renderBrowse(): Node[] {
       ],
     });
     const children: Node[] = [el('h3', { class: 'group-head', children: [toggle] })];
-    // Outside the rows host, so it is still readable with the group folded,
-    // which is how the hidden group starts.
+    // Outside the rows host, so both are still readable with the group folded,
+    // which is how the hidden group starts. The whole-group action is the one
+    // control on this page that is worth reaching without unfolding first: a
+    // user who declined two packs wants them back, not a list of them.
     if (note) children.push(el('p', { class: 'group-note', text: note }));
+    if (extra) children.push(extra);
     children.push(rows);
     const group = el('section', { class: 'group', children });
 
@@ -441,7 +526,64 @@ export function renderBrowse(): Node[] {
       applyFilter();
     });
 
-    return { id, node: group, toggle, rowsHost: rows, count: countNode, rows: [] };
+    return { id, label: title, node: group, toggle, rowsHost: rows, count: countNode, rows: [] };
+  }
+
+  /**
+   * The heading one section's switched-off rows sit under inside the hidden
+   * group, and the action that switches all of them back on.
+   *
+   * It goes into the hidden group's rows host as a flex item ordered just above
+   * the run it names, rather than into a container of its own, so a row that
+   * moves in later needs no new parent: `place` appends it wherever, and its
+   * `order` drops it back under this heading. That also keeps every row in the
+   * group in ONE list, which is what lets `applyFilter` stay the only counter.
+   */
+  function makeRun(home: GroupRef, order: number): void {
+    // Wordless for the same reason the counts are: `applyFilter` decides what
+    // this says, from what the run holds at the time.
+    const action = button('', () => turnOn(rowsOf(home), home.toggle), 'btn btn-sm btn-ghost');
+    const head = el('div', {
+      class: 'run-head',
+      children: [el('span', { class: 'run-title', text: home.label }), action],
+    });
+    head.style.order = String(order);
+    hiddenGroup.rowsHost.append(head);
+    runRefs.push({ id: home.id, head, action, home });
+  }
+
+  /** The switched-off rows of one section, as a list of its own: `turnOn`
+   *  empties the list it is given out of the hidden group as it goes. */
+  function rowsOf(home: GroupRef): RowRef[] {
+    return hiddenGroup.rows.filter((row) => row.home === home);
+  }
+
+  /**
+   * Switches a whole run, or the whole group, back on.
+   *
+   * ONE write. The next `disabled` list is built in full and committed once,
+   * because calling the per-row switch in a loop would be a burst of saves, one
+   * `onStateChanged` each, which is the pattern `syncRules` serialization
+   * exists to survive (AGENTS.md invariant 15).
+   *
+   * The rows move first, the same way and for the same reason the single switch
+   * moves its own: `commitOverrides` applies the new state before it awaits
+   * storage, and a list that waited for storage to answer would read as a
+   * control that did not take. `focus` goes to `landing` because the button
+   * that ran this is hidden the moment its run empties, and removing the
+   * focused element drops a keyboard user at the top of the document.
+   */
+  function turnOn(rows: RowRef[], landing: HTMLElement): void {
+    const live = rows.filter((row) => !removed.has(row.node));
+    if (live.length === 0) return;
+    const next = enableAll(getState().overrides.disabled, live.map((row) => row.id));
+    for (const row of live) {
+      row.setOn(true);
+      move(row, row.home);
+    }
+    applyFilter();
+    landing.focus();
+    void commitOverrides({ ...getState().overrides, disabled: next }).catch(reportFailure);
   }
 
   /** Files a row under a group: the row's node, the group's list and the row's
@@ -472,12 +614,19 @@ export function renderBrowse(): Node[] {
   return nodes;
 }
 
+/** The row's node, and the one way its on-off state is written from outside a
+ *  click on its own switch: a bulk action in the hidden group. */
+interface RowNode {
+  node: HTMLElement;
+  setOn: (on: boolean) => void;
+}
+
 function renderRow(
   entry: Entry,
   intercepted: Set<string>,
   onRemoved: (row: HTMLElement) => void,
   onToggled: (on: boolean) => void,
-): HTMLElement {
+): RowNode {
   const row = el('div', { class: entry.disabled ? 'row off' : 'row' });
   row.dataset.id = entry.id;
 
@@ -546,6 +695,19 @@ function renderRow(
     entry.cmd.handler === 'meta' ? META_DELETE_TITLE : '',
   );
 
+  const toggle = switchControl(`Enable ${entry.cmd.name}`, !entry.disabled, (on) => {
+    const next = getState().overrides.disabled.filter((id) => id !== entry.id);
+    if (!on) next.push(entry.id);
+    // Optimistic, and deliberately before the await: the switch has already
+    // moved under the pointer, and a row that waits for storage to answer
+    // reads as a control that did not take.
+    row.classList.toggle('off', !on);
+    // Moves the row between its section and "Hidden shortcuts", and repaints
+    // the counts on both headings.
+    onToggled(on);
+    void commitOverrides({ ...getState().overrides, disabled: next }).catch(reportFailure);
+  });
+
   // Edit, Delete, then the switch: the two actions that open or remove the row
   // sit together, and the state control stays at the edge where it is always
   // visible.
@@ -554,21 +716,20 @@ function renderRow(
       go(`#edit?id=${encodeURIComponent(entry.id)}`);
     }),
     remove,
-    switchControl(`Enable ${entry.cmd.name}`, !entry.disabled, (on) => {
-      const next = getState().overrides.disabled.filter((id) => id !== entry.id);
-      if (!on) next.push(entry.id);
-      // Optimistic, and deliberately before the await: the switch has already
-      // moved under the pointer, and a row that waits for storage to answer
-      // reads as a control that did not take.
-      row.classList.toggle('off', !on);
-      // Moves the row between its section and "Hidden shortcuts", and repaints
-      // the counts on both headings.
-      onToggled(on);
-      void commitOverrides({ ...getState().overrides, disabled: next }).catch(reportFailure);
-    }),
+    toggle.node,
   );
 
-  return row;
+  return {
+    node: row,
+    // The dimming and the checkbox, and nothing else: the write, the move and
+    // the counts belong to the bulk action calling this, which does all three
+    // for a whole run at once. Setting `checked` fires no `change`, so this
+    // cannot re-enter the handler above.
+    setOn: (on) => {
+      row.classList.toggle('off', !on);
+      toggle.input.checked = on;
+    },
+  };
 }
 
 /** Null-prototype throughout: an id is a key off untrusted storage, and

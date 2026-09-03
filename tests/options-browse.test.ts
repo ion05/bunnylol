@@ -19,9 +19,12 @@ import {
   browseGroups,
   buildKeyOwner,
   countLabel,
+  enableAll,
   exampleOf,
   haystackOf,
+  hiddenActions,
   HIDDEN_GROUP_ID,
+  TURN_ON_ALL,
 } from '../src/options/model/browse';
 
 const github: BuiltinCommand = {
@@ -288,6 +291,78 @@ describe('HIDDEN_GROUP_ID', () => {
     expect(validateSectionId(HIDDEN_GROUP_ID).ok).toBe(false);
     // And it still survives the reader every fold is compared through.
     expect(sectionKey(HIDDEN_GROUP_ID)).toBe(HIDDEN_GROUP_ID);
+  });
+});
+
+describe('hiddenActions', () => {
+  it('draws a heading only for a run that holds something', () => {
+    const { runs } = hiddenActions([
+      { label: 'Developer', hidden: 3, live: 0 },
+      { label: 'Social', hidden: 0, live: 4 },
+    ]);
+    expect(runs.map((run) => run.shown)).toEqual([true, false]);
+  });
+
+  it('says "the rest of" while any of the section is still live', () => {
+    // The dishonest label is the one this exists to avoid: a section that is
+    // half switched on is not a section this button turns on.
+    const { runs } = hiddenActions([{ label: 'Developer', hidden: 5, live: 7 }]);
+    expect(runs[0].label).toBe('Turn on the rest of Developer');
+  });
+
+  it('says "all of" only when none of the section is live', () => {
+    // A declined pack: nothing of it is on, so "the rest" would be naming a
+    // remainder of nothing.
+    const { runs } = hiddenActions([{ label: 'Productivity', hidden: 12, live: 0 }]);
+    expect(runs[0].label).toBe('Turn on all of Productivity');
+  });
+
+  it('offers no action for a run of one', () => {
+    // The row's own switch already does it in one click, so a second control
+    // beside it would be a second way to make the same gesture.
+    const { runs } = hiddenActions([{ label: 'Developer', hidden: 1, live: 2 }]);
+    expect(runs[0].shown).toBe(true);
+    expect(runs[0].label).toBeNull();
+  });
+
+  it('offers the whole-group action only once more than one run is drawn', () => {
+    // With one run, the group action and the run's own would switch on exactly
+    // the same rows, and the one naming its section says more.
+    expect(hiddenActions([{ label: 'Developer', hidden: 4, live: 0 }]).all).toBeNull();
+    expect(
+      hiddenActions([
+        { label: 'Developer', hidden: 4, live: 0 },
+        { label: 'Social', hidden: 2, live: 1 },
+      ]).all,
+    ).toBe(TURN_ON_ALL);
+  });
+
+  it('names no section and no count in the whole-group action', () => {
+    // Every number on the browse page is written by `applyFilter`; one baked
+    // into a label would be the only figure that had not been through it, and
+    // it would go stale the moment a row moved.
+    expect(TURN_ON_ALL).not.toMatch(/\d/);
+  });
+});
+
+describe('enableAll', () => {
+  it('takes every id it is given out of disabled, in one list', () => {
+    // One list, for one `commitOverrides` call: a write per row would be the
+    // burst of `onStateChanged` events invariant 15 exists to survive.
+    expect(enableAll(['gh', 'r', 'u:tix'], ['gh', 'u:tix'])).toEqual(['r']);
+  });
+
+  it('leaves an id it was not given alone, and copies rather than mutates', () => {
+    const disabled = ['gh', 'r'];
+    expect(enableAll(disabled, ['npm'])).toEqual(['gh', 'r']);
+    expect(disabled).toEqual(['gh', 'r']);
+  });
+
+  it('matches through normalizeId, so a stored id in another case still goes', () => {
+    // `browseEntries` decides a row is off through `normalizeId`. A plain
+    // comparison would move the row back to its section and leave it switched
+    // off in the state the resolver reads.
+    expect(enableAll([' GH ', 'r'], ['gh'])).toEqual(['r']);
   });
 });
 

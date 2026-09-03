@@ -143,6 +143,89 @@ export function browseGroups(entries: Entry[], sections: Section[] | undefined):
 }
 
 /**
+ * What one run of switched-off rows inside "Hidden shortcuts" knows about
+ * itself: the label of the section its rows go back to, how many of that
+ * section's shortcuts are switched off, and how many of them are still live.
+ */
+export interface RunCounts {
+  label: string;
+  hidden: number;
+  live: number;
+}
+
+/** A run's heading and its one bulk action, as the view paints them. */
+export interface RunAction {
+  /** Whether the run holds anything, so whether its heading is drawn at all. */
+  shown: boolean;
+  /** The words on the run's bulk action, or null when it offers none. */
+  label: string | null;
+}
+
+/** Every heading and action inside the hidden group, decided in one pass. */
+export interface HiddenActions {
+  /** One entry per run, in the order the runs were given. */
+  runs: RunAction[];
+  /** The words on the action that switches on everything in the group, or
+   *  null when it would only repeat a run's own action. */
+  all: string | null;
+}
+
+/** The action that switches on everything under "Hidden shortcuts". It names
+ *  no section and no number, so it cannot be misread as one run's action, and
+ *  there is nothing in it to go stale as rows move. */
+export const TURN_ON_ALL = 'Turn them all on';
+
+/**
+ * What a run's bulk action says.
+ *
+ * A section is usually only PARTLY switched off, so "Turn on Developer" would
+ * be claiming to switch on a section half of which is already live. The two
+ * cases therefore get different words. Neither carries a count: every number on
+ * the browse page is written by `applyFilter`, and one baked into a label here
+ * would be the single figure that went stale the moment a row moved.
+ */
+function runActionLabel(section: string, anyLive: boolean): string {
+  return anyLive ? `Turn on the rest of ${section}` : `Turn on all of ${section}`;
+}
+
+/**
+ * The headings and bulk actions the hidden group draws, given what each run
+ * currently holds. One function rather than a rule per control, because the
+ * whole-group action's existence depends on the runs' and the two would drift.
+ */
+export function hiddenActions(runs: RunCounts[]): HiddenActions {
+  const drawn = runs.filter((run) => run.hidden > 0).length;
+  return {
+    runs: runs.map((run) => ({
+      shown: run.hidden > 0,
+      // A run of one is already one click away through the row's own switch,
+      // so a button beside it would be a second control for the same gesture.
+      label: run.hidden < 2 ? null : runActionLabel(run.label, run.live > 0),
+    })),
+    // With a single run in the group the two actions would do exactly the same
+    // thing to exactly the same rows, and the one naming its section says more.
+    all: drawn > 1 ? TURN_ON_ALL : null,
+  };
+}
+
+/**
+ * The `disabled` list a bulk action writes: every id in `ids` switched on, as
+ * ONE list for ONE `commitOverrides` call. Looping over the per-row switch
+ * instead would be a burst of writes, one `onStateChanged` each, which is
+ * exactly the pattern `syncRules` serialization exists to survive (AGENTS.md
+ * invariant 15).
+ *
+ * Both sides go through `normalizeId`, the reader `browseEntries` decides a row
+ * is off with. A stored id differing only in case would otherwise survive the
+ * filter, and the row would move back to its section while staying switched
+ * off in the state the resolver reads.
+ */
+export function enableAll(disabled: string[], ids: string[]): string[] {
+  const on = new Set(ids.map(normalizeId).filter(Boolean));
+  return disabled.filter((id) => !on.has(normalizeId(id)));
+}
+
+/**
  * The toolbar's count line. It answers two different questions and asks each
  * one only when it has something to say.
  *

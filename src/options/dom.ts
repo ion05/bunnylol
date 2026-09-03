@@ -164,18 +164,25 @@ export function checkbox(label: string, checked: boolean, onChange: (on: boolean
   return el('label', { class: 'check', children: [input, label] });
 }
 
+/**
+ * The input comes back alongside the label wrapping it, because the browse list
+ * also switches rows on in bulk, and a control the user did not touch still has
+ * to show the state it is now in. Writing `checked` fires no `change`, so
+ * driving it that way cannot re-enter `onChange`.
+ */
 export function switchControl(
   label: string,
   checked: boolean,
   onChange: (on: boolean) => void,
-): HTMLElement {
+): { node: HTMLElement; input: HTMLInputElement } {
   const input = el('input', { attrs: { type: 'checkbox' } });
   input.checked = checked;
   input.addEventListener('change', () => onChange(input.checked));
-  return el('label', {
+  const node = el('label', {
     class: 'switch',
     children: [input, el('span', { class: 'visually-hidden', text: label })],
   });
+  return { node, input };
 }
 
 /**
