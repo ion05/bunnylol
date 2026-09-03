@@ -23,7 +23,7 @@ import { BUILTIN_COMMANDS, destinationOf } from '../../lib/commands';
 import { firstKey, shortcutId } from '../../lib/overrides';
 import { activeKeywords, suggest } from '../../lib/resolve';
 import { stripScheme } from '../../lib/text';
-import type { Overrides, ShortcutEdit } from '../../lib/types';
+import type { Command, Overrides, ShortcutEdit } from '../../lib/types';
 import { el, nextId } from '../../ui/dom';
 import { button, confirmButton, iconButton, switchControl } from '../dom';
 import {
@@ -73,9 +73,18 @@ interface RowRef {
    *  the next `disabled` list without reading it back off the node. */
   id: string;
   matchKey: string;
+  /** Every alias the shortcut answers to, lowercased: what the "omnibox only"
+   *  badge is decided from, and the reason it can be decided again after a
+   *  switch moves without re-reading the row's chips out of the DOM. */
+  keys: string[];
   haystack: string;
   order: number;
   node: HTMLElement;
+  /** The "omnibox only" badge. Always built, never destroyed: whether it shows
+   *  depends on the live keyword set and on which group the row is in, both of
+   *  which a click can change, so `applyFilter` writes it like it writes the
+   *  counts. */
+  marker: HTMLElement;
   /** Puts the row's own switch and dimming into a state the user did not click
    *  it into, for the bulk actions in the hidden group. */
   setOn: (on: boolean) => void;
@@ -145,16 +154,19 @@ function collapse(): CollapseState {
  * than clearing `localStorage` from the outside: the singleton above outlives
  * a reset, so a cleared store alone would leave the old set in memory and the
  * next fold would write all of it back.
+ *
+ * `reset`, NOT `expandAll`. The stored set holds the ids whose fold differs
+ * from the default, so `expandAll` has to ADD "Hidden shortcuts" to it to open
+ * that group, which is right for a button the user pressed and wrong here:
+ * Start over would land the profile on a browse page with the hidden group
+ * already unfolded, which is the state the folded default exists to prevent.
  */
 export function forgetCollapsed(): void {
-  collapse().expandAll();
+  collapse().reset();
 }
 
 export function renderBrowse(): Node[] {
   const entries = browseEntries(BUILTIN_COMMANDS, getState().overrides);
-  // The same list the DNR rules are built from, so the marker below cannot
-  // drift from what the address bar actually does.
-  const intercepted = new Set(activeKeywords(getCommands(), getState().settings.interceptStopList));
   const nodes: Node[] = [];
 
   const shown = takeNotice();
@@ -209,9 +221,11 @@ export function renderBrowse(): Node[] {
   // that runs after every change.
   const enableEverything = button(
     '',
-    // A copy of the list, because `turnOn` empties the one it is walking. The
-    // filter box is where focus lands: this action makes the whole group
-    // disappear, and the button running it goes with it.
+    // A copy, so what this acts on is the set that was in the group when it was
+    // clicked. (`turnOn` does not mutate the list it walks: `move` REASSIGNS
+    // `group.rows` with a `filter()`, so the array handed over here is never
+    // touched.) The filter box is where focus lands: this action makes the
+    // whole group disappear, and the button running it goes with it.
     () => turnOn(hiddenGroup.rows.slice(), filter),
     'btn btn-sm btn-ghost',
   );
@@ -239,10 +253,17 @@ export function renderBrowse(): Node[] {
       let ref: RowRef;
       const row = renderRow(
         entry,
-        intercepted,
         (deleted) => {
           removed.add(deleted);
           applyFilter();
+          // The confirm button the user just pressed went out of the document
+          // with the row, which drops focus on `<body>`. The filter box is
+          // where it goes rather than a neighbouring row or this section's
+          // heading: deleting the last row of a section hides the whole group,
+          // and `focus()` inside a `display: none` subtree is a silent no-op.
+          // The filter box is the one control on the route that is always
+          // there, and it is where the next thing a user does starts.
+          filter.focus();
         },
         // Moving the one node the switch is about, rather than re-rendering
         // the view. A re-render would be correct, `commitOverrides` applies the
@@ -252,16 +273,25 @@ export function renderBrowse(): Node[] {
         // writes `row.hidden` and `rowsHost.hidden`: it runs straight after and
         // decides the counts, the two headings and what is on screen.
         (on) => {
-          move(ref, on ? ref.home : hiddenGroup);
+          const refocus = move(ref, on ? ref.home : hiddenGroup);
           applyFilter();
+          // AFTER `applyFilter`, because until it has run the destination still
+          // has the visibility the last one left it: the hidden group is folded
+          // by default and an empty group is hidden outright, and `focus()`
+          // inside a `display: none` subtree silently drops focus on `<body>`.
+          // `preventScroll`, because the row has just moved to the bottom of
+          // the page and refocusing it would drag the page after it.
+          refocus?.focus({ preventScroll: true });
         },
       );
       ref = {
         id: entry.id,
         matchKey: entry.matchKey,
+        keys: entry.cmd.keys.map((key) => key.trim().toLowerCase()),
         haystack: haystackOf(entry.cmd),
         order: position++,
         node: row.node,
+        marker: row.marker,
         setOn: row.setOn,
         home,
         group: home,
@@ -360,6 +390,27 @@ export function renderBrowse(): Node[] {
     return filter.value.trim() !== '';
   }
 
+  /**
+   * The aliases the address bar answers to right now, from the same list the
+   * DNR rules are built from, so the "omnibox only" badge cannot drift from
+   * what typing the keyword actually does.
+   *
+   * Memoized on the identity of the merged command list, which `applyState`
+   * rebuilds on every commit and nothing else replaces. `applyFilter` also runs
+   * on every keystroke in the filter box, and only a write can change this
+   * answer.
+   */
+  let keywordSource: Command[] | null = null;
+  let interceptedKeys = new Set<string>();
+  function intercepted(): Set<string> {
+    const commands = getCommands();
+    if (commands !== keywordSource) {
+      keywordSource = commands;
+      interceptedKeys = new Set(activeKeywords(commands, getState().settings.interceptStopList));
+    }
+    return interceptedKeys;
+  }
+
   function applyFilter(): void {
     const query = filter.value.trim().toLowerCase();
     setFilter(filter.value);
@@ -387,6 +438,7 @@ export function renderBrowse(): Node[] {
      *  the runs' headings and actions are decided from below. */
     const inRun = new Map<string, number>();
     const filed = new Map<GroupRef, number>();
+    const live = intercepted();
     for (const group of groupRefs) {
       let inGroup = 0;
       let held = 0;
@@ -395,6 +447,14 @@ export function renderBrowse(): Node[] {
         total += 1;
         held += 1;
         if (group === hiddenGroup) inRun.set(row.home.id, (inRun.get(row.home.id) ?? 0) + 1);
+        // Which keywords the address bar claims changes as shortcuts are
+        // switched on and off, so this is decided here with the counts rather
+        // than once at render: a bulk switch-on would otherwise leave every row
+        // it moved carrying a badge about a keyword that is now intercepted.
+        // No badge under "Hidden shortcuts": a switched-off shortcut is not
+        // intercepted anywhere, and saying so on every row in the group would
+        // be repeating what the heading already says.
+        row.marker.hidden = group === hiddenGroup || row.keys.some((key) => live.has(key));
         const rank = ranks.get(row.matchKey);
         const match = !query || rank !== undefined || row.haystack.includes(query);
         row.node.hidden = !match;
@@ -463,14 +523,24 @@ export function renderBrowse(): Node[] {
     empty.textContent = '';
     empty.hidden = visible > 0;
     if (visible === 0) {
+      // Two different emptinesses. With a query up, the list has rows and none
+      // of them matched, so the offer is to make the thing that was searched
+      // for. With no query the list is genuinely empty, every shortcut having
+      // been deleted, and the old copy asked "Nothing matches “”" and offered a
+      // Create button prefilled with nothing.
+      const typed = filter.value.trim();
       empty.append(
-        el('p', { text: `Nothing matches “${filter.value.trim()}”.` }),
+        el('p', {
+          text: typed
+            ? `Nothing matches “${typed}”.`
+            : 'No shortcuts left. Reset to defaults in Settings brings the shipped ones back.',
+        }),
         el('div', {
           class: 'btn-row',
           children: [
             button(
-              'Create a shortcut for it',
-              () => go(`#new?prefill=${encodeURIComponent(filter.value.trim())}`),
+              typed ? 'Create a shortcut for it' : 'Create a shortcut',
+              () => go(typed ? `#new?prefill=${encodeURIComponent(typed)}` : '#new'),
               'btn btn-primary btn-sm',
             ),
           ],
@@ -552,8 +622,8 @@ export function renderBrowse(): Node[] {
     runRefs.push({ id: home.id, head, action, home });
   }
 
-  /** The switched-off rows of one section, as a list of its own: `turnOn`
-   *  empties the list it is given out of the hidden group as it goes. */
+  /** The switched-off rows of one section: the hidden group holds rows from
+   *  every section in one list, and a run's action is about its own. */
   function rowsOf(home: GroupRef): RowRef[] {
     return hiddenGroup.rows.filter((row) => row.home === home);
   }
@@ -566,24 +636,28 @@ export function renderBrowse(): Node[] {
    * `onStateChanged` each, which is the pattern `syncRules` serialization
    * exists to survive (AGENTS.md invariant 15).
    *
-   * The rows move first, the same way and for the same reason the single switch
-   * moves its own: `commitOverrides` applies the new state before it awaits
-   * storage, and a list that waited for storage to answer would read as a
-   * control that did not take. `focus` goes to `landing` because the button
-   * that ran this is hidden the moment its run empties, and removing the
-   * focused element drops a keyboard user at the top of the document.
+   * Nothing here waits for storage, the same way and for the same reason the
+   * single switch does not: a list that only moved once storage answered would
+   * read as a control that did not take. `focus` goes to `landing` because
+   * the button that ran this is hidden the moment its run empties, and removing
+   * the focused element drops a keyboard user at the top of the document.
    */
   function turnOn(rows: RowRef[], landing: HTMLElement): void {
     const live = rows.filter((row) => !removed.has(row.node));
     if (live.length === 0) return;
     const next = enableAll(getState().overrides.disabled, live.map((row) => row.id));
+    // The write is issued first and nothing waits for it: `commitOverrides`
+    // applies the new state before its first `await`, so the rows below still
+    // move in the same tick as the click, and `applyFilter` gets to read a
+    // command list these shortcuts are already in when it decides which
+    // keywords the address bar answers to.
+    void commitOverrides({ ...getState().overrides, disabled: next }).catch(reportFailure);
     for (const row of live) {
       row.setOn(true);
       move(row, row.home);
     }
     applyFilter();
     landing.focus();
-    void commitOverrides({ ...getState().overrides, disabled: next }).catch(reportFailure);
   }
 
   /** Files a row under a group: the row's node, the group's list and the row's
@@ -594,17 +668,27 @@ export function renderBrowse(): Node[] {
     to.rowsHost.append(ref.node);
   }
 
-  function move(ref: RowRef, to: GroupRef): void {
-    if (ref.group === to) return;
-    // `append` on a node that is already in the document is a removal and an
-    // insertion, and removing the focused element sends focus to the body. A
-    // keyboard user who pressed Space on the switch would lose their place, so
-    // the focus is put back. `preventScroll`, because the row has just moved to
-    // the bottom of the page and refocusing it would drag the page after it.
+  /**
+   * Files a row under another group, and ANSWERS with the element that has to
+   * be focused again once `applyFilter` has decided what is on screen. It does
+   * not focus it itself.
+   *
+   * `append` on a node that is already in the document is a removal and an
+   * insertion, and removing the focused element sends focus to the body. A
+   * keyboard user who pressed Space on the switch would lose their place. But
+   * refocusing here would not put it back: at this point the destination still
+   * has whatever visibility the PREVIOUS `applyFilter` left it with, and two
+   * ordinary cases have it inside a `display: none` subtree, where `focus()` is
+   * a silent no-op that leaves focus on `<body>`. The hidden group is folded by
+   * default, so switching any row off hits it, and a group holding nothing is
+   * hidden outright. So the caller focuses, after `applyFilter`.
+   */
+  function move(ref: RowRef, to: GroupRef): HTMLElement | null {
+    if (ref.group === to) return null;
     const focused = ref.node.contains(document.activeElement) ? document.activeElement : null;
     ref.group.rows = ref.group.rows.filter((row) => row !== ref);
     place(ref, to);
-    if (focused instanceof HTMLElement) focused.focus({ preventScroll: true });
+    return focused instanceof HTMLElement ? focused : null;
   }
 
   filter.addEventListener('input', applyFilter);
@@ -614,16 +698,17 @@ export function renderBrowse(): Node[] {
   return nodes;
 }
 
-/** The row's node, and the one way its on-off state is written from outside a
- *  click on its own switch: a bulk action in the hidden group. */
+/** The row's node, the badge `applyFilter` writes, and the one way its on-off
+ *  state is written from outside a click on its own switch: a bulk action in
+ *  the hidden group. */
 interface RowNode {
   node: HTMLElement;
+  marker: HTMLElement;
   setOn: (on: boolean) => void;
 }
 
 function renderRow(
   entry: Entry,
-  intercepted: Set<string>,
   onRemoved: (row: HTMLElement) => void,
   onToggled: (on: boolean) => void,
 ): RowNode {
@@ -648,12 +733,18 @@ function renderRow(
   // heading, which says the same thing once for the whole group. The dimming
   // stays, so a row on its way between the two groups still does not read like
   // a live one the moment the switch moves.
-  if (!entry.disabled && !entry.cmd.keys.some((key) => intercepted.has(key))) {
-    const marker = el('span', { class: 'badge badge-quiet', text: 'omnibox only' });
-    marker.title =
-      'Not intercepted in the address bar. Type bl, press Tab, then the keyword, or use the popup.';
-    name.append(marker);
-  }
+  //
+  // The "omnibox only" badge is built for every row and starts hidden: whether
+  // it applies depends on the live keyword set and on which group the row is
+  // in, and both change without a re-render, so `applyFilter` decides it the
+  // same way it decides the counts. Building it only for the rows that need one
+  // meant a row switched on later could never get the badge and a row switched
+  // off kept it.
+  const marker = el('span', { class: 'badge badge-quiet', text: 'omnibox only' });
+  marker.title =
+    'Not intercepted in the address bar. Type bl, press Tab, then the keyword, or use the popup.';
+  marker.hidden = true;
+  name.append(marker);
 
   const body = el('div', {
     class: 'row-body',
@@ -702,10 +793,14 @@ function renderRow(
     // moved under the pointer, and a row that waits for storage to answer
     // reads as a control that did not take.
     row.classList.toggle('off', !on);
+    // Issued before the move, and still without waiting for it:
+    // `commitOverrides` applies the new state before its first `await`, so what
+    // `onToggled` repaints is decided against a command list this shortcut has
+    // already joined or left. That is what the "omnibox only" badge reads.
+    void commitOverrides({ ...getState().overrides, disabled: next }).catch(reportFailure);
     // Moves the row between its section and "Hidden shortcuts", and repaints
     // the counts on both headings.
     onToggled(on);
-    void commitOverrides({ ...getState().overrides, disabled: next }).catch(reportFailure);
   });
 
   // Edit, Delete, then the switch: the two actions that open or remove the row
@@ -721,6 +816,7 @@ function renderRow(
 
   return {
     node: row,
+    marker,
     // The dimming and the checkbox, and nothing else: the write, the move and
     // the counts belong to the bulk action calling this, which does all three
     // for a whole run at once. Setting `checked` fires no `change`, so this

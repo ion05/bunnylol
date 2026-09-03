@@ -30,6 +30,9 @@ export interface CollapseState {
   set(id: string, collapsed: boolean): void;
   collapseAll(ids: string[]): void;
   expandAll(): void;
+  /** Forgets every remembered fold, leaving every group exactly as it starts.
+   *  NOT `expandAll`: see the implementation. */
+  reset(): void;
   /** Forgets every remembered id that is not in `keep`. */
   prune(keep: string[]): void;
   /** The remembered ids, sorted: for tests and for anything that needs to read
@@ -146,6 +149,15 @@ export function createCollapseState(
     expandAll(): void {
       flipped.clear();
       for (const id of defaults) flipped.add(id);
+      persist();
+    },
+    // The other end of `expandAll`, and the reason the two cannot be one
+    // function: this forgets the departures instead of recording them, so what
+    // is left is the DEFAULT fold, "Hidden shortcuts" folded included. It is
+    // what a reset that puts the profile back to how it was installed wants;
+    // "Expand all" is a control the user pressed to open things.
+    reset(): void {
+      flipped.clear();
       persist();
     },
     // Section ids are reused: deleting `Client work` and making another one by

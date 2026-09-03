@@ -229,6 +229,28 @@ describe('createCollapseState', () => {
     expect(store.map.get(COLLAPSE_KEY)).toBe('["dev"]');
   });
 
+  it('reset folds a default-collapsed group back up, where expandAll opens it', () => {
+    // The difference `forgetCollapsed` needs. Start over puts the profile back
+    // to how it was installed, and "Hidden shortcuts" starts folded, so the
+    // reset cannot go through "Expand all": that button has to RECORD the
+    // hidden group as opened to be able to open it.
+    const store = fakeStore();
+    const state = createCollapseState(store, ['@hidden']);
+    state.collapseAll(['dev']);
+    state.set('@hidden', false);
+    expect(state.isCollapsed('@hidden')).toBe(false);
+    expect(state.isCollapsed('dev')).toBe(true);
+
+    state.reset();
+    expect(state.isCollapsed('@hidden')).toBe(true);
+    expect(state.isCollapsed('dev')).toBe(false);
+    // Nothing remembered at all, so a build that reads this set later gets the
+    // defaults rather than a written-down copy of them.
+    expect(state.snapshot()).toEqual([]);
+    expect(store.map.get(COLLAPSE_KEY)).toBe('[]');
+    expect(createCollapseState(store, ['@hidden']).isCollapsed('@hidden')).toBe(true);
+  });
+
   it('prune forgets that a default-collapsed group was opened', () => {
     // The hidden group counts as drawn only while something is in it, so a
     // profile that switches its last hidden shortcut back on gets the folded

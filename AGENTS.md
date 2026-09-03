@@ -143,11 +143,11 @@ tests. **If a test in this list fails, do not "fix" the test.**
 6. **All alias, URL and section validation goes through `src/lib/validate.ts`.** Nothing re-derives
    a rule locally. Today's callers are the import parser (`storage.ts`), the override algebra
    (`overrides.ts`), the one shortcut form (through `draft.ts` and `model/form.ts`), the section
-   editor in Settings, and `resolve.ts` for `isInterceptableAlias`. That list will grow, so add a
-   call site rather than a local rule. When the rule lived in whichever module needed it, each had
-   a different hole: whitespace aliases and scheme-less URLs both persisted happily while being
-   unusable. `validateAlias` also rejects an alias starting with an escape prefix, since `resolve()`
-   strips that before the key map is ever consulted.
+   editor and the "Exempt keywords" field in Settings, and `resolve.ts` for `isInterceptableAlias`.
+   That list will grow, so add a call site rather than a local rule. When the rule lived in
+   whichever module needed it, each had a different hole: whitespace aliases and scheme-less URLs
+   both persisted happily while being unusable. `validateAlias` also rejects an alias starting with
+   an escape prefix, since `resolve()` strips that before the key map is ever consulted.
 
 7. **Free text never goes into a slot expecting a specific shape.** Tracking numbers, Zoom meeting
    ids, phone numbers and dictionary headwords all guard their input and degrade to a search.
@@ -229,8 +229,8 @@ tests. **If a test in this list fails, do not "fix" the test.**
 These are not invariants, since no bug shipped from them. But each is a decision with a reason, and
 the obvious edit reverses it.
 
-- **`applyFilter` in `views/browse.ts` is the only writer of `row.hidden`, `rowsHost.hidden` and
-  every count on the page.** Collapse hides a group by writing the rows host. The filter hides
+- **`applyFilter` in `views/browse.ts` is the only writer of `row.hidden`, `rowsHost.hidden`, every
+  count on the page and the "omnibox only" badge.** Collapse hides a group by writing the rows host. The filter hides
   individual rows and force-shows a collapsed group that matches. Two writers means a row that a
   cleared filter never brings back. The on/off switch is the one control that changes what is on
   screen without a re-render, and it still does not write any of those: it moves the row's node
