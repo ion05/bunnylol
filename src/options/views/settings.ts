@@ -531,10 +531,9 @@ export function renderStopList(): HTMLElement {
   function paintChips(): void {
     chips.textContent = '';
     const list = [...stopSet()].sort();
-    if (list.length === 0) {
-      chips.append(el('p', { class: 'field-hint', text: 'None yet.' }));
-      return;
-    }
+    // No empty state. An empty exemption list is the default and the ordinary
+    // case, so a line announcing it is a sentence most people read once and
+    // never need.
     for (const key of list) {
       const remove = button('×', () => commitList(list.filter((item) => item !== key)), 'chip-x');
       remove.setAttribute('aria-label', `Intercept ${key} again`);
