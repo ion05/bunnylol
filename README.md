@@ -349,7 +349,8 @@ routing or validation: every one of them is a bug that already shipped once.
 ## Privacy and security
 
 No collection, no transmission, no analytics, no telemetry, no remote code, and no network requests
-of its own. Everything is one JSON value in `chrome.storage.local` on your device. Full statement:
+of its own. Your shortcuts and settings are one JSON value in `chrome.storage.local` on your
+device, and the only other thing stored is which groups you have folded. Full statement:
 [PRIVACY.md](PRIVACY.md).
 
 BunnyLol holds redirect rules on three search engines, so a routing bug here is a browsing-data bug.
