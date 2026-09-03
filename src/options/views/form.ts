@@ -106,7 +106,7 @@ export function renderForm(): HTMLElement {
   if (route.name === 'edit' && !entry) {
     setNotice({
       tone: 'error',
-      text: 'That shortcut is not here any more. Deleted shipped shortcuts come back from Settings → Restore shipped shortcuts.',
+      text: 'That shortcut is not here any more.',
     });
     go('#help');
     return el('section', { class: 'panel' });
@@ -176,6 +176,8 @@ export function renderForm(): HTMLElement {
         'New section name',
         sectionInput,
         'Becomes a group heading on this page. It is created when you save.',
+        false,
+        true,
       ),
     ],
   });
@@ -196,27 +198,23 @@ export function renderForm(): HTMLElement {
     searchUrl: searchInput,
     category: categorySelect,
   };
+  // Keywords and Destination URL are the two fields `validateDraft` (and
+  // `buildCommand` beneath it) cannot proceed without: an empty keys list has
+  // nothing to type in the address bar, and a bare keyword has to go
+  // somewhere. Section always carries a value, the select cannot be left
+  // blank, so it is not marked required even though a row is always filed
+  // under one.
   const slots: Record<FormField, FieldSlot> = {
-    keys: errorField(
-      'Keywords',
-      keysInput,
-      'err-keys',
-      'Comma-separated. The first one is canonical.',
-    ),
-    url: errorField('Destination URL', urlInput, 'err-url', 'Where the bare keyword goes.', true),
+    keys: errorField('Keywords', keysInput, 'err-keys', 'Comma-separated.', false, true),
+    url: errorField('Destination URL', urlInput, 'err-url', undefined, true, true),
     searchUrl: errorField(
       'Search URL',
       searchInput,
       'err-searchurl',
-      'Optional. Put {q} where the arguments belong. Without it, BunnyLol appends ?q=…',
+      'Put {q} where the arguments belong. Without it, BunnyLol appends ?q=…',
       true,
     ),
-    category: errorField(
-      'Section',
-      categorySelect,
-      'err-category',
-      'Which group this shortcut is listed under on this page.',
-    ),
+    category: errorField('Section', categorySelect, 'err-category'),
   };
 
   /** A pristine form is not a wrong form: a field's problems stay hidden until
@@ -258,16 +256,11 @@ export function renderForm(): HTMLElement {
   const form = el('div', { class: 'form' });
   form.append(
     slots.keys.node,
-    field('Name', nameInput, 'Shown in this list and in the omnibox dropdown.'),
-    field(
-      'Description',
-      descInput,
-      'Optional. One line explaining what the shortcut does.',
-      true,
-    ),
+    field('Name', nameInput),
+    field('Description', descInput, undefined, true),
     slots.url.node,
     slots.searchUrl.node,
-    field('Example', exampleInput, 'Optional. Shown under the shortcut in the list.'),
+    field('Example', exampleInput),
     slots.category.node,
     sectionRow,
   );
@@ -291,40 +284,30 @@ export function renderForm(): HTMLElement {
 
   const resetButton = button('Reset', () => setDraft(baseline ?? emptyDraft()), 'btn btn-ghost');
   resetButton.hidden = baseline === null;
-  // Three baselines, three sentences: Reset is only honest if it names the
-  // thing it is about to put back, and for `#new?prefill=` that is neither a
-  // shipped definition nor anything ever saved.
-  const resetHint = el('span', {
-    class: 'field-hint',
-    text: target.shipped
-      ? 'Reset fills the form with the shipped definition. Save to apply it.'
-      : entry
-        ? 'Reset fills the form with the values you last saved. Save to apply them.'
-        : 'Reset fills the form with what you typed in the address bar.',
-  });
-  resetHint.hidden = baseline === null;
+
+  // "Edit <name>" / "New shortcut" says which mode this is; only the New form
+  // gets a sub-line, because it is the one case where the field labels alone
+  // do not say what to do first.
+  const headText: HTMLElement[] = [
+    el('h2', {
+      class: 'panel-title',
+      text: entry ? `Edit ${entry.cmd.name}` : 'New shortcut',
+    }),
+  ];
+  if (!entry) {
+    headText.push(
+      el('p', {
+        class: 'panel-sub',
+        text: 'Type a keyword and a destination. The preview below is the real resolver, so what it shows is exactly where the address bar will land.',
+      }),
+    );
+  }
 
   const panel = el('section', { class: 'panel' });
   panel.append(
     el('div', {
       class: 'panel-head',
-      children: [
-        el('div', {
-          class: 'panel-head-text',
-          children: [
-            el('h2', {
-              class: 'panel-title',
-              text: entry ? `Edit ${entry.cmd.name}` : 'New shortcut',
-            }),
-            el('p', {
-              class: 'panel-sub',
-              text: entry
-                ? 'The same form for every shortcut, whether it shipped with BunnyLol or you made it. The preview below is the real resolver, so what it shows is exactly where the address bar will land.'
-                : 'Type a keyword and a destination. The preview below is the real resolver, so what it shows is exactly where the address bar will land.',
-            }),
-          ],
-        }),
-      ],
+      children: [el('div', { class: 'panel-head-text', children: headText })],
     }),
     el('div', {
       class: 'panel-body',
@@ -339,9 +322,6 @@ export function renderForm(): HTMLElement {
             saveButton,
             resetButton,
             button('Cancel', () => go('#help'), 'btn'),
-            el('span', { class: 'spacer' }),
-            resetHint,
-            el('span', { class: 'field-hint', text: 'Escape closes without saving.' }),
           ],
         }),
       ],

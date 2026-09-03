@@ -178,10 +178,31 @@ export function switchControl(
   });
 }
 
-export function field(label: string, control: HTMLElement, hint?: string, wide = false): HTMLElement {
+/**
+ * Marks a control mandatory: `required`/`aria-required="true"` on the control
+ * itself, which is what a screen reader actually announces, plus a visible red
+ * asterisk on the label for sighted users. The asterisk carries
+ * `aria-hidden="true"` rather than its own wording, since `aria-required`
+ * already speaks for the control and the label text already names it; a
+ * second spoken "required" on top of that would repeat on every visit.
+ */
+function markRequired(control: HTMLElement, labelNode: HTMLElement): void {
+  control.setAttribute('required', '');
+  control.setAttribute('aria-required', 'true');
+  labelNode.append(el('span', { class: 'req', text: '*', attrs: { 'aria-hidden': 'true' } }));
+}
+
+export function field(
+  label: string,
+  control: HTMLElement,
+  hint?: string,
+  wide = false,
+  required = false,
+): HTMLElement {
   if (!control.id) control.id = nextId('field');
   const labelNode = el('label', { class: 'field-label', text: label });
   labelNode.htmlFor = control.id;
+  if (required) markRequired(control, labelNode);
   const children: Node[] = [labelNode, control];
   if (hint) {
     const hintNode = el('p', { class: 'field-hint', id: `${control.id}-hint`, text: hint });
@@ -208,8 +229,9 @@ export function errorField(
   errorId: string,
   hint?: string,
   wide = false,
+  required = false,
 ): FieldSlot {
-  const node = field(label, control, hint, wide);
+  const node = field(label, control, hint, wide, required);
   const hintId = control.getAttribute('aria-describedby') ?? '';
   const errors = el('div', {
     class: 'field-errors',

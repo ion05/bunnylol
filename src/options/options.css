@@ -731,6 +731,15 @@ a {
   color: var(--text-faint);
 }
 
+/* The asterisk `field()` appends to a mandatory control's label. Danger rather
+   than accent: it is a warning about an incomplete form, not a brand mark, and
+   `--danger` is the token `.msg-error` already uses for that meaning. It is
+   `aria-hidden`, so this is the whole of what it does. */
+.req {
+  color: var(--danger);
+  margin-left: var(--sp-1);
+}
+
 .input,
 .select {
   height: var(--control-h);
