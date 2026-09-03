@@ -124,10 +124,6 @@ a {
   background: var(--text-decor);
 }
 
-.status-ok .status-dot {
-  background: var(--ok);
-}
-
 /* Colour and weight move together, so the tone is never carried by colour
    alone. */
 .status-warn {
@@ -862,10 +858,6 @@ a {
   align-items: center;
   gap: var(--sp-4);
   padding-top: var(--sp-2);
-}
-
-.form-actions .spacer {
-  margin-right: auto;
 }
 
 /* The "New section…" row. Full width because it belongs to the select above it

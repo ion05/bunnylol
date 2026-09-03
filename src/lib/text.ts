@@ -41,6 +41,12 @@ export function joinClauses(clauses: string[]): string {
   return `${clauses.slice(0, -1).join(', ')} and ${clauses[clauses.length - 1]}`;
 }
 
+/** "3 shortcuts" / "1 shortcut": the count every card that names a number of
+ *  shortcuts agrees the noun with. */
+export function countShortcuts(n: number): string {
+  return `${n} ${n === 1 ? 'shortcut' : 'shortcuts'}`;
+}
+
 /**
  * "3 shipped shortcuts" / "1 shipped shortcut".
  *

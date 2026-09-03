@@ -8,7 +8,7 @@ import { mergeOverrides } from '../../lib/merge-import';
 import { MAX_SECTIONS, shortcutId } from '../../lib/overrides';
 import type { ImportedState } from '../../lib/storage';
 import { applyImport, exportJson, importJson, loadState } from '../../lib/storage';
-import { clone, countShipped, errorText, joinClauses } from '../../lib/text';
+import { clone, countShipped, countShortcuts, errorText, joinClauses } from '../../lib/text';
 import { DEFAULT_OVERRIDES, DEFAULT_SETTINGS } from '../../lib/types';
 import { el } from '../../ui/dom';
 import { button, confirmButton, panelCard } from '../dom';
@@ -268,10 +268,6 @@ export function exportState(name = 'bunnylol-shortcuts.json'): void {
 export function backupState(): void {
   const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
   exportState(`bunnylol-backup-${stamp}.json`);
-}
-
-export function countShortcuts(n: number): string {
-  return `${n} ${n === 1 ? 'shortcut' : 'shortcuts'}`;
 }
 
 const SHIPPED_NAMES = new Map(BUILTIN_COMMANDS.map((cmd) => [shortcutId(cmd), cmd.name]));

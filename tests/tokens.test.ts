@@ -236,7 +236,8 @@ describe('the options page implements the approved component contract', () => {
     for (const selector of [
       '.status',
       '.status-dot',
-      '.status-ok .status-dot',
+      // No '.status-ok': `pillView` cannot answer a healthy sync with a pill
+      // any more, so the green dot had no markup left to colour.
       '.status-warn',
       '.status-bad',
       '.status-detail',

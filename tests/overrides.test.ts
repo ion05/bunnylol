@@ -7,7 +7,6 @@ import {
   applyEdit,
   deleteSection,
   diffEdit,
-  editedFields,
   fitSectionId,
   foldLegacyKeyOverrides,
   isShippedSection,
@@ -369,26 +368,6 @@ describe('diffEdit', () => {
     expect(diffEdit(shipsSearch, { ...shipsSearch, searchUrl: 'javascript:alert(1)' })).toBeNull();
     // A blank one is still the removal it has always been.
     expect(diffEdit(shipsSearch, { ...shipsSearch, searchUrl: '  ' })).toEqual({ searchUrl: null });
-  });
-});
-
-describe('editedFields', () => {
-  it('names the fields in form order', () => {
-    expect(editedFields(SHIPPED, { name: 'Hub', keys: ['hub'], searchUrl: null })).toEqual([
-      'keys',
-      'name',
-      'searchUrl',
-    ]);
-  });
-
-  it('is empty for an absent edit and for one that changes nothing', () => {
-    expect(editedFields(SHIPPED, undefined)).toEqual([]);
-    expect(editedFields(SHIPPED, {})).toEqual([]);
-    // Named but identical, and an unusable url: neither is a modification, and
-    // a row badged "edited" sends the user looking for a difference that is not
-    // there.
-    expect(editedFields(SHIPPED, { name: 'GitHub' })).toEqual([]);
-    expect(editedFields(SHIPPED, { url: 'not a url' })).toEqual([]);
   });
 });
 

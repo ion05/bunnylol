@@ -128,11 +128,11 @@ describe('pillView', () => {
   });
 
   it('maps every tone to a status class', () => {
-    expect(Object.keys(PILL_CLASS).sort()).toEqual(['bad', 'busy', 'ok', 'warn']);
+    // No 'ok': a healthy sync is `null`, so nothing can ask for the green tone.
+    expect(Object.keys(PILL_CLASS).sort()).toEqual(['bad', 'busy', 'warn']);
     // The capsule is gone: every tone is the `.status` component, and only the
-    // three that have something to report add a modifier.
+    // two that have something to report add a modifier.
     expect(PILL_CLASS.busy).toBe('status');
-    expect(PILL_CLASS.ok).toBe('status status-ok');
     expect(PILL_CLASS.warn).toBe('status status-warn');
     expect(PILL_CLASS.bad).toBe('status status-bad');
   });

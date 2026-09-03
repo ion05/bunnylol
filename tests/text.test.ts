@@ -15,6 +15,7 @@ import { describe, expect, it } from 'vitest';
 import {
   clone,
   countShipped,
+  countShortcuts,
   errorText,
   firstToken,
   joinClauses,
@@ -132,6 +133,21 @@ describe('joinClauses', () => {
     // Four is the most the import dialog ever builds; past that the sentence
     // stops being readable and the copy splits, so this is the boundary case.
     expect(joinClauses(['a', 'b', 'c', 'd'])).toBe('a, b, c and d');
+  });
+});
+
+describe('countShortcuts', () => {
+  it('agrees the noun with the number', () => {
+    expect(countShortcuts(1)).toBe('1 shortcut');
+    expect(countShortcuts(0)).toBe('0 shortcuts');
+    expect(countShortcuts(3)).toBe('3 shortcuts');
+  });
+
+  it('is the plain count, so the shipped one stays the only qualified wording', () => {
+    // Both the import dialog and the Sections card count shortcuts, and they
+    // used to reach for two different helpers in two different layers. This one
+    // says nothing about where a shortcut came from; `countShipped` does.
+    expect(countShortcuts(2)).not.toContain('shipped');
   });
 });
 

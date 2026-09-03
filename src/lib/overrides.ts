@@ -15,9 +15,9 @@
  *
  * On top of that identity sits the algebra: `applyEdit` folds a stored
  * `ShortcutEdit` onto a shipped command, `diffEdit` produces one from an edited
- * copy, `editedFields` says what actually moved, and `foldLegacyKeyOverrides`
- * migrates the v1 `keyOverrides` map into it. A DIFF, not a copy: a corrected
- * URL in a later build still reaches a user who only renamed the command.
+ * copy, and `foldLegacyKeyOverrides` migrates the v1 `keyOverrides` map into
+ * it. A DIFF, not a copy: a corrected URL in a later build still reaches a user
+ * who only renamed the command.
  *
  * The section algebra sits here for the same reason: a category is now an open
  * id resolved against `Overrides.sections`, so "which group is this shortcut
@@ -152,21 +152,6 @@ function fit(slug: string, suffix: string): string {
 // ------------------------------------------------------------ edit algebra ----
 
 /**
- * Every field an edit may name, in the order the form shows them. It is what
- * `editedFields` reports and the order it reports them in, so the "edited"
- * badge and the import merge plan read a diff the same way the form does.
- */
-const EDITABLE_FIELDS = [
-  'keys',
-  'name',
-  'description',
-  'url',
-  'searchUrl',
-  'category',
-  'example',
-] as const;
-
-/**
  * Folds a stored edit onto a shipped command, without mutating either.
  *
  * SECURITY: `handler`, `provider`, `builtin` and `id` are never read from
@@ -287,25 +272,6 @@ export function diffEdit(
   }
 
   return Object.keys(edit).length > 0 ? edit : null;
-}
-
-/**
- * The fields this edit actually moves off the shipped definition, for the
- * "edited" badge and the import merge plan.
- *
- * Asked of the RESULT, not of the keys the edit happens to carry: an edit
- * naming a field and setting it to the value the command already ships with has
- * changed nothing, and a row that claims otherwise sends the user looking for a
- * difference that is not there.
- */
-export function editedFields(
-  shipped: Command,
-  edit: ShortcutEdit | undefined,
-  known: ReadonlySet<string> = BUILTIN_CATEGORY_IDS,
-): string[] {
-  const diff = diffEdit(shipped, applyEdit(shipped, edit, known), known);
-  if (!diff) return [];
-  return EDITABLE_FIELDS.filter((field) => field in diff);
 }
 
 /**
