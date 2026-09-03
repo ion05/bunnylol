@@ -75,8 +75,15 @@ src/options/dom.ts          Stateless widgets the views assemble panels from
 src/options/rule-status.ts  The pill in the topbar and the coverage line in Settings
 src/options/status.ts       Pure: a `RuleStatus` in, the words and the tone out
 src/options/model/*.ts      browse, collapse, form, welcome: the decisions, without a DOM
-src/options/views/*.ts      browse, form, settings, data, welcome: the DOM
+src/options/views/*.ts      browse, form, settings, data, welcome, packs: the DOM
 ```
+
+`views/welcome.ts` and `views/packs.ts` are two screens over one question. `#welcome` is the tab the
+install opens, so it introduces the product and offers Skip; `#packs` is reached on purpose from
+Settings, so it says what saving does and offers Save and Cancel. The cards, the ticks and the one
+write live in `packs.ts` and `model/welcome.ts`, shared verbatim, so a pack added to the registry
+cannot reach one screen and not the other. `#packs` is deliberately not an alias of `#welcome`: only
+one of them may introduce a product the user is already using.
 
 `install.ts` is separate from `background.ts` because the service worker registers listeners
 synchronously at module scope. `chrome.omnibox.setDefaultSuggestion` runs the moment that file is
@@ -220,15 +227,34 @@ tests. **If a test in this list fails, do not "fix" the test.**
 These are not invariants, since no bug shipped from them. But each is a decision with a reason, and
 the obvious edit reverses it.
 
-- **`applyFilter` in `views/browse.ts` is the only writer of `row.hidden` and `rowsHost.hidden`.**
-  Collapse hides a group by writing the rows host. The filter hides individual rows and force-shows
-  a collapsed group that matches. Two writers means a row that a cleared filter never brings back.
+- **`applyFilter` in `views/browse.ts` is the only writer of `row.hidden`, `rowsHost.hidden` and
+  every count on the page.** Collapse hides a group by writing the rows host. The filter hides
+  individual rows and force-shows a collapsed group that matches. Two writers means a row that a
+  cleared filter never brings back. The on/off switch is the one control that changes what is on
+  screen without a re-render, and it still does not write any of those: it moves the row's node
+  between its section and "Hidden shortcuts" and then calls `applyFilter`, which decides visibility
+  and recomputes both headings. Which group a row is in IS its on-off state now, so nothing reads a
+  class back off a row to count what is live.
+- **A switched-off shortcut is drawn under "Hidden shortcuts", not in its section.** The fold id is
+  `HIDDEN_GROUP_ID`, `@hidden` in `model/browse.ts`, and the `@` is load-bearing: the fold shares one
+  `localStorage` set with the real sections, and `validateSectionId` mints ids matching
+  `^[a-z0-9][a-z0-9-]*$`, so no label a user can type collides with it. A collision would let a
+  section called "Hidden" inherit this group's fold, or fold this group by being renamed. A
+  hand-edited import cannot mint one either: `normalizeCategory` files a category no section answers
+  to under `FALLBACK_SECTION`. `browseGroups` still files a switched-off row under its own section,
+  because switching it back on has to return it there without a re-render.
 - **Collapse state lives in `localStorage` (`bunnylol.collapsed`), never in `Settings`.** It is
   per-machine view state that changes several times a minute. In the state blob every fold would be
   a storage write, and every write re-syncs the DNR rules.
-- **The picker performs exactly one write.** Continue calls `commitState` once with the whole pick.
-  A write per ticked box is a burst of `onStateChanged` events, which is the pattern invariant 15
-  exists for.
+- **The stored fold set means "ids whose fold differs from the default", not "folded ids".** Every
+  section defaults to open, so for those the two readings agree, which is what keeps a set written by
+  an older build readable. They come apart for "Hidden shortcuts", which defaults to folded: a set
+  that could only say "folded" has no way to record that the user opened it, so the group springs
+  shut on every load. `createCollapseState(store, defaultCollapsed)` therefore stores departures, and
+  `expandAll` clears the set back to the defaults rather than emptying it.
+- **The picker performs exactly one write.** Continue on `#welcome` and Save on `#packs` both call
+  the shared `savePick`, which calls `commitState` once with the whole pick. A write per ticked box
+  is a burst of `onStateChanged` events, which is the pattern invariant 15 exists for.
 - **`DEFAULT_OVERRIDES` is everything-enabled.** The Purdue pack is not off by default in the
   defaults. The install-time pick is what turns it off (`writeStarterPick` → `applyCategoryPick`).
   A profile that never onboarded therefore fails open with every shortcut live, which is what
@@ -243,6 +269,26 @@ the obvious edit reverses it.
   packs…" is the way back in.
 - **`edits` entries are for shipped ids only.** A `u:`-prefixed id names a user-created shortcut,
   which is edited in place. `normalizeEdits` drops an edit keyed by one.
+- **There is no per-shortcut restore, and `deleted` still keeps the shortcut's edit.** The Settings
+  card that offered one is gone, so the ways back are Reset to defaults, Start over, and importing a
+  file that predates the delete with Replace everything. Merge cannot undelete: `mergeOverrides`
+  unions the two `deleted` lists. Keeping the `edits` entry for a deleted id is what makes all three
+  return the shortcut the user had rather than the shipped one, and it is why the import parser
+  prunes `deleted` to ids this build ships instead of letting ghosts accumulate.
+- **The dispatch confirmation runs no timer.** `settings.dispatchToast` holds `go.ts` on
+  `confirmOpen` until the user answers: an Open button that takes focus, so Enter proceeds, and the
+  escape search, whose own navigation is the outcome (the promise deliberately never resolves down
+  that path, because a second navigation would race it). A confirmation the page navigates away from
+  on its own is a delay, not a confirmation. `tests/go-dispatch.test.ts` reads the source and fails
+  if a timer or the old toast node comes back.
+- **`Settings.defaultAi` is gone; `settings.aiTemplates` survives with no UI.** The `?` command that
+  read the default was deleted outright rather than parked in the removed-commands pack, because a
+  keyword whose whole job was to read a setting that no longer exists has nothing to come back to. A
+  command that names neither a provider nor a known alias now degrades to the first entry of
+  `AI_PROVIDERS`. `aiTemplates` still overrides a provider's prefill template and is still validated
+  by the import parser; it is edited through an exported JSON file. Do not delete the plumbing
+  because no card writes it, and do not reintroduce a settings field the resolver would have to read
+  to answer a keyword.
 
 ## Verify by executing, not by reading
 
@@ -314,8 +360,9 @@ Commands are plain data in `src/lib/commands.ts`. When adding or removing one:
 - **Consumer Copilot strips `?q=`**, verified by isolation testing: `?q=` alone triggers a 302 to
   the bare home page, `?foo=1` does not. That command has since been removed entirely.
 - AI prefill params are undocumented and change without notice. They all live in `AI_PROVIDERS` in
-  `handlers.ts` and are editable from the options page without a rebuild. If one breaks, fix it
-  there. Do not scatter URL templates.
+  `handlers.ts`, and `settings.aiTemplates` overrides one per provider id without a rebuild, though
+  no settings card writes that map any more: a user reaches it by editing an export and importing it
+  back. If one breaks, fix `AI_PROVIDERS`. Do not scatter URL templates.
 
 ## Review workflow
 

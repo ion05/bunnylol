@@ -48,11 +48,14 @@ weight for everyone else. You can close the tab without answering and keep that 
 pick is written before the screen opens, so it is already live.
 
 Nothing there is final. You can rename, move, switch off or delete every shortcut afterwards. To
-reopen the screen, go to **Settings → Sections → Shortcut packs → Choose shortcut packs…**. That is
-how you turn a pack on later. To see the first run itself again, on an empty profile, use
-**Settings → Data → Start over**. Note what Continue means when you do. It turns *on* every shipped
-shortcut in the packs you tick, including ones you had switched off by hand. It turns off the ones
-in the packs you leave unticked. It never touches shortcuts you made yourself.
+change the pick later, go to **Settings → Sections → Shortcut packs → Choose shortcut packs…**. That
+opens a **Shortcut packs** screen of its own: the same cards, with Save and Cancel in place of the
+first-run text. That is how you turn a pack on later. To see the welcome screen itself again, on an
+empty profile, use **Settings → Data → Start over**.
+
+Note what saving a pick means, on either screen. It turns *on* every shipped shortcut in the packs
+you tick, including ones you had switched off by hand. It turns off the ones in the packs you leave
+unticked. It never touches shortcuts you made yourself.
 
 ## How triggering works
 
@@ -107,14 +110,14 @@ All of them run the same resolver, so a shortcut behaves the same no matter how 
 
 ### Why an escape hatch and not a list of "safe" words
 
-BunnyLol used to ship a stop list. Keywords like `map`, `news`, `mail` and `so` were left out of
-address-bar interception, because they were plausible first words of ordinary searches. That list is
-gone and the default is empty.
+BunnyLol exempts nothing by default. The exemption list is yours and it starts empty, so `map`,
+`news`, `mail` and `so` are intercepted like every other keyword until you say otherwise.
 
-It was an endless tail. A large fraction of the keywords that stayed eligible could still hijack
-some plausible English query, and blocking those only surfaced the next tier: `td`, `iss`, `bs`,
-`gs`. Worse, it made behaviour unpredictable in the one place where predictability matters. You
-could not tell by looking whether a keyword would fire.
+Curating that list on your behalf was tried and dropped, because it is an endless tail. A large
+fraction of the keywords that would have stayed eligible could still hijack some plausible English
+query, and blocking those only surfaced the next tier: `td`, `iss`, `bs`, `gs`. Worse, it made
+behaviour unpredictable in the one place where predictability matters. You could not tell by looking
+whether a keyword would fire.
 
 So the trade is explicit. Every keyword fires, every time, and the escape hatch has to be flawless.
 Under the hood, BunnyLol tags its own searches with a `blpass=1` parameter, and registers a
@@ -127,8 +130,8 @@ If you see that parameter in an address bar, it is BunnyLol's, and it does nothi
 ### Exempting a keyword you keep tripping over
 
 Say one keyword annoys you in practice: "I search for *maps of X* constantly." Exempt it. Settings
-has an **Address-bar interception** card. Type the keyword, press Add, and the address bar skips it
-from then on. Remove the chip to get interception back.
+has an **Exempt keywords** card. Type the keyword, press Add, and the address bar skips it from then
+on. Remove the chip to get interception back.
 
 An exemption costs the keyword nothing but address-bar interception. It still resolves through `bl`
 + Tab and the toolbar popup, where you have already said you mean a command. Nothing ships exempted.
@@ -136,13 +139,16 @@ An exemption costs the keyword nothing but address-bar interception. It still re
 ### Seeing which command fired
 
 **Confirm before opening a shortcut** sits at the foot of the **Search interception** card, and is
-off by default. It shows a small toast on the dispatch page: `gh → github.com · search instead`. The
-link runs the escaped search instead, and the `×` goes through immediately.
+off by default. With it on, the dispatch page stops instead of redirecting. It names the keyword
+that fired and the shortcut it matched, prints the whole URL it is about to open, and waits for you.
+**Open github.com** goes there, and it holds the focus, so Enter is enough. **Search for what you
+typed instead** runs the escaped search. There is no timer: nothing moves until you answer, and
+closing the tab is a third answer.
 
-It is opt-in because it really does delay the navigation by about 1.2 seconds. Nothing rendered on
-the dispatch page survives the redirect. Showing the toast *on the destination* would need a content
-script injected into every site you visit, and this feature does not justify that permission. Turn
-it on while you are learning the keywords, then turn it off.
+It is opt-in because an ordinary dispatch must not stop to ask a question. Nothing rendered on the
+dispatch page survives the redirect, and showing the confirmation *on the destination* would need a
+content script injected into every site you visit, which this feature does not justify. Turn it on
+while you are learning the keywords, then turn it off.
 
 ## What ships
 
@@ -153,7 +159,6 @@ A bare keyword goes to the site's home page. Adding arguments does the smart thi
 | `gh facebook/react` | `github.com/facebook/react`, the repo itself, not a search |
 | `gh` | GitHub home |
 | `c explain monads` | Claude with the prompt already filled in (`gpt` for ChatGPT, `gem` for Gemini) |
-| `? explain monads` | The same prompt, sent to whichever AI you set as the default. Popup or `bl` + Tab only, because `?` is not an address-bar-safe alias |
 | `rd rust` | `reddit.com/r/rust` |
 | `npm zod` | The `zod` package page, skipping npm's search results |
 | `td groceries` | Searches your Todoist tasks; `tda groceries` is the one that creates one |
@@ -164,9 +169,9 @@ A bare keyword goes to the site's home page. Adding arguments does the smart thi
 | `\gh` *anything* | Escape hatch: a leading `\` (or `=`) forces a plain search instead of a shortcut |
 
 Some of those rows are not in the starter set. `rd` is in the **Social** pack, and `td`, `tda`,
-`zoom`, `ups` and `track` are in **Productivity**. Both packs start switched off. Tick them on the
-welcome screen, or reopen it later from **Settings → Sections → Shortcut packs**. Everything else in
-the table ships on.
+`zoom`, `ups` and `track` are in **Productivity**. Both packs start switched off, which means their
+rows are under **Hidden shortcuts** rather than missing. Tick the packs on the welcome screen, or
+later from **Settings → Sections → Shortcut packs**. Everything else in the table ships on.
 
 The options page has the full list: every alias, grouped, with a worked example per row. Use the
 filter box there rather than memorising it.
@@ -179,6 +184,10 @@ toolbar icon → **Options**.
 - **Shortcuts** lists everything, grouped, with a live filter (press `/`). Groups collapse, and each
   browser profile remembers its own state. Typing in the filter expands them until you clear it.
   **Collapse all** and **Expand all** are in the panel head.
+- **A switched-off shortcut is not in its section.** Every one of them is in a single **Hidden
+  shortcuts** group at the foot of the page, which is where the packs you did not tick are too. It
+  is the one group that starts folded. Switching a row back on there moves it to its own section
+  immediately, and switching one off sends it down here.
 - **Every shortcut is editable, whether it ships with BunnyLol or you made it.** A row's actions are
   Edit and Delete, as icons labelled on hover, followed by the on/off switch. They mean the same
   thing on both kinds. The form takes keys, name, description, URL, an optional search URL
@@ -191,9 +200,12 @@ toolbar icon → **Options**.
 - **Shipped shortcuts are never mutated.** An edit is stored as a diff against the shipped
   definition. So if all you did was rename the command, a corrected URL in a later build still
   reaches you. Edited rows carry a *modified* badge.
-- **Deleting a shipped shortcut is reversible.** Settings → **Restore shipped shortcuts** lists
-  everything you deleted. Restoring brings back its shipped definition, along with anything you had
-  edited.
+- **Deleting a shipped shortcut is not reversible one shortcut at a time.** There is no per-shortcut
+  restore. What brings one back is **Settings → Data → Reset to defaults** or **Start over**, both
+  of which restore every shipped shortcut and discard everything else, or importing a file that
+  predates the delete with **Replace everything**. **Merge** will not do it: the two sides'
+  deletions are unioned, so merging an older export leaves the shortcut deleted. Switching a
+  shortcut off is the reversible one. It goes to **Hidden shortcuts** and comes back with a click.
 
 ### Sections
 
@@ -239,13 +251,11 @@ first if you want your shortcuts back.
 
 | Card | What is in it |
 |---|---|
-| **Defaults** | Your GitHub username (used by `gh me`, `pr`, `iss`); where an unmatched query goes (any template with `{q}`, with Kagi and Brave Search one click away, or paste your own); which AI the `?` shortcut routes to; and your Google account index for `/u/N/` URLs |
-| **Sections** | Create, rename and delete sections; the link back to the shortcut-packs screen |
-| **Restore shipped shortcuts** | Anything shipped that you deleted |
+| **Default Usernames** | Your GitHub username (used by `gh me`, `pr`, `iss`); where an unmatched query goes (any template with `{q}`, with Kagi and Brave Search one click away, or paste your own); and your Google account index for `/u/N/` URLs |
+| **Sections** | Create, rename and delete sections, one row each; and **Choose shortcut packs…**, which opens the packs screen |
 | **Search interception** | Which engines are intercepted (untick them all to leave every search alone), the dispatch-page URL to paste in as a custom search engine, and **Confirm before opening a shortcut** |
-| **Address-bar interception** | The exemption list |
-| **AI prompt templates** | The `?q=` prefill URL for each AI provider. These parameters are undocumented and providers change them, so they are editable without a rebuild |
-| **Data** | Export, import, reset, and **Start over**, which erases everything and reruns the first install |
+| **Exempt keywords** | The keywords the address bar leaves alone |
+| **Data** | Export, import, **Reset to defaults**, and **Start over**, which erases everything and reruns the first install |
 
 ### Rule status
 
@@ -269,8 +279,8 @@ worked.
 |---|---|
 | **A keyword typed in the address bar just searches for it.** | The redirect rules are not registered. Check the rule-status pill and click **Re-sync**. The rules embed the extension's ID, so loading `dist/` from a new path changes the ID and needs a re-sync. Use `bl` + Tab meanwhile. |
 | **Nothing happens, or the dispatch page shows an error.** | Open `chrome://extensions`, find BunnyLol and click **service worker** for its console. Rule-sync failures, storage errors and omnibox activity are logged there. The dispatch page prints the reason it could not resolve rather than hanging. |
-| **An AI shortcut opens the site but does not carry my prompt.** | Those prefill parameters change without notice. You do not need a rebuild: edit the provider's template in **Settings → AI prompt templates** (it must contain `{q}`). |
-| **A shortcut collides with something I actually search for.** | That is by design: the first word is always a command. Prefix it with `\` or `=`. If it happens constantly with one keyword, exempt it in **Address-bar interception**, or rename, switch off or delete the shortcut. |
+| **An AI shortcut opens the site but does not carry my prompt.** | Those prefill parameters change without notice, and there is no settings card for them. Two ways round it without a rebuild. Make your own shortcut with the working URL as its **Search URL** and switch the shipped one off; a shortcut you create sends the prompt where you put `{q}`. Or export your JSON from **Settings → Data**, add the provider template to `settings.aiTemplates` (`{"claude": "https://claude.ai/new?q={q}"}`, keyed by `claude`, `chatgpt`, `gemini` or `claudecode`, and it must contain `{q}`), and import the file back with **Replace everything**, which is the choice that takes a file's settings. |
+| **A shortcut collides with something I actually search for.** | That is by design: the first word is always a command. Prefix it with `\` or `=`. If it happens constantly with one keyword, exempt it in **Settings → Exempt keywords**, or rename, switch off or delete the shortcut. |
 | **`g wagon price` searched for "wagon price".** | Working as intended. `g` is the "search Google" command, and its argument is what gets searched. Use `\g wagon price` for the literal phrase. |
 | **One shortcut only works from the popup or `bl` + Tab.** | Either you exempted it, or its alias cannot be embedded in a URL pattern, or the pill reports it as dropped because Chrome refused the pattern or the rule budget is full. Interception needs lowercase ASCII letters, digits, `_` and `-`, starting with a letter, digit or `_`, and at most 32 characters. All three cases leave the shortcut working everywhere else. |
 | **A shipped shortcut points at the wrong place for me.** | Edit it. The Purdue shortcuts in particular read their host off the URL on the row, so rebinding one to your own institution works. |

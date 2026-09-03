@@ -25,22 +25,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pack is offered unticked, and its shortcuts start switched off: Google,
   Microsoft, Social, Productivity, and Purdue under "Optional packs". The
   screen states the first-word rule and the escape prefixes before any
-  shortcut can surprise you, and closing the tab keeps the ticked set. You
-  can reopen it from Settings.
+  shortcut can surprise you, and closing the tab keeps the ticked set. A
+  **Shortcut packs** screen in Settings asks the same question again later.
 - One edit form for every shortcut. Shipped shortcuts and your own now have
   the same actions, an Edit icon and a Delete icon then the on/off switch,
   and the same form. Reset refills that form from the shipped definition, or,
   for your own shortcuts, from what you last saved.
-- Deleting a shipped shortcut, and getting it back. Settings gains **Restore
-  shipped shortcuts**, which returns the shipped definition along with
-  anything you had edited.
+- Deleting a shipped shortcut. It leaves the list and the address bar, and
+  your edits to it are kept, so **Reset to defaults**, **Start over** or
+  importing an older export with **Replace everything** brings back the
+  shortcut you had. There is no per-shortcut restore. Switching a shortcut
+  off, rather than deleting it, is the reversible one.
 - Sections. Any shortcut can go in any section, shipped sections can be
   renamed, and you can create and delete your own from Settings or from the
   form's section menu. Deleting a section moves its members to My shortcuts
   rather than deleting them.
 - Collapsible groups in the shortcut list, with Collapse all and Expand all.
   Each profile remembers its own state, and filtering expands the groups
-  until you clear the filter.
+  until you clear the filter. Switched-off shortcuts are not listed in their
+  section: they are all in one **Hidden shortcuts** group at the foot of the
+  page, folded by default, and switching one back on returns it to its
+  section.
 - Export format 2, which carries edits, deletions and sections. Files written
   by the previous format still import.
 - `pnpm package`: a deterministic, zero-dependency release zip with
@@ -66,6 +71,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Microsoft, Social, Productivity and Purdue are all opt-in. The Brightspace
   and Gradescope handlers now read their host off the shortcut's own URL too,
   so rebinding one to another institution works.
+- **Confirm before opening a shortcut** now stops the dispatch page and waits.
+  It names the keyword that fired and the shortcut it matched, prints the URL
+  it is about to open, and offers an Open button, which holds the focus, and
+  the escape search. The 1.2 second toast it replaces navigated on its own,
+  which is a delay rather than a confirmation.
 - The rule-status pill says **Shortcuts active** instead of counting
   keywords, and **Some keywords not intercepted** when coverage is partial.
   The count moved every time a shortcut was switched on or off, and nobody
@@ -78,6 +88,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- The `?` shortcut and the **Default AI** setting it read (`settings.defaultAi`).
+  Pick the assistant with its own keyword instead: `c`, `gpt`, `gem` or `cc`.
+- The **AI prompt templates** card. `settings.aiTemplates` still overrides a
+  provider's prefill URL; it is edited in an exported JSON file and imported
+  back with **Replace everything**.
 - The separate inline keyword-rebind editor, replaced by the unified form.
 - `extras/removed-commands.ts`, now `extras/packs/removed-commands.json`. It
   is an importable pack rather than uncompiled code in the repo.

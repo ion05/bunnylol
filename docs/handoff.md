@@ -99,7 +99,7 @@ Each line is one commit or one small group. The commit bodies explain why. Read 
 | Data model I | Stable ids, section validators, the edit and delete override layer, export format 2 | `src/lib/overrides.ts`, `src/lib/storage.ts`, `src/lib/validate.ts` |
 | Data model II | Open sections, the pack algebra, import merge, the adversarial suite | `src/lib/onboarding.ts`, `src/lib/merge-import.ts`, `tests/overrides-security.test.ts` |
 | Options split | The page monolith became router, store, models and views. A pure move. | `src/options/router.ts`, `store.ts`, `dom.ts`, `rule-status.ts`, `model/`, `views/` |
-| Features | One edit form for every shortcut, restore, collapsible groups, the sections card, import copy | `src/options/views/form.ts`, `browse.ts`, `settings.ts`, `data.ts`, `src/options/model/collapse.ts` |
+| Features | One edit form for every shortcut, collapsible groups, the sections card, import copy | `src/options/views/form.ts`, `browse.ts`, `settings.ts`, `data.ts`, `src/options/model/collapse.ts` |
 | Onboarding | The `#welcome` picker and the install-time starter pick | `src/options/views/welcome.ts`, `src/options/model/welcome.ts`, `src/lib/install.ts` |
 | Restyle | Browse, topbar and status; then form, settings, data, welcome, popup and the dispatch page; then the icon painted from the tokens plus the store tile | `src/options/options.css`, `src/popup/popup.css`, `go.html`, `src/go/go.ts`, `scripts/gen-icons.mjs` |
 | Release | Manifest narrowed to `go.html`, version 1.1.0, a deterministic zip, docs rewritten, invariants 15 to 17 recorded | `public/manifest.json`, `scripts/package.mjs`, `tests/manifest.test.ts`, `README.md`, `AGENTS.md` |
@@ -117,6 +117,14 @@ Each line is one commit or one small group. The commit bodies explain why. Read 
 - **Start over** in Settings, under Data. It deletes the state key and reruns the install path, so
   the welcome flow can be tested again in a used profile.
 - Group counts and the toolbar count now say how many of the rows they cover are on.
+- Switched-off shortcuts left their sections. They are drawn under one folded "Hidden shortcuts"
+  group at the foot of the Shortcuts page, and the per-row "off" badge went with them.
+- Settings lost three cards. "Restore shipped shortcuts" is gone, so deleting a shipped shortcut is
+  no longer undoable one shortcut at a time; "AI prompt templates" is gone while
+  `settings.aiTemplates` still works through an imported file; and "Default AI" is gone along with
+  `Settings.defaultAi` and the `?` command, both deleted outright.
+- `#packs` is a route of its own. Settings links there rather than reopening `#welcome`.
+- The dispatch confirmation waits for the user instead of running a 1.2s timer.
 
 ## 4. How the work was run, and the rules to keep
 
@@ -181,7 +189,9 @@ No browser was available in the build sessions, so nothing below could be done b
    unticked. Close the tab. `bs cs251` should search normally and `gh facebook/react` should land
    on the repo. Rule status green.
 3. Edit `gh`, rename it and change its URL, and check the `modified` badge. Reset, Save, badge
-   gone. Delete `gh`, then restore it from Settings. Delete `bl` and restore it.
+   gone. Delete `gh` and check it leaves the list and the address bar; there is no per-shortcut
+   restore any more, so Settings → Data → Reset to defaults is what brings it back. Switch `bl`
+   off and on, and watch the row move to Hidden shortcuts and back to its section.
 4. Create a section from the form, move `gh` into it, rename a shipped section, delete the new
    one and confirm its member returns to My shortcuts. "Restore default name" should refuse when
    another section already carries that label.
@@ -192,8 +202,8 @@ No browser was available in the build sessions, so nothing below could be done b
 7. Popup: `gh f` highlights the keyword and Enter navigates. The selected row is sunken. The
    toolbar icon is legible on light and dark toolbars.
 8. One real intercepted search from Google, Bing and DuckDuckGo, to check the narrowed
-   web-accessible resources. A missing resource fails silently. Then the dispatch toast and the
-   error page.
+   web-accessible resources. A missing resource fails silently. Then the dispatch confirmation,
+   which waits for a click, and the error page.
 9. `pnpm package`, then `unzip -l release/bunnylol-1.1.0.zip`: `manifest.json` at the root and no
    `.map` files. Drag the zip into the Web Store dashboard once, to confirm the hand-rolled zip is
    accepted.
@@ -212,8 +222,8 @@ No browser was available in the build sessions, so nothing below could be done b
 - **`track` and `pkg` as keywords.** Both are ordinary English first words. The first word always
   wins, so both will hijack some real searches. The escape prefixes are the answer, but the owner
   may still want to rename or drop one.
-- **The omnibox middle dot.** The em dash separator became `·` to match the dispatch toast and the
-  status line. A comma would have read as part of the shortcut's name. Nobody has seen it in a
+- **The omnibox middle dot.** The em dash separator became `·` to match the dispatch confirmation
+  and the status line. A comma would have read as part of the shortcut's name. Nobody has seen it in a
   real omnibox yet.
 - **Whether this file stays.** It documents work in flight. It is probably deleted before the
   merge.
@@ -224,9 +234,10 @@ Someone reported that Continue on the welcome screen turns on all packs. It was 
 to end and does not reproduce: `applyCategoryPick` projects the pick into `Overrides.disabled` and
 switches the unticked packs off. The likely cause is what the Shortcuts page then showed. It
 listed every pack at full strength, with the off rows only dimmed, so a correct pick read as a pick
-that had done nothing. The count fix in the last commit is the answer to that. If the report comes
-back, check `applyCategoryPick` in `src/lib/onboarding.ts` and the counts in
-`src/options/model/browse.ts` before anything else.
+that had done nothing. The group counts, and then the Hidden shortcuts group that takes the off rows
+out of their sections entirely, are the answer to that. If the report comes back, check
+`applyCategoryPick` in `src/lib/onboarding.ts` and the grouping in `src/options/model/browse.ts`
+before anything else.
 
 ## 6. Known non-obvious facts that bit us
 
@@ -259,9 +270,10 @@ These are the things reviewers caught. Each looks like reasonable code.
 - **`.spec-row` is a harness class.** It belongs to `design/preview.css` and appears in the
   artboards. The product renders `.row`. A harness class must never reach the shipped sheet.
 - **`hasOnboarded` is true on every real install** by the time the welcome tab opens, because the
-  starter pick is written first. So the closing line is keyed on the pick that is actually live,
-  not on whether the picker has been answered. They come apart for a format 1 profile arriving from
-  Settings, or an install whose write failed. See `closingLine` in `src/options/model/welcome.ts`.
+  starter pick is written first. It comes apart from "a pick is live" for a format 1 profile
+  arriving from Settings, or an install whose write failed: those have every shipped shortcut on
+  and no pick on record, so `initialPicks` in `src/options/model/welcome.ts` opens the starter set
+  ticked rather than an empty screen.
 
 ## 7. How to run things
 
