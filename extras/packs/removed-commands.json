@@ -819,18 +819,6 @@
       },
       {
         "keys": [
-          "gr",
-          "goodreads"
-        ],
-        "name": "Goodreads",
-        "description": "Search books and reviews.",
-        "url": "https://www.goodreads.com/",
-        "searchUrl": "https://www.goodreads.com/search?q={q}",
-        "category": "media",
-        "example": "gr project hail mary"
-      },
-      {
-        "keys": [
           "mal",
           "anime"
         ],

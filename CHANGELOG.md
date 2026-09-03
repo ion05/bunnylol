@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `gr` (also `goodreads`): search books and reviews on Goodreads. It shipped
+  until v1.1.0 dropped the `media` category it was filed under; it is back, in
+  Search.
 - `track <number>` (also `pkg`): one keyword for any parcel. BunnyLol reads
   the carrier (UPS, USPS, FedEx or DHL) off the shape of the number and opens
   that carrier's own tracking page. A number nobody recognises is searched

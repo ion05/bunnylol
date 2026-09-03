@@ -565,6 +565,16 @@ export const BUILTIN_COMMANDS: BuiltinCommand[] = [
     example: 'ebay thinkpad x1',
   },
   {
+    keys: ['gr', 'goodreads'],
+    name: 'Goodreads',
+    description: 'Search books and reviews.',
+    url: 'https://www.goodreads.com/',
+    searchUrl: 'https://www.goodreads.com/search?q={q}',
+    category: 'search',
+    builtin: true,
+    example: 'gr project hail mary',
+  },
+  {
     keys: ['hn', 'hackernews'],
     name: 'Hacker News',
     description: 'Search Hacker News via Algolia.',
