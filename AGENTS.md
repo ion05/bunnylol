@@ -83,8 +83,21 @@ src/options/dom.ts          Stateless widgets the views assemble panels from
 src/options/rule-status.ts  The pill in the topbar and the coverage line in Settings
 src/options/status.ts       Pure: a `RuleStatus` in, the words and the tone out
 src/options/model/*.ts      browse, collapse, form, welcome: the decisions, without a DOM
-src/options/views/*.ts      browse, form, settings, data, welcome, packs: the DOM
+src/options/views/*.ts      form, settings, data, welcome, packs: the DOM
+src/options/views/browse.ts        The Shortcuts route: panel assembly, and `applyFilter`
+src/options/views/browse-groups.ts The group headings, the runs, and refiling a row between
+                                   them. Writes nothing that is on screen.
+src/options/views/browse-row.ts    One row: the chips, the destination, Edit/Delete/switch
 ```
+
+The browse route is three files split along one line. `applyFilter` in `views/browse.ts` is the only
+writer of `row.hidden`, `rowsHost.hidden`, every count and the "omnibox only" badge, so the other two
+build and refile and write none of them: the headings and the bulk-action buttons are built EMPTY,
+and every function that changes what a group holds takes the repaint as a callback instead of doing
+it. That makes the rule a grep over two short modules rather than a reading of one 380-line closure,
+which is where two shipped bugs lived. `browse-groups.ts` is plain functions over their arguments,
+not a factory closed over the page state: a factory would have to be built before `applyFilter` and
+then be read by it, putting a mutable slot on the very seam the rule lives on.
 
 `views/welcome.ts` and `views/packs.ts` are two screens over one question. `#welcome` is the tab the
 install opens, so it introduces the product and offers Skip; `#packs` is reached on purpose from
