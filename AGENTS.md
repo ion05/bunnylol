@@ -505,4 +505,3 @@ branch. If you stack them, **do not pass `--delete-branch`** when merging: delet
 auto-closes the child PR that targets it. Merge bottom-up without it, or retarget the tip to master
 and merge once.
 
-`CONTRIBUTING.md` is the same material written for a human contributor. Keep the two in step.

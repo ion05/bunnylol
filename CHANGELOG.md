@@ -57,8 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `pnpm package`: a deterministic, zero-dependency release zip with
   `manifest.json` at its root and no sourcemaps.
 - GitHub Actions CI running typecheck, tests, build and the release packer,
-  plus an icon-drift check. Also the MIT License, and CONTRIBUTING, SECURITY,
-  CODE_OF_CONDUCT and PRIVACY files.
+  plus an icon-drift check. Also the MIT License and a PRIVACY file.
 
 ### Changed
 

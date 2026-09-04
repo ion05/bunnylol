@@ -1,5 +1,5 @@
 // Flat config. The rules worth having are the ones `tsc` cannot see and that
-// CONTRIBUTING.md states by hand. Anything the typechecker already fails on is
+// AGENTS.md states by hand. Anything the typechecker already fails on is
 // not repeated here: `pnpm typecheck` is the gate that catches it.
 //
 // Every `off` below is a convention this repo made on purpose, with the reason
@@ -28,7 +28,7 @@ export default tseslint.config(
       },
     },
     rules: {
-      // CONTRIBUTING.md, "Style": no default exports. A named export is
+      // AGENTS.md, "Conventions": no default exports. A named export is
       // greppable and cannot be silently renamed at the import site. Written as
       // a core selector rather than pulling eslint-plugin-import-x, whose only
       // other rule worth having here (`order`) is turned down below anyway and
