@@ -185,6 +185,29 @@ a {
   box-shadow: inset 0 -2px 0 var(--accent-text);
 }
 
+/* ------------------------------------------------------------- footer -- */
+
+.footer {
+  border-top: 1px solid var(--border);
+}
+
+.footer-inner {
+  max-width: var(--layout-max);
+  margin: 0 auto;
+  padding: var(--sp-5) var(--sp-7);
+  color: var(--text-faint);
+  font-size: var(--fs-12);
+}
+
+.footer-inner a {
+  color: var(--text-faint);
+  text-decoration: underline;
+}
+
+.footer-inner a:hover {
+  color: var(--accent-text);
+}
+
 /* -------------------------------------------------------------- shell -- */
 
 .shell {
