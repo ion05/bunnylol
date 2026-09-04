@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   check:
-    name: typecheck + test + build
+    name: lint + typecheck + test + build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,6 +25,11 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      # First, because it is the fastest signal: eslint and prettier --check
+      # together run in a couple of seconds, well under the typecheck.
+      - run: pnpm lint
+
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build

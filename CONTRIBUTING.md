@@ -6,8 +6,10 @@ Bug reports, new shortcuts and fixes are all welcome. Before you start:
   development" section is not decoration. Every entry is a bug that already shipped once. Every one
   has a regression test. And every one looks like reasonable code, which is why they came back. Read
   it before you touch routing, validation or the override layer.
-- **No new dependencies**, devDependencies included. The whole project runs on a handful of build
-  tools. If you need a helper, inline it.
+- **No new dependencies in what ships.** Nothing is bundled into the extension but this repo's own
+  source and one font. If you need a helper, inline it. Dev tooling is judged on its own merits and
+  is currently jsdom, prettier and eslint on top of typescript, vite and vitest. Adding to that list
+  is a decision somebody makes on purpose.
 
 ## Setup
 
@@ -26,11 +28,12 @@ extension card after every build.
 ## The gate
 
 ```bash
-pnpm typecheck && pnpm test && pnpm build
+pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
 
-All three, green, on **every** commit, not just at the end of a branch. CI runs exactly this on pull
-requests, plus `git diff --exit-code -- public/icons store`. `pnpm build` regenerates the icons from
+All four, green, on **every** commit, not just at the end of a branch. CI runs exactly this on pull
+requests, plus `git diff --exit-code -- public/icons store`. `pnpm lint` goes first because it is
+the fastest of the four and the cheapest to fix. `pnpm build` regenerates the icons from
 `design/tokens.css`. So if you change the generator or the accent colour and do not commit the
 result, it shows up as a dirty tree.
 
@@ -82,8 +85,17 @@ A shortcut only *you* need does not need a PR at all. Make it in the options pag
 - User text reaches the DOM only through `textContent` and `createElement`. A shortcut name is
   untrusted input.
 
-There is no linter or formatter, and that is deliberate: one fewer dependency, and one fewer config
-to argue with. Match the surrounding code.
+`import type`, the indent, the quotes, the semicolons and the ban on default exports are all
+enforced now. `pnpm lint` runs eslint and `prettier --check`; `pnpm format` rewrites the files.
+Prettier is set to the style already here rather than the other way round, so running it over a
+clean tree changes nothing.
+
+Both configs are short and commented. Every rule eslint has switched off names the convention it was
+fighting, so if a rule is in your way, read why it is off before turning it back on. Four things are
+outside the formatter on purpose: `design/` is the approved design bundle and changes through a
+design review, `go.html` carries a deliberately minified inline stylesheet that
+`tests/tokens.test.ts` matches as text, Markdown is hand-wrapped prose, and `pnpm-lock.yaml` belongs
+to pnpm.
 
 ## Pull requests
 
