@@ -1,10 +1,14 @@
+<p align="center">
+  <img src="store/icon128.png" width="96" height="96" alt="BunnyLol logo">
+</p>
+
 # BunnyLol
 
 [![CI](https://github.com/ion05/bunnylol/actions/workflows/ci.yml/badge.svg)](https://github.com/ion05/bunnylol/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-BunnyLol turns the Chrome address bar into a command line. Type a keyword and its arguments and you
-land on the page itself, not on a results page:
+BunnyLol enables you to set custom shortcuts for websites in your browser, including faster
+searches for supported websites. Type a keyword and go straight where you meant to go:
 
 ```
 gh facebook/react   →   github.com/facebook/react
@@ -12,34 +16,33 @@ npm zod             →   npmjs.com/package/zod
 c explain monads    →   Claude, with the prompt already in the box
 ```
 
-It is an independent, unofficial project, inspired by the bunnylol-style command bar used inside
-Meta. **Not affiliated with, endorsed by, or sponsored by Meta Platforms, Inc.**
+It is an independent, unofficial project, inspired by an internal tool at Meta called BunnyLol.
+**Not affiliated with, endorsed by, or sponsored by Meta Platforms, Inc.**
 
 Manifest V3. 93 shortcuts ship across 180 keywords, and every one of them can be renamed, re-keyed,
 moved, switched off or deleted. No runtime dependencies, no network requests of its own, and nothing
 leaves your machine. See [PRIVACY.md](PRIVACY.md).
 
-<!--
-SCREENSHOTS: not captured yet. This is the right place for them.
+## A look inside
 
-Capture three PNGs at 1280x800 (the Chrome Web Store's required screenshot size, so the same
-files serve the listing), light theme, on a clean profile, then commit them to `docs/images/`
-and uncomment the block below.
+Pick the built-in shortcut packs you actually want:
 
-  docs/images/address-bar.png   The address bar mid-type, showing `gh facebook/react` typed into
-                                a real Chrome window, with the omnibox dropdown visible.
-  docs/images/options.png       The options page on the Shortcuts tab (`options.html#help`), with
-                                two or three groups expanded and the "Hidden shortcuts" group
-                                visible at the foot.
-  docs/images/popup.png         The toolbar popup open over any page, with a partial query typed
-                                and the autocomplete list showing.
+![BunnyLol first-run shortcut pack picker](docs/images/welcome.png)
 
-A 440x280 small promo tile is a separate asset; see docs/chrome-web-store.md.
+Browse, filter, edit and switch shortcuts on or off from one page:
 
-![Typing a shortcut into the address bar](docs/images/address-bar.png)
-![The shortcut manager](docs/images/options.png)
-![The toolbar popup](docs/images/popup.png)
--->
+![BunnyLol shortcut manager showing the AI shortcuts](docs/images/shortcuts.png)
+
+New shortcuts use the same resolver as the address bar, so the form can show the real destination
+before you save:
+
+![BunnyLol shortcut editor with a live MDN preview](docs/images/editor.png)
+
+The toolbar popup gives you autocomplete when you do not want to leave the current page:
+
+<p align="center">
+  <img src="docs/images/popup.png" width="380" height="370" alt="BunnyLol toolbar popup with GitHub autocomplete">
+</p>
 
 ## Install
 
@@ -320,15 +323,15 @@ worked.
 
 ```bash
 pnpm dev         # vite build --watch
+pnpm lint        # eslint + prettier --check
 pnpm typecheck   # tsc --noEmit
 pnpm test        # vitest
 pnpm build       # icons + typecheck + vite build -> dist/
 pnpm package     # build, then release/bunnylol-<version>.zip for the Web Store
 ```
 
-`pnpm typecheck && pnpm test && pnpm build` is the gate every commit has to pass, and it is what CI
-runs. There is no linter and no framework: the UI is vanilla TypeScript and CSS, and the whole
-project has four devDependencies.
+`pnpm lint && pnpm typecheck && pnpm test && pnpm build` is the gate every commit has to pass, and
+it is what CI runs. The UI is vanilla TypeScript and CSS with no runtime dependencies.
 
 The resolver (`src/lib/resolve.ts`) is pure and free of `chrome.*`, so the dispatch page, the
 omnibox, the popup and the tests all share one code path.

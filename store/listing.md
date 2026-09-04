@@ -53,4 +53,4 @@ Category **Productivity**, language **English (United States)**.
 
 Screenshots, the promo tile and the privacy answers are in
 [docs/chrome-web-store.md](../docs/chrome-web-store.md), which is the crib for the whole
-submission. Screenshots are still a blocker: none exist yet.
+submission. The screenshots are ready; the optional promo tile is not.

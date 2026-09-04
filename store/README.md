@@ -7,3 +7,5 @@ here is uploaded by hand, and none of it is packed into `dist/` or the release z
   toolbar copy in `public/icons/` is deliberately full-bleed.
 - `listing.md` the dashboard text. Two of its paragraphs are compliance wording that is quoted
   verbatim from `docs/chrome-web-store.md` and must not be reworded when it is pasted in.
+- `../docs/images/welcome.png`, `shortcuts.png` and `editor.png` are the 1280×800 listing
+  screenshots. They live with the README so the same files serve both places.

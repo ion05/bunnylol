@@ -6,7 +6,7 @@ matching one of them, change the code or change this file. Do not soften a justi
 
 This repo produces the manifest, the release zip (`pnpm package`), the privacy policy
 ([PRIVACY.md](../PRIVACY.md)), the listing icon (`store/icon128.png`) and the listing copy
-([store/listing.md](../store/listing.md)). It does not produce screenshots. See
+([store/listing.md](../store/listing.md)) and three 1280×800 screenshots in `docs/images/`. See
 [Assets](#assets).
 
 ## Category
@@ -95,11 +95,11 @@ above exists to close. Have a fallback name ready in case review objects to the 
   a 128px frame. `public/icons/icon128.png` is deliberately full-bleed for the toolbar and looks
   wrong on a listing card. `scripts/gen-icons.mjs` generates both. `store/` sits outside `public/`,
   so it is never copied into `dist/` or the release zip.
-- **Screenshots are a hard submission blocker, and this repo does not produce them.** At least one
-  1280x800 PNG is required. A suggested set: the address bar mid-type, the options page showing the
-  shortcut list with a group folded, the edit form with its live preview, and the toolbar popup. Do
-  not plan a shot around the rule-status pill: it is silent on a healthy profile, so there is
-  nothing to capture. A 440x280 small promo tile is needed to be eligible for featuring.
+- **Screenshots:** `docs/images/welcome.png`, `docs/images/shortcuts.png` and
+  `docs/images/editor.png` are the 1280×800 listing images. `docs/images/popup.png` is the popup at
+  its real 380×370 bounds for the README, not a store upload. An address-bar shot can still be
+  added later, but the three existing images satisfy the store's screenshot requirement. A
+  440×280 small promo tile is still needed to be eligible for featuring.
 - Keep every listing asset out of `dist/`, so none of it reaches the upload.
 
 ## Upload checklist
