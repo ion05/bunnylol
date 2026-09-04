@@ -212,7 +212,7 @@ function renderFooter(): HTMLElement {
           'Built by ',
           footerLink('https://aayanagarwal.com/', 'Aayan Agarwal'),
           ' · ',
-          footerLink('https://github.com/ion05/bunnylol', 'Source on GitHub'),
+          footerLink('https://github.com/ion05/bunnylol', 'GitHub'),
         ],
       }),
     ],
