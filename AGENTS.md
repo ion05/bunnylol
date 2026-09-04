@@ -388,7 +388,10 @@ gitignored.
 - TypeScript strict, `verbatimModuleSyntax`: use `import type` for type-only imports.
 - Import siblings without a file extension.
 - 2-space indent, single quotes, semicolons, no default exports.
-- **No new dependencies.** The whole thing runs on four devDependencies; inline the functionality.
+- **No new dependencies in what ships.** Nothing is bundled into the extension but this repo's own
+  source and one font. Dev tooling is judged on its own merits and is currently jsdom, prettier and
+  eslint on top of typescript, vite and vitest. Adding to that list is a decision somebody makes on
+  purpose; adding a runtime dependency is not on the table.
 - Comment only where the *reason* is non-obvious. Do not restate the code.
 - Vanilla TS and CSS in the UI. No framework.
 - Colours, sizes and spacing in the UI sheets come from `design/tokens.css`. No literal hex, no raw
@@ -397,7 +400,12 @@ gitignored.
   and the focus ring.
 - `src/lib` and `src/options/model` must import cleanly under vitest's `environment: node`: no
   `document`, no `chrome.*` at module scope. That is what makes the pure decisions testable without
-  a DOM, and a stray import breaks a suite rather than a feature.
+  a DOM, and a stray import breaks a suite rather than a feature. One suite opts out:
+  `tests/options-browse-dom.test.ts` carries `// @vitest-environment jsdom` in its own docblock,
+  because the Hidden shortcuts state machine moves DOM nodes without a re-render. The GLOBAL default
+  stays `node`, which is what keeps the rule above able to fail. jsdom does no layout, so that suite
+  cannot see `focus()` failing inside a `display: none` subtree and cannot see the CSS `order`
+  reordering at all. Both still need a real browser.
 - Do not edit `extras/` expecting it to compile. It is intentionally outside tsconfig.
 - `design/` is the approved design bundle. Change it through a design review, not in passing.
 
