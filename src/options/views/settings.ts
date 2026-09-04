@@ -53,7 +53,7 @@ export function renderSettings(): Node[] {
   return [renderDefaults(), renderSections(), renderInterception(), renderStopList(), renderData()];
 }
 
-export function renderDefaults(): HTMLElement {
+function renderDefaults(): HTMLElement {
   const card = panelCard('Default Usernames');
 
   const githubInput = textInput(getState().settings.githubUser, 'octocat');
@@ -178,7 +178,7 @@ export function renderDefaults(): HTMLElement {
  * labelled as one; it simply has no Delete, which is the whole of what the
  * distinction means here.
  */
-export function renderSections(): HTMLElement {
+function renderSections(): HTMLElement {
   const card = panelCard('Sections');
 
   const rows = el('div', { class: 'rows' });
@@ -457,7 +457,7 @@ function fallbackLabel(): string {
   return sectionLabel(FALLBACK_SECTION, getState().overrides.sections);
 }
 
-export function renderInterception(): HTMLElement {
+function renderInterception(): HTMLElement {
   const card = panelCard(
     'Search interception',
     'BunnyLol will work when you try to search using one of these engines. bl always works irrespective of engine.',
@@ -522,7 +522,7 @@ export function renderInterception(): HTMLElement {
  * reads "excluded because they are common words" will look for the list that
  * protects them and find nothing.
  */
-export function renderStopList(): HTMLElement {
+function renderStopList(): HTMLElement {
   const card = panelCard(
     'Exempt keywords',
     'These keywords are not matched to a shortcut. They are searched directly.',

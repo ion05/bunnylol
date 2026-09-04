@@ -12,10 +12,10 @@
  * is user input, and this view renders it next to the URL it will navigate to
  * (AGENTS.md invariant 11).
  *
- * Lifted out of `views/browse.ts` unchanged. It closed over nothing in
- * `renderBrowse`, and it writes no count and never touches `row.hidden`, so
- * having it here is what lets a reader check that `applyFilter` is the only
- * writer of those without reading a row builder first. The one `hidden` written
+ * It closes over nothing in `renderBrowse`, writes no count and never touches
+ * `row.hidden`, which is what lets a reader check that `applyFilter` in
+ * `views/browse.ts` is the only writer of those without reading a row builder
+ * first. The one `hidden` written
  * below is the badge's starting value, at construction, before the row is in a
  * group at all; every write after that is `applyFilter`'s. What this file DOES
  * own is the two writes a click makes to the row's own dimming and checkbox,
@@ -93,9 +93,7 @@ export function renderRow(
     children: [name, el('div', { class: 'row-desc', text: entry.cmd.description })],
   });
   const destination = destinationOf(entry.cmd);
-  body.append(
-    el('div', { class: 'row-url', text: stripScheme(destination), title: destination }),
-  );
+  body.append(el('div', { class: 'row-url', text: stripScheme(destination), title: destination }));
   const example = exampleOf(entry.cmd);
   if (example) body.append(el('div', { class: 'row-example', text: example }));
 
@@ -111,8 +109,11 @@ export function renderRow(
       // A deleted shortcut is gone, not off, so it leaves `disabled` either way.
       const disabled = overrides.disabled.filter((id) => id !== entry.id);
       const next: Overrides = entry.shipped
-        ? // `edits[id]` is deliberately KEPT: Restore brings back the shortcut
-          // the user had, not the one the registry ships.
+        ? // `edits[id]` is deliberately KEPT. There is no per-shortcut restore:
+          // the ways back are Reset to defaults, Start over, and importing a
+          // file that predates the delete with Replace everything, and all
+          // three have to return the shortcut the user had rather than the one
+          // the registry ships.
           { ...overrides, deleted: [...overrides.deleted, entry.id], disabled }
         : {
             ...overrides,

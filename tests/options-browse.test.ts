@@ -1,6 +1,6 @@
 /**
  * `src/options/model/browse.ts` is the browse list's grouping and filtering
- * logic, pulled out of `options.ts` so it can be exercised without a DOM.
+ * logic, kept out of `views/browse.ts` so it can be exercised without a DOM.
  *
  * Importing the module at all is half the test: it must load under vitest's
  * `environment: 'node'`, which is only true if the module touches neither
@@ -146,7 +146,9 @@ describe('browseEntries', () => {
 
   it('deleting a builtin removes it from disabled but keeps its edit', () => {
     // What the row's Delete handler writes: a deleted shortcut is gone rather
-    // than off, and Restore has to bring back the version the user had.
+    // than off, and the edit is kept because every way back (Reset to defaults,
+    // Start over, importing an older file) has to return the version the user
+    // had rather than the one the registry ships.
     const overrides = overridesWith({
       deleted: ['gh'],
       disabled: [],

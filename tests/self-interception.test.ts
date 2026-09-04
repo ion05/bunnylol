@@ -1,12 +1,12 @@
 /**
  * BunnyLol must never intercept its own output.
  *
- * Several commands resolve to a search on an engine we intercept: `weather` IS
- * a google search, and so are `g`, `gimg`, `gvid`, `gbooks`, `ddg`, `bing`, the
- * `gsite` handler and the Gemini AI template. Navigating there unmarked re-enters
- * our own redirect rule, which hands the url straight back to go.html: `weather`
- * loops forever and `g npm install` lands on the npm package page instead of a
- * search for "npm install".
+ * Several commands resolve to a search on an engine we intercept: `g` and `ddg`
+ * ARE searches, every `site:` degrade is one, and so is the Gemini AI template.
+ * Navigating there unmarked re-enters our own redirect rule, which hands the url
+ * straight back to go.html: `g npm install` lands on the npm package page
+ * instead of a search for "npm install", and a degrade that puts its own keyword
+ * back into the query loops forever.
  *
  * The invariant these tests pin down is end-to-end rather than per-function: take
  * the url `resolve()` actually produces, hand it to the rules the extension
@@ -173,17 +173,20 @@ describe('the rules syncRules registers', () => {
      * to resolve to a search that this same rule set will not claim again. A
      * loop here is unescapable without closing the tab.
      */
-    it.each(FORCE_SEARCH_PREFIXES)('round-trips an escaped query typed in the address bar (%j)', (prefix) => {
-      const typed = `https://www.google.com/search?q=${encodeURIComponent(prefix)}gh+foo&ie=UTF-8`;
-      expect(claim(typed)).toBe('redirect');
-      const handed = queryHandedToGo(redirectTo(typed) as string).replace(/\+/g, ' ');
-      expect(handed).toBe(`${prefix}gh foo`);
+    it.each(FORCE_SEARCH_PREFIXES)(
+      'round-trips an escaped query typed in the address bar (%j)',
+      (prefix) => {
+        const typed = `https://www.google.com/search?q=${encodeURIComponent(prefix)}gh+foo&ie=UTF-8`;
+        expect(claim(typed)).toBe('redirect');
+        const handed = queryHandedToGo(redirectTo(typed) as string).replace(/\+/g, ' ');
+        expect(handed).toBe(`${prefix}gh foo`);
 
-      const { url, fallback } = resolve(handed, COMMANDS, SETTINGS);
-      expect(fallback).toBe(true);
-      expect(claim(url)).toBe('allow');
-      expect(new URL(url).searchParams.get('q')).toBe('gh foo');
-    });
+        const { url, fallback } = resolve(handed, COMMANDS, SETTINGS);
+        expect(fallback).toBe(true);
+        expect(claim(url)).toBe('allow');
+        expect(new URL(url).searchParams.get('q')).toBe('gh foo');
+      },
+    );
 
     // Every one of these resolves to a search whose `q` value starts with a
     // registered keyword, which is the shape that used to loop or misroute.
@@ -273,7 +276,8 @@ describe('the rules syncRules registers', () => {
     });
 
     it.each(SEARCH_ENGINES)('claims any marked url on $id', (engine) => {
-      const base = engine.id === 'duckduckgo' ? `https://${engine.host}/` : `https://${engine.host}/search`;
+      const base =
+        engine.id === 'duckduckgo' ? `https://${engine.host}/` : `https://${engine.host}/search`;
       const urls = [
         `${base}?q=gh+foo&${PASSTHROUGH_PARAM}=1`,
         `${base}?${PASSTHROUGH_PARAM}=1&q=gh+foo`,
@@ -339,10 +343,13 @@ describe('shard sizing at 500 keywords', () => {
     expect(new Set(rules.map((rule) => rule.id)).size).toBe(rules.length);
   });
 
-  it.each(RULE_SETS)('still covers the real registry without exhausting the budget (%s)', (_label, real) => {
-    expect(real.length).toBeLessThanOrEqual(MAX_RULES);
-    expect(real.length).toBeGreaterThan(SEARCH_ENGINES.length);
-  });
+  it.each(RULE_SETS)(
+    'still covers the real registry without exhausting the budget (%s)',
+    (_label, real) => {
+      expect(real.length).toBeLessThanOrEqual(MAX_RULES);
+      expect(real.length).toBeGreaterThan(SEARCH_ENGINES.length);
+    },
+  );
 });
 
 describe('a user who repoints a builtin at an intercepted engine', () => {

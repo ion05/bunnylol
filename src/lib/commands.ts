@@ -956,7 +956,8 @@ export const BUILTIN_COMMANDS: BuiltinCommand[] = [
   {
     keys: ['track', 'pkg'],
     name: 'Track a package',
-    description: 'Paste any tracking number; the carrier (UPS, USPS, FedEx or DHL) is read off its shape.',
+    description:
+      'Paste any tracking number; the carrier (UPS, USPS, FedEx or DHL) is read off its shape.',
     // A bare `track` has no carrier to go to, so it lands on the one page that
     // accepts every carrier's number.
     url: 'https://parcelsapp.com/',
@@ -1046,7 +1047,8 @@ function isEngineSearch(template: string): boolean {
  * edit, from the list they would look in for it.
  *
  * It lives beside the registry rather than in the options page because it is a
- * fact about the rows, and because the options page has no test suite.
+ * fact about the rows rather than about the page that draws them, which is what
+ * lets `tests/commands.test.ts` hold it to the registry it describes.
  */
 export function destinationOf(cmd: Command): string {
   const search = cmd.searchUrl;

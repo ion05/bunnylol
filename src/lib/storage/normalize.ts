@@ -226,7 +226,10 @@ function normalizeEdits(raw: unknown, known: Set<string>): Record<string, Shortc
 
 /** Returns null when nothing usable is left, which is what makes an empty edit
  *  unrepresentable in the stored blob. */
-export function normalizeEdit(source: Record<string, unknown>, known: Set<string>): ShortcutEdit | null {
+export function normalizeEdit(
+  source: Record<string, unknown>,
+  known: Set<string>,
+): ShortcutEdit | null {
   const edit: ShortcutEdit = {};
 
   const keys = normalizeAliases(source.keys);

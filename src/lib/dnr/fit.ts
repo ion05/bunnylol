@@ -60,8 +60,9 @@ export async function fitPlan(
   // independent nicety. A redirect pattern still matches BunnyLol's own marked
   // searches, `blpass` sits past the end of the captured `q` value, where the
   // pattern swallows it as a trailing parameter, so the only thing keeping
-  // `weather boston` out of an infinite go.html loop, and `\gh foo` out of the
-  // command it escapes, is the higher-priority allow rule winning first.
+  // `gmeet standup` out of an infinite go.html loop (its degrade puts its own
+  // keyword back into the query), and `\gh foo` out of the command it escapes,
+  // is the higher-priority allow rule winning first.
   // Registering redirects for an engine whose allow rule Chrome refused is
   // therefore worse than not intercepting that engine at all.
   //

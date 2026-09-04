@@ -160,7 +160,8 @@ tests. **If a test in this list fails, do not "fix" the test.**
    aliases: at ~400 custom shortcuts, `gh`, `g` and `npm` silently stopped being intercepted.
 
 6. **All alias, URL and section validation goes through `src/lib/validate.ts`.** Nothing re-derives
-   a rule locally. Today's callers are the import parser (`storage/parse-import.ts`), the override algebra
+   a rule locally. Today's callers are both storage readers (`storage/parse-import.ts` strictly,
+   `storage/normalize.ts` and `storage/shared.ts` leniently), the override algebra
    (`overrides.ts`), the one shortcut form (through `draft.ts` and `model/form.ts`), the section
    editor and the "Exempt keywords" field in Settings, and `resolve.ts` for `isInterceptableAlias`.
    That list will grow, so add a call site rather than a local rule. When the rule lived in
@@ -368,6 +369,8 @@ exercises the **production** path. Note that only tests call `buildRules`, so a 
 
 ```bash
 pnpm install
+pnpm lint          # eslint + prettier --check
+pnpm format        # prettier --write
 pnpm test          # vitest
 pnpm typecheck     # tsc --noEmit
 pnpm build         # gen-icons + typecheck + vite build -> dist/
@@ -387,7 +390,12 @@ gitignored.
 - pnpm, pinned via `packageManager`. Do not run `npm install`: it creates a second lockfile.
 - TypeScript strict, `verbatimModuleSyntax`: use `import type` for type-only imports.
 - Import siblings without a file extension.
-- 2-space indent, single quotes, semicolons, no default exports.
+- 2-space indent, single quotes, semicolons, no default exports. Enforced: `eslint.config.js` and
+  `.prettierrc.json`, run together by `pnpm lint`. Prettier is set to the style already here
+  (printWidth 100, derived from where the code actually wraps), so it is not a reformat waiting to
+  happen. Every eslint rule switched off names the convention it was fighting; read that before
+  turning one back on. `design/`, `go.html` and Markdown are outside the formatter, for reasons
+  `.prettierignore` gives.
 - **No new dependencies in what ships.** Nothing is bundled into the extension but this repo's own
   source and one font. Dev tooling is judged on its own merits and is currently jsdom, prettier and
   eslint on top of typescript, vite and vitest. Adding to that list is a decision somebody makes on
@@ -439,9 +447,9 @@ Commands are plain data in `src/lib/commands.ts`. When adding or removing one:
 ## Review workflow
 
 Project convention: substantial work arrives as **distinct commits sliced by architectural layer**,
-so each one carries a single reviewable idea and passes the gate (`pnpm typecheck && pnpm test &&
-pnpm build`) on its own. Verify that standing alone: a test that imports a module from a later
-commit silently breaks the property without failing anything.
+so each one carries a single reviewable idea and passes the gate (`pnpm lint && pnpm typecheck &&
+pnpm test && pnpm build`) on its own. Verify that standing alone: a test that imports a module from
+a later commit silently breaks the property without failing anything.
 
 Those commits may be stacked as branches, each PR based on the previous one, or landed as one
 branch. If you stack them, **do not pass `--delete-branch`** when merging: deleting a parent branch

@@ -95,7 +95,11 @@ describe('resolve', () => {
   });
 
   it('honours a custom default engine on fallback', () => {
-    const result = resolve('quantum foam', commands, settings({ defaultEngine: 'https://kagi.com/search?q={q}' }));
+    const result = resolve(
+      'quantum foam',
+      commands,
+      settings({ defaultEngine: 'https://kagi.com/search?q={q}' }),
+    );
     expect(result.url).toBe('https://kagi.com/search?q=quantum%20foam&blpass=1');
   });
 
@@ -160,7 +164,9 @@ describe('resolve', () => {
   });
 
   it.each(FORCE_SEARCH_PREFIXES)('accepts a space after %j, and the bare prefix', (prefix) => {
-    expect(resolve(`${prefix} gh react`, commands, settings()).url).toBe(`${GOOGLE}gh%20react&blpass=1`);
+    expect(resolve(`${prefix} gh react`, commands, settings()).url).toBe(
+      `${GOOGLE}gh%20react&blpass=1`,
+    );
     expect(resolve(prefix, commands, settings()).url).toBe('https://www.google.com/');
   });
 
@@ -238,7 +244,9 @@ describe('resolve', () => {
 
   it('survives a malformed settings object', () => {
     const broken = { ...DEFAULT_SETTINGS, defaultEngine: '' } as Settings;
-    expect(resolve('unknown thing', commands, broken).url).toBe(`${GOOGLE}unknown%20thing&blpass=1`);
+    expect(resolve('unknown thing', commands, broken).url).toBe(
+      `${GOOGLE}unknown%20thing&blpass=1`,
+    );
   });
 });
 
@@ -252,7 +260,10 @@ describe('mergeCommands', () => {
   });
 
   it('replaces a builtin key list with its override', () => {
-    const merged = mergeCommands(BUILTIN_COMMANDS, overrides({ edits: { gh: { keys: ['hub', 'gh2'] } } }));
+    const merged = mergeCommands(
+      BUILTIN_COMMANDS,
+      overrides({ edits: { gh: { keys: ['hub', 'gh2'] } } }),
+    );
     const keys = buildKeyMap(merged);
     expect(keys.get('hub')?.name).toBe('GitHub');
     expect(keys.get('gh2')?.name).toBe('GitHub');
@@ -347,7 +358,10 @@ describe('mergeCommands', () => {
 
   it('hides a disabled custom command', () => {
     const mine = cmd({ keys: ['tix'], id: 'u:tix', url: 'https://tix.test/' });
-    const merged = mergeCommands(BUILTIN_COMMANDS, overrides({ custom: [mine], disabled: ['u:tix'] }));
+    const merged = mergeCommands(
+      BUILTIN_COMMANDS,
+      overrides({ custom: [mine], disabled: ['u:tix'] }),
+    );
     expect(buildKeyMap(merged).has('tix')).toBe(false);
   });
 
@@ -520,7 +534,11 @@ describe('activeKeywords', () => {
   });
 
   it('suppresses stop-listed aliases, case-insensitively', () => {
-    const commands = [cmd({ keys: ['new'] }), cmd({ keys: ['R', 'reddit'] }), cmd({ keys: ['gh'] })];
+    const commands = [
+      cmd({ keys: ['new'] }),
+      cmd({ keys: ['R', 'reddit'] }),
+      cmd({ keys: ['gh'] }),
+    ];
     expect(activeKeywords(commands, ['NEW', ' r ', '', 'notanalias'])).toEqual(['reddit', 'gh']);
   });
 
@@ -567,7 +585,9 @@ describe('passthrough marker', () => {
     expect(withPassthrough('https://x.test/s?q=a')).toBe('https://x.test/s?q=a&blpass=1');
     expect(withPassthrough('https://x.test/s')).toBe('https://x.test/s?blpass=1');
     expect(withPassthrough('https://x.test/s?q=a#top')).toBe('https://x.test/s?q=a&blpass=1#top');
-    expect(withPassthrough(withPassthrough('https://x.test/s?q=a'))).toBe('https://x.test/s?q=a&blpass=1');
+    expect(withPassthrough(withPassthrough('https://x.test/s?q=a'))).toBe(
+      'https://x.test/s?q=a&blpass=1',
+    );
   });
 
   it('strips the marker from any position without mangling the url', () => {
@@ -614,13 +634,20 @@ describe('handler keyword', () => {
   });
 
   it('leaves a shape-matched destination alone', () => {
-    expect(resolve('zoom 1234567890', commands, settings()).url).toBe('https://zoom.us/j/1234567890');
-    expect(resolve('wa +1 (555) 123-4567', commands, settings()).url).toBe('https://wa.me/15551234567');
+    expect(resolve('zoom 1234567890', commands, settings()).url).toBe(
+      'https://zoom.us/j/1234567890',
+    );
+    expect(resolve('wa +1 (555) 123-4567', commands, settings()).url).toBe(
+      'https://wa.me/15551234567',
+    );
   });
 
   it('follows a rebound alias into the plain-search degrade', () => {
     const id = shortcutId(plainDegrade);
-    const rebound = mergeCommands(BUILTIN_COMMANDS, overrides({ edits: { [id]: { keys: ['huddle'] } } }));
+    const rebound = mergeCommands(
+      BUILTIN_COMMANDS,
+      overrides({ edits: { [id]: { keys: ['huddle'] } } }),
+    );
     const result = resolve('huddle surge meaning', rebound, settings());
     // The rebound alias reaches the command, and the shipped one no longer
     // does, which is what makes the URL below the handler's answer rather than

@@ -29,7 +29,10 @@ export interface Notice {
   text: string;
 }
 
-let stored: StoredState = { overrides: clone(DEFAULT_OVERRIDES), settings: clone(DEFAULT_SETTINGS) };
+let stored: StoredState = {
+  overrides: clone(DEFAULT_OVERRIDES),
+  settings: clone(DEFAULT_SETTINGS),
+};
 let commands: Command[] = mergeCommands(BUILTIN_COMMANDS, stored.overrides);
 let route: Route = { name: 'help', params: new URLSearchParams() };
 let lastRoute: RouteName | null = null;

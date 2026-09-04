@@ -93,9 +93,10 @@ export function hasOnboarded(overrides: Overrides | null | undefined): boolean {
  * "these are the packs I want" has to mean something, and the page says so.
  *
  * `deleted` is untouched: a shortcut the user deleted stays deleted through a
- * re-pick, and comes back from Settings → Restore. Ids in `disabled` that name
- * a custom command are untouched too, because a pack is a set of builtins and
- * nothing here walks the user's own shortcuts.
+ * re-pick. There is no per-shortcut restore, so the ways back are Reset to
+ * defaults, Start over, and importing a file that predates the delete. Ids in
+ * `disabled` that name a custom command are untouched too, because a pack is a
+ * set of builtins and nothing here walks the user's own shortcuts.
  *
  * The category read is the SHIPPED one off `builtins`, not the edited one: the
  * packs are what the registry ships, so moving `gh` into a section of your own
@@ -169,29 +170,31 @@ export function categoryPicks(builtins: BuiltinCommand[]): PickRow[] {
   const starter = new Set<string>(STARTER_CATEGORIES);
   const optional = new Set<string>(OPTIONAL_CATEGORIES);
 
-  return CATEGORIES.filter((category) => !hidden.has(category))
-    .map((category) => {
-      const members = (builtins ?? [])
-        .filter((cmd) => cmd.category === category)
-        .map((cmd) => ({
-          id: shortcutId(cmd),
-          keys: [...cmd.keys],
-          name: cmd.name,
-          description: cmd.description,
-        }));
-      return {
-        id: category,
-        label: CATEGORY_LABELS[category],
-        count: members.length,
-        sample: members.slice(0, 3).map((member) => member.keys[0]),
-        members,
-        starter: starter.has(category),
-        optional: optional.has(category),
-      };
-    })
-    // A pack with nothing in it is a checkbox that does nothing. This build
-    // ships none, and `tests/commands.test.ts` says so, but a category removed
-    // down to zero commands should disappear from the picker rather than sit
-    // there as an empty promise.
-    .filter((row) => row.count > 0);
+  return (
+    CATEGORIES.filter((category) => !hidden.has(category))
+      .map((category) => {
+        const members = (builtins ?? [])
+          .filter((cmd) => cmd.category === category)
+          .map((cmd) => ({
+            id: shortcutId(cmd),
+            keys: [...cmd.keys],
+            name: cmd.name,
+            description: cmd.description,
+          }));
+        return {
+          id: category,
+          label: CATEGORY_LABELS[category],
+          count: members.length,
+          sample: members.slice(0, 3).map((member) => member.keys[0]),
+          members,
+          starter: starter.has(category),
+          optional: optional.has(category),
+        };
+      })
+      // A pack with nothing in it is a checkbox that does nothing. This build
+      // ships none, and `tests/commands.test.ts` says so, but a category removed
+      // down to zero commands should disappear from the picker rather than sit
+      // there as an empty promise.
+      .filter((row) => row.count > 0)
+  );
 }

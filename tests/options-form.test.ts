@@ -1,6 +1,6 @@
 /**
  * `src/options/model/form.ts` is the add/edit form's validation and
- * command-building, pulled out of `options.ts` so it can be exercised without
+ * command-building, kept out of `views/form.ts` so it can be exercised without
  * a DOM. Importing the module at all is half the test: it must load under
  * vitest's `environment: 'node'`.
  */
@@ -120,7 +120,9 @@ describe('validateDraft', () => {
       sections: [],
     };
     const problems = validateDraft({ ...EMPTY_DRAFT, keys: 'gh', url: 'https://example.com' }, ctx);
-    const warning = problems.find((problem) => problem.level === 'warn' && problem.field === 'keys');
+    const warning = problems.find(
+      (problem) => problem.level === 'warn' && problem.field === 'keys',
+    );
     expect(warning?.text).toContain('Your shortcut will take over');
     expect(warning?.text).toContain('stays reachable as github');
   });
@@ -137,7 +139,9 @@ describe('validateDraft', () => {
       sections: [],
     };
     const problems = validateDraft({ ...EMPTY_DRAFT, keys: 'gh', url: 'https://example.com' }, ctx);
-    const warning = problems.find((problem) => problem.level === 'warn' && problem.field === 'keys');
+    const warning = problems.find(
+      (problem) => problem.level === 'warn' && problem.field === 'keys',
+    );
     expect(warning?.text).toBe(
       '“gh” currently opens GitHub. GitHub comes first in the shipped list and keeps “gh”; this shortcut will not answer to it in the address bar.',
     );
@@ -151,8 +155,13 @@ describe('validateDraft', () => {
       builtins: [...builtins, settings],
       sections: [],
     };
-    const problems = validateDraft({ ...EMPTY_DRAFT, keys: 'set', url: 'https://example.com' }, ctx);
-    const warning = problems.find((problem) => problem.level === 'warn' && problem.field === 'keys');
+    const problems = validateDraft(
+      { ...EMPTY_DRAFT, keys: 'set', url: 'https://example.com' },
+      ctx,
+    );
+    const warning = problems.find(
+      (problem) => problem.level === 'warn' && problem.field === 'keys',
+    );
     // "This", not "Your": a shipped shortcut is not the user's own.
     expect(warning?.text).toContain('This shortcut will take over');
     expect(warning?.text).toContain('loses its only keyword');
@@ -162,7 +171,8 @@ describe('validateDraft', () => {
     const problems = validateDraft({ ...EMPTY_DRAFT, keys: 'x' }, emptyCtx);
     expect(
       problems.some(
-        (problem) => problem.level === 'error' && problem.field === 'url' && problem.text.includes('required'),
+        (problem) =>
+          problem.level === 'error' && problem.field === 'url' && problem.text.includes('required'),
       ),
     ).toBe(true);
   });
@@ -207,9 +217,7 @@ describe('validateDraft', () => {
       emptyCtx,
     );
     expect(
-      problems.some(
-        (problem) => problem.level === 'error' && problem.field === 'category',
-      ),
+      problems.some((problem) => problem.level === 'error' && problem.field === 'category'),
     ).toBe(true);
   });
 
@@ -245,7 +253,12 @@ describe('validateDraft', () => {
 
   it('warns when searchUrl has no {q}', () => {
     const problems = validateDraft(
-      { ...EMPTY_DRAFT, keys: 'x', url: 'https://example.com', searchUrl: 'https://example.com/search' },
+      {
+        ...EMPTY_DRAFT,
+        keys: 'x',
+        url: 'https://example.com',
+        searchUrl: 'https://example.com/search',
+      },
       emptyCtx,
     );
     expect(
@@ -425,8 +438,22 @@ describe('engineProblem', () => {
 
 describe('findEntry', () => {
   const entries: Entry[] = [
-    { id: 'u:gh', matchKey: 'gh', cmd: { ...github, id: 'u:gh', builtin: false }, shipped: false, disabled: false, modified: false },
-    { id: 'gh', matchKey: 'gh', cmd: { ...github, id: 'gh' }, shipped: true, disabled: false, modified: false },
+    {
+      id: 'u:gh',
+      matchKey: 'gh',
+      cmd: { ...github, id: 'u:gh', builtin: false },
+      shipped: false,
+      disabled: false,
+      modified: false,
+    },
+    {
+      id: 'gh',
+      matchKey: 'gh',
+      cmd: { ...github, id: 'gh' },
+      shipped: true,
+      disabled: false,
+      modified: false,
+    },
   ];
   const route = (query: string): URLSearchParams => new URLSearchParams(query);
 

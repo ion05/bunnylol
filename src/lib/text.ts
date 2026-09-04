@@ -50,9 +50,9 @@ export function countShortcuts(n: number): string {
 /**
  * "3 shipped shortcuts" / "1 shipped shortcut".
  *
- * "Shipped", not "built-in": "built-in" is what the export sentence calls the
- * registry FILE, and one word doing both jobs in the same card is a word doing
- * neither.
+ * "Shipped", not "built-in": every other line of copy calls a registry
+ * shortcut a shipped one, and a card that switches vocabulary mid-sentence
+ * reads as though it is naming two different kinds of thing.
  */
 export function countShipped(n: number): string {
   return `${n} shipped ${n === 1 ? 'shortcut' : 'shortcuts'}`;

@@ -85,9 +85,7 @@ function encodePng(width, height, rgba) {
 function sdRoundedRect(x, y, cx, cy, halfW, halfH, r) {
   const qx = Math.abs(x - cx) - halfW + r;
   const qy = Math.abs(y - cy) - halfH + r;
-  return (
-    Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r
-  );
+  return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r;
 }
 
 function sdCapsule(x, y, ax, ay, bx, by, r) {

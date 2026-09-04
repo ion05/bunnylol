@@ -14,7 +14,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { BUILTIN_COMMANDS, SEARCH_ENGINES } from '../src/lib/commands';
 import { MAX_RULES, syncRules } from '../src/lib/dnr';
 import { activeKeywords, mergeCommands, resolve } from '../src/lib/resolve';
-import type { Command, RuleStatus, SearchEngine, SearchEngineId, StoredState } from '../src/lib/types';
+import type {
+  Command,
+  RuleStatus,
+  SearchEngine,
+  SearchEngineId,
+  StoredState,
+} from '../src/lib/types';
 import {
   DEFAULT_OVERRIDES,
   DEFAULT_SETTINGS,
@@ -41,14 +47,19 @@ afterEach(() => {
   stub = null;
 });
 
-function state(overrides: Partial<StoredState['settings']> = {}, custom: Command[] = []): StoredState {
+function state(
+  overrides: Partial<StoredState['settings']> = {},
+  custom: Command[] = [],
+): StoredState {
   return {
     overrides: { ...DEFAULT_OVERRIDES, custom },
     settings: { ...DEFAULT_SETTINGS, ...overrides },
   };
 }
 
-async function sync(options: StubOptions): Promise<{ status: RuleStatus; rules: chrome.declarativeNetRequest.Rule[] }> {
+async function sync(
+  options: StubOptions,
+): Promise<{ status: RuleStatus; rules: chrome.declarativeNetRequest.Rule[] }> {
   stub = installChromeStub(options);
   const status = await syncRules();
   return { status, rules: stub.rules() };
@@ -170,8 +181,7 @@ describe('the status syncRules reports matches the rules it registered', () => {
  */
 describe('a Chrome that rejects the rule update', () => {
   /** Succeeds once, then refuses every later write, including the teardown. */
-  const refuseAfterFirst = (call: number) =>
-    call === 1 ? null : 'Dynamic rule quota exceeded.';
+  const refuseAfterFirst = (call: number) => (call === 1 ? null : 'Dynamic rule quota exceeded.');
 
   it('removes the stale rules rather than leaving them live', async () => {
     stub = installChromeStub({
@@ -220,8 +230,9 @@ describe('a Chrome that rejects the rule update', () => {
 
     // A read failure never reached `updateDynamicRules`, so the installed rules
     // are untouched and still cover exactly what the last sync claimed.
-    const dnr = (globalThis as unknown as { chrome: { declarativeNetRequest: Record<string, unknown> } })
-      .chrome.declarativeNetRequest;
+    const dnr = (
+      globalThis as unknown as { chrome: { declarativeNetRequest: Record<string, unknown> } }
+    ).chrome.declarativeNetRequest;
     const realGet = dnr.getDynamicRules;
     let calls = 0;
     dnr.getDynamicRules = async () => {
@@ -297,8 +308,9 @@ describe('a Chrome that refuses the passthrough allow rule', () => {
 
   it('leaves the loop url that used to bounce forever completely unclaimed', async () => {
     const { rules } = await sync({ state: state(), supports });
-    // `weather boston` resolves to a marked google search, and the marker is
-    // only safe while the allow rule outranks the redirect.
+    // `weather` was removed, so this now falls through to the default engine,
+    // which is the same shape: a marked google search. The marker is only safe
+    // while the allow rule outranks the redirect.
     const marked = resolve('weather boston', mergeCommands(BUILTIN_COMMANDS, DEFAULT_OVERRIDES), {
       ...DEFAULT_SETTINGS,
     }).url;
@@ -306,7 +318,9 @@ describe('a Chrome that refuses the passthrough allow rule', () => {
     expect(claim(rules, marked)).toBeNull();
     expect(claim(rules, 'https://www.google.com/search?q=gh+foo')).toBeNull();
     // The escape hatch is intact for the same reason.
-    expect(claim(rules, `https://www.google.com/search?q=gh%20foo&${PASSTHROUGH_PARAM}=1`)).toBeNull();
+    expect(
+      claim(rules, `https://www.google.com/search?q=gh%20foo&${PASSTHROUGH_PARAM}=1`),
+    ).toBeNull();
   });
 
   it('keeps intercepting the engines whose allow rule Chrome did accept', async () => {
@@ -440,83 +454,101 @@ describe('the force-search escape hatch', () => {
     `${encodeURIComponent(prefix)}gh%20foo`,
   ];
 
-  it.each(FORCE_SEARCH_PREFIXES)('redirects an escaped query to go.html on every engine (%j)', async (prefix) => {
-    const { rules } = await sync({ state: state() });
-    for (const engine of SEARCH_ENGINES) {
-      for (const value of encodedForms(prefix)) {
-        const url = resultsUrl(engine, value);
-        expect(claim(rules, url), `${engine.id} ${value}`).toBe('redirect');
-        expect(redirectTo(rules, url)).toBe(`chrome-extension://${EXT_ID}/go.html?q=${value}`);
+  it.each(FORCE_SEARCH_PREFIXES)(
+    'redirects an escaped query to go.html on every engine (%j)',
+    async (prefix) => {
+      const { rules } = await sync({ state: state() });
+      for (const engine of SEARCH_ENGINES) {
+        for (const value of encodedForms(prefix)) {
+          const url = resultsUrl(engine, value);
+          expect(claim(rules, url), `${engine.id} ${value}`).toBe('redirect');
+          expect(redirectTo(rules, url)).toBe(`chrome-extension://${EXT_ID}/go.html?q=${value}`);
+        }
       }
-    }
-  });
+    },
+  );
 
-  it.each(FORCE_SEARCH_PREFIXES)('resolves the redirected query to a plain marked search (%j)', async (prefix) => {
-    const { rules } = await sync({ state: state() });
-    const url = resultsUrl(SEARCH_ENGINES[0], `${encodeURIComponent(prefix)}gh+foo`);
-    // Exactly what go.ts receives: the `q` of the url Chrome redirected to.
-    const handed = new URL(
-      (redirectTo(rules, url) as string).replace(/^chrome-extension:/, 'https:'),
-    ).searchParams.get('q') as string;
-    expect(handed).toBe(`${prefix}gh foo`);
+  it.each(FORCE_SEARCH_PREFIXES)(
+    'resolves the redirected query to a plain marked search (%j)',
+    async (prefix) => {
+      const { rules } = await sync({ state: state() });
+      const url = resultsUrl(SEARCH_ENGINES[0], `${encodeURIComponent(prefix)}gh+foo`);
+      // Exactly what go.ts receives: the `q` of the url Chrome redirected to.
+      const handed = new URL(
+        (redirectTo(rules, url) as string).replace(/^chrome-extension:/, 'https:'),
+      ).searchParams.get('q') as string;
+      expect(handed).toBe(`${prefix}gh foo`);
 
-    const result = resolve(handed, commands, { ...DEFAULT_SETTINGS });
-    expect(result.fallback).toBe(true);
-    expect(result.command).toBeNull();
-    expect(result.url).toBe(`https://www.google.com/search?q=gh%20foo&${PASSTHROUGH_PARAM}=1`);
-  });
+      const result = resolve(handed, commands, { ...DEFAULT_SETTINGS });
+      expect(result.fallback).toBe(true);
+      expect(result.command).toBeNull();
+      expect(result.url).toBe(`https://www.google.com/search?q=gh%20foo&${PASSTHROUGH_PARAM}=1`);
+    },
+  );
 
-  it.each(FORCE_SEARCH_PREFIXES)('never leaks the escape into the search terms (%j)', async (prefix) => {
-    const { rules } = await sync({ state: state() });
-    const url = resultsUrl(SEARCH_ENGINES[0], `${encodeURIComponent(prefix)}gh+foo`);
-    const handed = new URL(
-      (redirectTo(rules, url) as string).replace(/^chrome-extension:/, 'https:'),
-    ).searchParams.get('q') as string;
-    const searched = new URL(resolve(handed, commands, { ...DEFAULT_SETTINGS }).url).searchParams.get('q');
-    expect(searched).toBe('gh foo');
-    expect(searched).not.toContain(prefix);
-    expect(searched).not.toContain(encodeURIComponent(prefix));
-  });
+  it.each(FORCE_SEARCH_PREFIXES)(
+    'never leaks the escape into the search terms (%j)',
+    async (prefix) => {
+      const { rules } = await sync({ state: state() });
+      const url = resultsUrl(SEARCH_ENGINES[0], `${encodeURIComponent(prefix)}gh+foo`);
+      const handed = new URL(
+        (redirectTo(rules, url) as string).replace(/^chrome-extension:/, 'https:'),
+      ).searchParams.get('q') as string;
+      const searched = new URL(
+        resolve(handed, commands, { ...DEFAULT_SETTINGS }).url,
+      ).searchParams.get('q');
+      expect(searched).toBe('gh foo');
+      expect(searched).not.toContain(prefix);
+      expect(searched).not.toContain(encodeURIComponent(prefix));
+    },
+  );
 
-  it.each(FORCE_SEARCH_PREFIXES)('does not loop: the resulting search is never redirected (%j)', async (prefix) => {
-    const { rules } = await sync({ state: state() });
-    const searched = resolve(`${prefix}gh foo`, commands, { ...DEFAULT_SETTINGS }).url;
-    expect(claim(rules, searched)).toBe('allow');
-    // Nothing in the escape family matches it either, marker or no marker.
-    for (const rule of escapeRulesOf(rules)) {
-      expect(new RegExp(rule.condition.regexFilter as string, 'i').test(searched)).toBe(false);
-    }
+  it.each(FORCE_SEARCH_PREFIXES)(
+    'does not loop: the resulting search is never redirected (%j)',
+    async (prefix) => {
+      const { rules } = await sync({ state: state() });
+      const searched = resolve(`${prefix}gh foo`, commands, { ...DEFAULT_SETTINGS }).url;
+      expect(claim(rules, searched)).toBe('allow');
+      // Nothing in the escape family matches it either, marker or no marker.
+      for (const rule of escapeRulesOf(rules)) {
+        expect(new RegExp(rule.condition.regexFilter as string, 'i').test(searched)).toBe(false);
+      }
 
-    // A keyword rule still MATCHES `q=gh%20foo`, `blpass` sits past the end of
-    // the captured value, and is only outranked. When the remainder is not a
-    // keyword, literally no rule matches, which is the cleaner half of the same
-    // guarantee.
-    const plain = resolve(`${prefix}how tall is the eiffel tower`, commands, {
-      ...DEFAULT_SETTINGS,
-    }).url;
-    expect(rules.filter((rule) => new RegExp(rule.condition.regexFilter as string, 'i').test(plain)))
-      .toHaveLength(1);
-    expect(claim(rules, plain)).toBe('allow');
-  });
+      // A keyword rule still MATCHES `q=gh%20foo`, `blpass` sits past the end of
+      // the captured value, and is only outranked. When the remainder is not a
+      // keyword, literally no rule matches, which is the cleaner half of the same
+      // guarantee.
+      const plain = resolve(`${prefix}how tall is the eiffel tower`, commands, {
+        ...DEFAULT_SETTINGS,
+      }).url;
+      expect(
+        rules.filter((rule) => new RegExp(rule.condition.regexFilter as string, 'i').test(plain)),
+      ).toHaveLength(1);
+      expect(claim(rules, plain)).toBe('allow');
+    },
+  );
 
-  it.each(FORCE_SEARCH_PREFIXES)('cannot be claimed by a keyword rule first (%j)', async (prefix) => {
-    const { rules } = await sync({ state: state() });
-    const url = resultsUrl(SEARCH_ENGINES[0], `${encodeURIComponent(prefix)}gh+foo`);
-    const escapePriority = Math.max(
-      ...escapeRulesOf(rules)
-        .filter((rule) => new RegExp(rule.condition.regexFilter as string, 'i').test(url))
-        .map((rule) => rule.priority as number),
-    );
-    for (const rule of keywordRulesOf(rules)) {
-      expect(rule.priority as number).toBeLessThan(escapePriority);
-    }
-    // And in fact no keyword rule matches it at all: the value starts with the
-    // escape, and no alias may contain `\`, `=` or `%`.
-    const claimed = keywordRulesOf(rules).filter((rule) =>
-      new RegExp(rule.condition.regexFilter as string, 'i').test(url),
-    );
-    expect(claimed).toEqual([]);
-  });
+  it.each(FORCE_SEARCH_PREFIXES)(
+    'cannot be claimed by a keyword rule first (%j)',
+    async (prefix) => {
+      const { rules } = await sync({ state: state() });
+      const url = resultsUrl(SEARCH_ENGINES[0], `${encodeURIComponent(prefix)}gh+foo`);
+      const escapePriority = Math.max(
+        ...escapeRulesOf(rules)
+          .filter((rule) => new RegExp(rule.condition.regexFilter as string, 'i').test(url))
+          .map((rule) => rule.priority as number),
+      );
+      for (const rule of keywordRulesOf(rules)) {
+        expect(rule.priority as number).toBeLessThan(escapePriority);
+      }
+      // And in fact no keyword rule matches it at all: the value starts with the
+      // escape, and no alias may contain `\`, `=` or `%`.
+      const claimed = keywordRulesOf(rules).filter((rule) =>
+        new RegExp(rule.condition.regexFilter as string, 'i').test(url),
+      );
+      expect(claimed).toEqual([]);
+    },
+  );
 
   it('is registered even for a profile that overflows the rule budget', async () => {
     const { rules } = await sync({ state: state({}, synthetic(3000)) });

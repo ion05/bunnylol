@@ -1,8 +1,7 @@
 /**
- * `src/lib/draft.ts` is the string half of the add/edit form, pulled out of the
- * options page so it can be exercised without a DOM. The form's widgets are the
- * only thing left in `options.ts`; everything that decides what a typed line
- * MEANS lives here.
+ * `src/lib/draft.ts` is the string half of the add/edit form, kept out of the
+ * options page so it can be exercised without a DOM. `src/options/views/form.ts`
+ * owns the widgets; everything that decides what a typed line MEANS lives here.
  *
  * Importing the module at all is half the test: it must load under vitest's
  * `environment: 'node'`.

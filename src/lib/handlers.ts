@@ -97,7 +97,7 @@ const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[
  * can carry an unpaired surrogate; substituting U+FFFD keeps the user moving
  * instead of stranding them, and matches what every browser renders anyway.
  */
-export function encodeQuery(value: string): string {
+function encodeQuery(value: string): string {
   return encodeURIComponent(value.replace(LONE_SURROGATE, '\uFFFD'));
 }
 
@@ -105,7 +105,7 @@ export function encodeQuery(value: string): string {
  * Percent-encodes a run of path segments, but leaves `/` and `@` readable,
  * both are legal in a path, and `@scope/pkg` URLs are unreadable without them.
  */
-export function encodePath(value: string): string {
+function encodePath(value: string): string {
   return dropDotSegments(encodeQuery(value).replace(/%2F/gi, '/').replace(/%40/gi, '@'));
 }
 
@@ -253,7 +253,9 @@ function plainSearch(keyword: string, args: string, settings: Settings): string 
 }
 
 function findProvider(providerId: string): AiProvider {
-  const id = String(providerId ?? '').trim().toLowerCase();
+  const id = String(providerId ?? '')
+    .trim()
+    .toLowerCase();
   const found = AI_PROVIDERS.find((provider) => provider.id === id);
   return found ?? AI_PROVIDERS[0];
 }

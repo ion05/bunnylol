@@ -97,7 +97,7 @@ describe('an edit cannot inject a provider', () => {
 });
 
 describe('nothing can claim builtin', () => {
-  it('imports a custom command as the user\'s own however the file labels it', () => {
+  it("imports a custom command as the user's own however the file labels it", () => {
     const landed = land(
       file({
         custom: [
@@ -223,7 +223,7 @@ describe('an edited url that BunnyLol will not open is inherited, not applied', 
 });
 
 describe('an edited searchUrl that lost its {q} degrades instead of breaking', () => {
-  it('sends the words to the command\'s own site: search', () => {
+  it("sends the words to the command's own site: search", () => {
     const landed = land(file({ edits: { zoom: { searchUrl: 'https://zoom.us/j/' } } }));
     // The slot handler will not fill a template with no slot in it, so the
     // meeting id degrades exactly as an unparseable one does, a `site:` search
@@ -261,7 +261,9 @@ describe('an unknown category', () => {
       JSON.stringify({
         version: 1,
         overrides: {
-          custom: [{ keys: ['yt'], name: 'YouTube', url: 'https://youtube.com/', category: 'media' }],
+          custom: [
+            { keys: ['yt'], name: 'YouTube', url: 'https://youtube.com/', category: 'media' },
+          ],
         },
       }),
     );

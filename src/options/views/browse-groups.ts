@@ -197,7 +197,10 @@ export function turnOn(
 ): void {
   const live = rows.filter((row) => !removed.has(row.node));
   if (live.length === 0) return;
-  const next = enableAll(getState().overrides.disabled, live.map((row) => row.id));
+  const next = enableAll(
+    getState().overrides.disabled,
+    live.map((row) => row.id),
+  );
   // The write is issued first and nothing waits for it: `commitOverrides`
   // applies the new state before its first `await`, so the rows below still
   // move in the same tick as the click, and `applyFilter` gets to read a

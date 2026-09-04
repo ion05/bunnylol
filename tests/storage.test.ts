@@ -86,12 +86,32 @@ describe('importJson rejections', () => {
     ['a non-object overrides', '{"overrides":"nope"}', /"overrides" must be an object/i],
     ['a non-object settings', '{"settings":[]}', /"settings" must be an object/i],
     ['a newer format version', '{"version":99,"overrides":{}}', /newer version/i],
-    ['a non-array disabled list', '{"overrides":{"disabled":"gh"}}', /"disabled" must be an array/i],
-    ['a non-object keyOverrides', '{"overrides":{"keyOverrides":[]}}', /"keyOverrides" must be an object/i],
+    [
+      'a non-array disabled list',
+      '{"overrides":{"disabled":"gh"}}',
+      /"disabled" must be an array/i,
+    ],
+    [
+      'a non-object keyOverrides',
+      '{"overrides":{"keyOverrides":[]}}',
+      /"keyOverrides" must be an object/i,
+    ],
     ['a non-array custom list', '{"overrides":{"custom":{}}}', /"custom" must be an array/i],
-    ['a custom entry that is not an object', '{"overrides":{"custom":["gh"]}}', /Shortcut #1 is not a JSON object/],
-    ['a custom entry with no keys', '{"overrides":{"custom":[{"url":"https://x.test/"}]}}', /no keyword/i],
-    ['a custom entry with no url', '{"overrides":{"custom":[{"keys":["x"]}]}}', /missing its "url"/i],
+    [
+      'a custom entry that is not an object',
+      '{"overrides":{"custom":["gh"]}}',
+      /Shortcut #1 is not a JSON object/,
+    ],
+    [
+      'a custom entry with no keys',
+      '{"overrides":{"custom":[{"url":"https://x.test/"}]}}',
+      /no keyword/i,
+    ],
+    [
+      'a custom entry with no url',
+      '{"overrides":{"custom":[{"keys":["x"]}]}}',
+      /missing its "url"/i,
+    ],
     [
       'a custom entry with a non-string searchUrl',
       '{"overrides":{"custom":[{"keys":["x"],"url":"https://x.test/","searchUrl":7}]}}',
@@ -112,7 +132,11 @@ describe('importJson rejections', () => {
       '{"overrides":{"edits":{"gh":{"category":["dev"]}}}}',
       /"edits\.gh\.category" must be a string/,
     ],
-    ['an onboarding pick that is not a list', '{"overrides":{"enabledCategories":"dev"}}', /enabledCategories/],
+    [
+      'an onboarding pick that is not a list',
+      '{"overrides":{"enabledCategories":"dev"}}',
+      /enabledCategories/,
+    ],
     ['a seenBuiltins that is not a list', '{"overrides":{"seenBuiltins":{}}}', /seenBuiltins/],
   ];
 
@@ -168,7 +192,7 @@ describe('importJson leniency', () => {
     expect(state.overrides.edits).toEqual({ gh: { name: 'Mine' } });
   });
 
-  it('files a v1 export\'s media shortcut under My shortcuts instead of refusing it', () => {
+  it("files a v1 export's media shortcut under My shortcuts instead of refusing it", () => {
     // `media` was a shipped category until v1.1.0. Refusing the file would make
     // every v1.0.0 backup that used it unimportable, and the only fix on offer
     // would be hand-editing JSON the user did not write.
@@ -227,7 +251,13 @@ describe('importJson leniency', () => {
       JSON.stringify({
         overrides: {
           custom: [
-            { keys: ['gh'], name: 'Fake GitHub', url: 'https://evil.example/', builtin: true, category: 'dev' },
+            {
+              keys: ['gh'],
+              name: 'Fake GitHub',
+              url: 'https://evil.example/',
+              builtin: true,
+              category: 'dev',
+            },
           ],
         },
       }),
@@ -242,7 +272,9 @@ describe('importJson leniency', () => {
     const state = importJson(
       JSON.stringify({
         overrides: {
-          custom: [{ keys: ['  TiX  ', 'tix', ''], url: '  https://tix.example/  ', category: '  DEV ' }],
+          custom: [
+            { keys: ['  TiX  ', 'tix', ''], url: '  https://tix.example/  ', category: '  DEV ' },
+          ],
         },
       }),
     );
@@ -314,7 +346,9 @@ describe('importJson leniency', () => {
   });
 
   it('assigns the same ids on a second normalization', () => {
-    const once = importJson('{"overrides":{"custom":[{"keys":["tix"],"url":"https://tix.example/"}]}}');
+    const once = importJson(
+      '{"overrides":{"custom":[{"keys":["tix"],"url":"https://tix.example/"}]}}',
+    );
     const twice = importJson(exportJson({ overrides: once.overrides, settings: DEFAULT_SETTINGS }));
     expect(twice.overrides.custom[0].id).toBe('u:tix');
   });
@@ -446,13 +480,15 @@ describe('sections and the categories filed against them', () => {
 describe('the onboarding pick', () => {
   it('reads as "never onboarded" when the profile has no list', () => {
     expect(importJson('{"overrides":{}}').overrides.enabledCategories).toBeNull();
-    expect(importJson('{"overrides":{"enabledCategories":null}}').overrides.enabledCategories).toBeNull();
+    expect(
+      importJson('{"overrides":{"enabledCategories":null}}').overrides.enabledCategories,
+    ).toBeNull();
   });
 
   it('keeps an empty pick, which is a real answer', () => {
-    expect(importJson('{"overrides":{"enabledCategories":[]}}').overrides.enabledCategories).toEqual(
-      [],
-    );
+    expect(
+      importJson('{"overrides":{"enabledCategories":[]}}').overrides.enabledCategories,
+    ).toEqual([]);
   });
 
   it('drops an id that names no shipped category, and dedupes the rest', () => {
@@ -473,7 +509,9 @@ describe('the onboarding pick', () => {
   });
 
   it('is recognized as BunnyLol data in a bare snippet', () => {
-    expect(importJson('{"enabledCategories":["dev"]}').overrides.enabledCategories).toEqual(['dev']);
+    expect(importJson('{"enabledCategories":["dev"]}').overrides.enabledCategories).toEqual([
+      'dev',
+    ]);
   });
 });
 
@@ -664,14 +702,21 @@ describe('an import that could never work', () => {
         JSON.stringify({
           overrides: {
             custom: [
-              { keys: ['tix', 'ticket-2'], url: 'https://tix.example/', searchUrl: 'https://tix.example/?q={q}' },
+              {
+                keys: ['tix', 'ticket-2'],
+                url: 'https://tix.example/',
+                searchUrl: 'https://tix.example/?q={q}',
+              },
             ],
             keyOverrides: { lh: ['local'] },
             deleted: ['grok'],
             edits: { gh: { keys: ['hub'], name: 'Hub', searchUrl: null, example: null } },
             sections: [{ id: 'work', label: 'Work' }],
           },
-          settings: { defaultEngine: 'https://kagi.com/search?q=%s', aiTemplates: { claude: 'https://c.test/?q={q}' } },
+          settings: {
+            defaultEngine: 'https://kagi.com/search?q=%s',
+            aiTemplates: { claude: 'https://c.test/?q={q}' },
+          },
         }),
       ),
     ).not.toThrow();
@@ -697,7 +742,11 @@ describe('lenient recovery from a corrupt stored blob', () => {
         tix: {},
         'u:tix': { name: 'Mine too' },
       },
-      sections: [{ id: 'work', label: 'Work' }, { id: 'my work', label: 'x' }, { id: 'work', label: 'Twin' }],
+      sections: [
+        { id: 'work', label: 'Work' },
+        { id: 'my work', label: 'x' },
+        { id: 'work', label: 'Twin' },
+      ],
       custom: [
         { keys: ['foo bar'], url: 'https://x.test/' },
         { keys: ['tix'], url: 'not a url' },
@@ -740,7 +789,9 @@ describe('lenient recovery from a corrupt stored blob', () => {
 
   it('drops what it cannot use instead of throwing', () => {
     expect(recovered.overrides.disabled).toEqual(['gh']);
-    expect(recovered.overrides.custom.map((cmd: { keys: string[] }) => cmd.keys[0])).toEqual(['ok']);
+    expect(recovered.overrides.custom.map((cmd: { keys: string[] }) => cmd.keys[0])).toEqual([
+      'ok',
+    ]);
     expect(recovered.overrides.custom[0].searchUrl).toBeUndefined();
   });
 
@@ -824,7 +875,10 @@ describe('applyImport', () => {
   it('does not mutate the state it was handed', () => {
     const current: StoredState = JSON.parse(JSON.stringify(STATE));
     const snapshot = JSON.stringify(current);
-    applyImport(importJson('{"overrides":{"disabled":["npm"]},"settings":{"googleAccount":9}}'), current);
+    applyImport(
+      importJson('{"overrides":{"disabled":["npm"]},"settings":{"googleAccount":9}}'),
+      current,
+    );
     expect(JSON.stringify(current)).toBe(snapshot);
   });
 });
@@ -836,7 +890,9 @@ describe('interceptStopList', () => {
   });
 
   it('treats an empty list as a real choice and normalizes the entries', () => {
-    expect(importJson('{"settings":{"interceptStopList":[]}}').settings?.interceptStopList).toEqual([]);
+    expect(importJson('{"settings":{"interceptStopList":[]}}').settings?.interceptStopList).toEqual(
+      [],
+    );
     expect(
       importJson('{"settings":{"interceptStopList":["  NEW ","new","",42]}}').settings
         ?.interceptStopList,
@@ -858,9 +914,9 @@ describe('a format 1 file', () => {
   it('is accepted and its keyOverrides arrive as an edit', () => {
     const state = importJson('{"version":1,"overrides":{"keyOverrides":{"gh":["hub"]}}}');
     expect(state.overrides.edits.gh.keys).toEqual(['hub']);
-    expect(mergeCommands(BUILTIN_COMMANDS, state.overrides).find((cmd) => cmd.id === 'gh')?.keys).toEqual([
-      'hub',
-    ]);
+    expect(
+      mergeCommands(BUILTIN_COMMANDS, state.overrides).find((cmd) => cmd.id === 'gh')?.keys,
+    ).toEqual(['hub']);
   });
 
   it('is recognized as a bare overrides snippet too', () => {
@@ -916,7 +972,7 @@ describe('an edit cannot smuggle behaviour through the import', () => {
     expect(Object.keys(imported().edits.gh)).toEqual(['url']);
   });
 
-  it('leaves the merged command\'s handler, builtin flag and id alone', () => {
+  it("leaves the merged command's handler, builtin flag and id alone", () => {
     const gh = buildKeyMap(mergeCommands(BUILTIN_COMMANDS, imported())).get('gh');
     expect(gh?.handler).toBe('github');
     expect(gh?.builtin).toBe(true);
@@ -967,7 +1023,9 @@ describe('deleting a shipped shortcut', () => {
   });
 
   it('survives an export round trip, edit and all', () => {
-    const round = importJson(exportJson({ overrides: state.overrides, settings: DEFAULT_SETTINGS }));
+    const round = importJson(
+      exportJson({ overrides: state.overrides, settings: DEFAULT_SETTINGS }),
+    );
     expect(round.overrides.deleted).toEqual(['gh']);
     // Read through to the merge rather than stopping at the stored list: a
     // round trip that dropped the id would quietly bring the shortcut back,

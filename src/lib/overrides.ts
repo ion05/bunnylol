@@ -74,10 +74,11 @@ const FALLBACK_SLUG = 'shortcut';
  * one past the length cap. A hand-edited file cannot key an override map with
  * something the resolver could never look up again.
  *
- * It deliberately does NOT also require the mint alphabet: a shipped id is a
- * shipped key, and one of those is `?`, so an alphabet check here would leave
- * that command with no identity at all. Adoption of a *claimed* id is narrowed
- * to the `u:` namespace at the storage boundary instead, where the claim is.
+ * It deliberately does NOT also require the mint alphabet: a shipped id IS a
+ * shipped key, and the registry is not held to that alphabet, so a shipped key
+ * outside it would be left with no identity at all rather than merely unminted.
+ * Adoption of a *claimed* id is narrowed to the `u:` namespace at the storage
+ * boundary instead, where the claim is.
  */
 export function normalizeId(raw: unknown): string {
   if (typeof raw !== 'string') return '';
@@ -357,7 +358,8 @@ export function sectionLabel(id: string, sections: Section[] | undefined): strin
   // `Object.hasOwn`, not `CATEGORY_LABELS[key]`: `key` is an open id off
   // untrusted data and `validateSectionId` accepts `constructor`, so a plain
   // lookup would answer with something off `Object.prototype`.
-  if (Object.hasOwn(CATEGORY_LABELS, key)) return CATEGORY_LABELS[key as keyof typeof CATEGORY_LABELS];
+  if (Object.hasOwn(CATEGORY_LABELS, key))
+    return CATEGORY_LABELS[key as keyof typeof CATEGORY_LABELS];
   return key;
 }
 
@@ -528,7 +530,10 @@ export function sectionLabelTaken(
  * the profile is at `MAX_SECTIONS`: refused rather than added and silently
  * dropped by the storage boundary on the next save.
  */
-export function addSection(overrides: Overrides, label: string): { overrides: Overrides; id: string } {
+export function addSection(
+  overrides: Overrides,
+  label: string,
+): { overrides: Overrides; id: string } {
   const check = validateSectionLabel(label);
   const sections = overrides?.sections ?? [];
   if (!check.ok || sections.length >= MAX_SECTIONS) return { overrides, id: '' };

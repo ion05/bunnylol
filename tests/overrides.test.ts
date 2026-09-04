@@ -471,7 +471,7 @@ describe('sectionOrder', () => {
     cmd({ keys: ['x'], category: 'sec-gone' }),
   ];
 
-  it('leads with the user\'s own shortcuts, then the shipped order, then sections, then strays', () => {
+  it("leads with the user's own shortcuts, then the shipped order, then sections, then strays", () => {
     expect(sectionOrder(WORK, commands)).toEqual([
       'custom',
       ...CATEGORIES.filter((category) => category !== 'custom'),
@@ -512,9 +512,9 @@ describe('sectionOptions', () => {
     const options = sectionOptions(WORK, [cmd({ keys: ['tix'], category: 'custom' })]);
     expect(options[0]).toEqual({ id: 'custom', label: 'My shortcuts' });
     expect(options[options.length - 1]).toEqual({ id: 'sec-work', label: 'Work' });
-    expect(options.map((option) => option.id)).toEqual(sectionOrder(WORK, [
-      cmd({ keys: ['tix'], category: 'custom' }),
-    ]));
+    expect(options.map((option) => option.id)).toEqual(
+      sectionOrder(WORK, [cmd({ keys: ['tix'], category: 'custom' })]),
+    );
   });
 });
 
@@ -534,7 +534,7 @@ describe('sectionMembers', () => {
     expect(sectionMembers('dev', builtins, overrides)).toEqual(['npm']);
   });
 
-  it('counts the user\'s own shortcuts too', () => {
+  it("counts the user's own shortcuts too", () => {
     const overrides = overridesWith({
       sections: WORK,
       custom: [cmd({ id: 'u:tix', keys: ['tix'], category: 'sec-work' })],
@@ -623,7 +623,7 @@ describe('sectionLabelTaken', () => {
     expect(sectionLabelTaken('Engineering', renamed)).toBe(true);
   });
 
-  it('says nothing about a blank label: that is the validator\'s answer', () => {
+  it("says nothing about a blank label: that is the validator's answer", () => {
     expect(sectionLabelTaken('   ', WORK)).toBe(false);
   });
 
@@ -643,7 +643,7 @@ describe('sectionLabelTaken', () => {
       expect(sectionLabelTaken('developer', WORK, 'sec-work')).toBe(true);
     });
 
-    it('refuses another user section\'s label', () => {
+    it("refuses another user section's label", () => {
       const two: Section[] = [...WORK, { id: 'sec-play', label: 'Play' }];
       expect(sectionLabelTaken('Play', two, 'sec-work')).toBe(true);
       expect(sectionLabelTaken('Client work', two, 'sec-work')).toBe(false);

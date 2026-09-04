@@ -27,7 +27,12 @@ import {
   normalizeId,
 } from '../overrides';
 import { clone } from '../text';
-import { validateAlias, validateSectionId, validateSectionLabel, validateUrlTemplate } from '../validate';
+import {
+  validateAlias,
+  validateSectionId,
+  validateSectionLabel,
+  validateUrlTemplate,
+} from '../validate';
 import { EXPORT_VERSION, SHIPPED_IDS, asRecord, assignCustomIds, trimmed } from './shared';
 import {
   normalizeCategoryPick,
@@ -63,7 +68,11 @@ export function importJson(text: string): ImportedState {
   try {
     parsed = JSON.parse(text);
   } catch (err) {
-    throw new Error(`That file is not valid JSON: ${(err as Error).message}`);
+    // The message is interpolated because it is the only useful thing here: it
+    // names the line and column the file went wrong at, and the options page
+    // shows it verbatim. `cause` carries the original for anyone reading the
+    // console, since the rethrow otherwise loses the stack entirely.
+    throw new Error(`That file is not valid JSON: ${(err as Error).message}`, { cause: err });
   }
 
   const root = asRecord(parsed);
@@ -140,7 +149,9 @@ function parseSettings(source: Record<string, unknown>): Settings {
 
   const templates = asRecord(source.aiTemplates);
   if (source.aiTemplates !== undefined && !templates) {
-    throw new Error('"settings.aiTemplates" must be an object mapping an AI provider id to a URL template.');
+    throw new Error(
+      '"settings.aiTemplates" must be an object mapping an AI provider id to a URL template.',
+    );
   }
   for (const [id, template] of Object.entries(templates ?? {})) {
     if (!trimmed(template)) continue;
@@ -200,7 +211,10 @@ function parseOverrides(source: Record<string, unknown> | null): Overrides {
     // what the file means.
     disabled: normalizeIdList(source.disabled),
     deleted: normalizeIdList(source.deleted).filter((id) => SHIPPED_IDS.has(id)),
-    edits: foldLegacyKeyOverrides(parseEdits(source.edits, known), parseKeyOverrides(source.keyOverrides)),
+    edits: foldLegacyKeyOverrides(
+      parseEdits(source.edits, known),
+      parseKeyOverrides(source.keyOverrides),
+    ),
     sections,
     custom,
     // Lenient like `disabled`: an id this build does not ship is a pack that
@@ -346,7 +360,9 @@ function parseKeyOverrides(raw: unknown): Record<string, string[]> {
       throw new Error(`"keyOverrides" has a keyword that ${canonical.reason}.`);
     }
     if (!Array.isArray(aliases)) {
-      throw new Error(`"keyOverrides.${canonical.alias}" must be an array of replacement keywords.`);
+      throw new Error(
+        `"keyOverrides.${canonical.alias}" must be an array of replacement keywords.`,
+      );
     }
     const list = parseAliasList(aliases, `"keyOverrides.${canonical.alias}"`);
     // `mergeCommands` already reads an empty list as "no override", so dropping

@@ -1,5 +1,6 @@
 /**
- * The "Data" card in Settings: export, import (merge or replace), and reset.
+ * The "Data" card in Settings: export, import (merge or replace), Reset to
+ * defaults, and Start over.
  */
 
 import { BUILTIN_COMMANDS } from '../../lib/commands';
@@ -219,7 +220,10 @@ export function renderData(): HTMLElement {
           text: 'Reset deletes every shortcut you made, restores every shipped shortcut you turned off or deleted, forgets your sections and puts settings back to their defaults.',
         }),
         confirmButton('Reset to defaults', 'Click again to reset', 'btn btn-danger', () => {
-          const defaults = { overrides: clone(DEFAULT_OVERRIDES), settings: clone(DEFAULT_SETTINGS) };
+          const defaults = {
+            overrides: clone(DEFAULT_OVERRIDES),
+            settings: clone(DEFAULT_SETTINGS),
+          };
           commitState(defaults).then(
             () => {
               setNotice({ tone: 'ok', text: 'Everything is back to defaults.' });
@@ -251,7 +255,7 @@ export function renderData(): HTMLElement {
   return card.section;
 }
 
-export function exportState(name = 'bunnylol-shortcuts.json'): void {
+function exportState(name = 'bunnylol-shortcuts.json'): void {
   const blob = new Blob([exportJson(getState())], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const link = el('a', { class: 'visually-hidden' });
@@ -265,7 +269,7 @@ export function exportState(name = 'bunnylol-shortcuts.json'): void {
 }
 
 /** Written before any import overwrites anything, so "undo" is a file. */
-export function backupState(): void {
+function backupState(): void {
   const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
   exportState(`bunnylol-backup-${stamp}.json`);
 }
@@ -289,7 +293,7 @@ function shortcutNames(ids: string[]): string {
 }
 
 /** A list long enough to be trustworthy without being the whole catalogue. */
-export function nameList(items: string[], limit = 6): string {
+function nameList(items: string[], limit = 6): string {
   if (items.length <= limit) return items.join(', ');
   return `${items.slice(0, limit).join(', ')}, +${items.length - limit} more`;
 }

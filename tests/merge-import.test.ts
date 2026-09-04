@@ -89,7 +89,10 @@ describe('mergeOverrides custom commands', () => {
         cmd({ keys: ['pay'], url: 'https://pay.example/' }),
       ],
     });
-    const plan = mergeOverrides(overrides({ custom: [cmd({ id: 'u:mine', keys: ['mine'] })] }), incoming);
+    const plan = mergeOverrides(
+      overrides({ custom: [cmd({ id: 'u:mine', keys: ['mine'] })] }),
+      incoming,
+    );
     expect(plan.overrides.custom.length).toBe(4);
     const ids = plan.overrides.custom.map(shortcutId);
     expect(new Set(ids).size).toBe(ids.length);
@@ -277,7 +280,10 @@ describe('mergeOverrides sections', () => {
   });
 
   it('adds nothing when a shipped id arrives under the label it already has', () => {
-    const plan = mergeOverrides(overrides(), overrides({ sections: [{ id: 'dev', label: 'Developer' }] }));
+    const plan = mergeOverrides(
+      overrides(),
+      overrides({ sections: [{ id: 'dev', label: 'Developer' }] }),
+    );
     expect(plan.overrides.sections).toEqual([]);
     expect(plan.sections).toEqual([]);
   });
@@ -378,7 +384,7 @@ describe('mergeOverrides onboarding fields', () => {
     expect(plan.enabledCategories).toBeUndefined();
   });
 
-  it('adopts the file\'s pick only when we never made one', () => {
+  it("adopts the file's pick only when we never made one", () => {
     const plan = mergeOverrides(overrides(), overrides({ enabledCategories: ['purdue'] }));
     expect(plan.overrides.enabledCategories).toEqual(['purdue']);
     expect(plan.enabledCategories).toEqual(['purdue']);
@@ -437,8 +443,8 @@ describe('signatureOf', () => {
   it('cannot be fooled by a field boundary', () => {
     // The separator is a NUL, which no url or handler id contains, so
     // `url: 'a', searchUrl: 'b'` and `url: 'ab'` stay distinguishable.
-    expect(signatureOf(cmd({ url: 'https://a.example/', searchUrl: 'https://b.example/' }))).not.toBe(
-      signatureOf(cmd({ url: 'https://a.example/https://b.example/' })),
-    );
+    expect(
+      signatureOf(cmd({ url: 'https://a.example/', searchUrl: 'https://b.example/' })),
+    ).not.toBe(signatureOf(cmd({ url: 'https://a.example/https://b.example/' })));
   });
 });

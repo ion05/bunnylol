@@ -1,7 +1,14 @@
 /// <reference types="vite/client" />
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { ruleBodies, ruleIndex, rules, rulesFor, stripComments, tokenValue } from './helpers/tokens';
+import {
+  ruleBodies,
+  ruleIndex,
+  rules,
+  rulesFor,
+  stripComments,
+  tokenValue,
+} from './helpers/tokens';
 import { PILL_CLASS } from '../src/options/status';
 import tokens from '../design/tokens.css?raw';
 import optionsCss from '../src/options/options.css?raw';
@@ -75,7 +82,9 @@ const declarations = [...rootBlock.matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)].map(
 
 describe('design tokens', () => {
   it('declares every colour as a light-dark() pair bar the two documented flat tokens', () => {
-    const colours = declarations.filter((d) => d.value.includes('#') || d.value.startsWith('light-dark('));
+    const colours = declarations.filter(
+      (d) => d.value.includes('#') || d.value.startsWith('light-dark('),
+    );
     expect(colours.length).toBeGreaterThan(10);
 
     const flat = colours.filter((d) => !d.value.startsWith('light-dark(')).map((d) => d.name);
@@ -144,7 +153,8 @@ describe('the stylesheets are wired to the tokens', () => {
   it.each(SHEETS)('%s only edges a shape with the accent when it also fills it', (_name, css) => {
     // The shorthand draws the same 2.04:1 hairline the longhand does, so both
     // spellings and both fill tokens are matched.
-    const edge = /\bborder(?:-(?:top|right|bottom|left))?(?:-color)?:[^;]*var\(--accent(?:-hover)?\)/;
+    const edge =
+      /\bborder(?:-(?:top|right|bottom|left))?(?:-color)?:[^;]*var\(--accent(?:-hover)?\)/;
     const fill = /\bbackground(?:-color)?:[^;]*var\(--accent(?:-hover)?\)/;
     for (const body of ruleBodies(css)) {
       if (edge.test(body)) expect(body).toMatch(fill);
@@ -339,7 +349,12 @@ describe('the options page implements the approved component contract', () => {
     // is about to click it.
     const hovers = [...selectors].filter((one) => /^\.btn(?:-[a-z]+)?:hover$/.test(one));
     expect(hovers).toEqual(
-      expect.arrayContaining(['.btn:hover', '.btn-ghost:hover', '.btn-danger:hover', '.btn-armed:hover']),
+      expect.arrayContaining([
+        '.btn:hover',
+        '.btn-ghost:hover',
+        '.btn-danger:hover',
+        '.btn-armed:hover',
+      ]),
     );
 
     const disabled = ruleIndex(optionsCss, '.btn:disabled');
@@ -499,11 +514,11 @@ describe('the dispatch page', () => {
    */
   const HAND_COPIED: Array<[string, string]> = [
     ['bg', 'the page'],
-    ['text', 'body copy, the toast and the hovered dismiss button'],
-    ['text-dim', 'the status line, the typed echo and the dismiss button'],
+    ['text', 'body copy and the fill of the confirmation button'],
+    ['text-dim', 'the status line, the confirmation URL and the typed echo'],
     ['text-faint', 'the explanation under the echo'],
-    ['bg-raised', 'the toast fill'],
-    ['border-strong', 'the toast edge'],
+    ['bg-raised', 'the fill of the confirmation panel'],
+    ['border-strong', 'the edge of the confirmation panel'],
   ];
 
   /**
@@ -579,7 +594,14 @@ describe('the dispatch page', () => {
     // restyled without editing TypeScript, and none of them were tokens.
     expect(goTs).not.toContain('style.cssText');
     expect(goTs).not.toMatch(/\.style\.[a-zA-Z]+\s*=/);
-    for (const name of ['err-title', 'err-echo', 'err-why', 'err-actions', 'go-link', 'err-fallback']) {
+    for (const name of [
+      'err-title',
+      'err-echo',
+      'err-why',
+      'err-actions',
+      'go-link',
+      'err-fallback',
+    ]) {
       expect([name, goTs.includes(`'${name}'`)]).toEqual([name, true]);
       expect([name, goHtml.includes(`.${name}{`)]).toEqual([name, true]);
     }
@@ -607,7 +629,7 @@ describe('the extension icon', () => {
     const png = readFileSync(new URL(path, import.meta.url));
     const parts: Uint8Array<ArrayBuffer>[] = [];
     let width = 0;
-    for (let at = 8; at < png.length; ) {
+    for (let at = 8; at < png.length;) {
       const length = uint32(png, at);
       const type = String.fromCharCode(...png.subarray(at + 4, at + 8));
       const body = png.subarray(at + 8, at + 8 + length);
@@ -642,9 +664,9 @@ describe('the extension icon', () => {
     // one per scheme, and no colour at all is not a colour to guess at.
     expect(readFlatHex(tokens, '--accent')).toEqual(rgb(tokenValue(tokens, 'accent', 'light')));
     expect(readFlatHex(':root { --accent: #e1ab76; }', '--accent')).toEqual([0xe1, 0xab, 0x76]);
-    expect(() => readFlatHex(':root { --accent: light-dark(#e1ab76, #e1ab76); }', '--accent')).toThrow(
-      /--accent/,
-    );
+    expect(() =>
+      readFlatHex(':root { --accent: light-dark(#e1ab76, #e1ab76); }', '--accent'),
+    ).toThrow(/--accent/);
     // The colon has to follow the name, or --accent-text answers for --accent.
     expect(() => readFlatHex(':root { --accent-text: #895420; }', '--accent')).toThrow(/--accent/);
   });
@@ -654,7 +676,10 @@ describe('the extension icon', () => {
     const glyph = rgb(tokenValue(tokens, 'accent-fg', 'light'));
     const toolbar = await pixels('../public/icons/icon128.png');
     const store = await pixels('../store/icon128.png');
-    for (const [name, pixel] of [['toolbar', toolbar], ['store', store]] as const) {
+    for (const [name, pixel] of [
+      ['toolbar', toolbar],
+      ['store', store],
+    ] as const) {
       // The tile above the ears, then the middle of the rabbit's head.
       expect([name, pixel(64, 19)]).toEqual([name, [...accent, 255]]);
       expect([name, pixel(64, 90)]).toEqual([name, [...glyph, 255]]);

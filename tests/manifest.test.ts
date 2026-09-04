@@ -33,7 +33,7 @@ describe('manifest', () => {
     expect(war.resources).toEqual(['go.html']);
     // `use_dynamic_url` would rotate the resource URL per site and break the
     // static `chrome-extension://<id>/go.html` substitution the redirect rules
-    // are built from (`redirectRule` in src/lib/dnr.ts).
+    // are built from (`redirectRule` in src/lib/dnr/rules.ts).
     expect(war).not.toHaveProperty('use_dynamic_url');
   });
 

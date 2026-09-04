@@ -32,9 +32,7 @@ import type { Overrides, StoredState } from '../../lib/types';
  */
 export function initialPicks(overrides: Overrides): Set<string> {
   const hidden = new Set<string>(HIDDEN_CATEGORIES);
-  const source = hasOnboarded(overrides)
-    ? (overrides.enabledCategories ?? [])
-    : STARTER_CATEGORIES;
+  const source = hasOnboarded(overrides) ? (overrides.enabledCategories ?? []) : STARTER_CATEGORIES;
   return new Set(source.filter((id) => !hidden.has(id)));
 }
 

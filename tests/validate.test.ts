@@ -91,10 +91,13 @@ describe('validateAlias', () => {
    * whitespace, so an alias containing one is not merely awkward: it cannot be
    * typed on any surface, and storing it hides a dead entry in the user's list.
    */
-  it.each(['foo bar', 'foo\tbar', 'foo\nbar', 'a b c'])('rejects %j, which can never match', (raw) => {
-    expect(alias(raw)).toBeNull();
-    expect(validateAlias(raw)).toMatchObject({ ok: false });
-  });
+  it.each(['foo bar', 'foo\tbar', 'foo\nbar', 'a b c'])(
+    'rejects %j, which can never match',
+    (raw) => {
+      expect(alias(raw)).toBeNull();
+      expect(validateAlias(raw)).toMatchObject({ ok: false });
+    },
+  );
 
   it('explains itself well enough to show a user', () => {
     const check = validateAlias('foo bar');

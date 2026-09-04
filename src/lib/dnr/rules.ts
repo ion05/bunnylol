@@ -60,8 +60,8 @@ const ALLOW_RULE_ID_BASE = 1_000_000;
  * newer Chrome) and `MAX_NUMBER_OF_REGEX_RULES` is 1000: every rule we build
  * is a regex rule, so 1000 is the binding one. We stay comfortably under it
  * while leaving enough budget that the builtin registry plus a realistic custom
- * profile is covered with nothing dropped: the builtins alone need 60 rules
- * (18 shards x 3 engines, plus 3 allow and 3 escape).
+ * profile is covered with nothing dropped: the builtins alone need 36 rules
+ * (10 shards x 3 engines, plus 3 allow and 3 escape).
  */
 export const MAX_RULES = 300;
 

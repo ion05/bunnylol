@@ -131,7 +131,10 @@ export interface BrowseGroup {
  */
 export function browseGroups(entries: Entry[], sections: Section[] | undefined): BrowseGroup[] {
   const groups: BrowseGroup[] = [];
-  for (const id of sectionOrder(sections, entries.map((entry) => entry.cmd))) {
+  for (const id of sectionOrder(
+    sections,
+    entries.map((entry) => entry.cmd),
+  )) {
     // Through `sectionKey`, because that is what `sectionOrder` minted the id
     // with: comparing the raw strings drops a row whose stored category
     // differs only in case, and it would be dropped silently.

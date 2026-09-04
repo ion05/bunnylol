@@ -160,7 +160,7 @@ function setSelected(index: number, scroll = false): void {
 function move(delta: number): void {
   const span = matches.length + 1;
   if (span < 2) return;
-  setSelected((((selected + 1 + delta) % span) + span) % span - 1, true);
+  setSelected(((((selected + 1 + delta) % span) + span) % span) - 1, true);
 }
 
 // ------------------------------------------------------------ navigation ---
@@ -259,7 +259,7 @@ function highlight(text: string, keyword: string): Node[] {
   if (i < needle.length) return [document.createTextNode(text)];
 
   const nodes: Node[] = [];
-  for (let start = 0; start < text.length; ) {
+  for (let start = 0; start < text.length;) {
     let end = start + 1;
     while (end < text.length && hit[end] === hit[start]) end += 1;
     const chunk = text.slice(start, end);

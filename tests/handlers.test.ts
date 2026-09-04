@@ -102,10 +102,18 @@ describe('github', () => {
   });
 
   it('maps a trailing tab word onto the repo tab', () => {
-    expect(github('facebook/react issues', GH, settings())).toBe('https://github.com/facebook/react/issues');
-    expect(github('facebook/react pr', GH, settings())).toBe('https://github.com/facebook/react/pulls');
-    expect(github('facebook/react PULLS', GH, settings())).toBe('https://github.com/facebook/react/pulls');
-    expect(github('facebook/react actions', GH, settings())).toBe('https://github.com/facebook/react/actions');
+    expect(github('facebook/react issues', GH, settings())).toBe(
+      'https://github.com/facebook/react/issues',
+    );
+    expect(github('facebook/react pr', GH, settings())).toBe(
+      'https://github.com/facebook/react/pulls',
+    );
+    expect(github('facebook/react PULLS', GH, settings())).toBe(
+      'https://github.com/facebook/react/pulls',
+    );
+    expect(github('facebook/react actions', GH, settings())).toBe(
+      'https://github.com/facebook/react/actions',
+    );
   });
 
   it('searches inside the repo when the trailing words are not a tab', () => {
@@ -115,7 +123,9 @@ describe('github', () => {
   });
 
   it('resolves "me" against settings.githubUser', () => {
-    expect(github('me', GH, settings({ githubUser: 'octocat' }))).toBe('https://github.com/octocat');
+    expect(github('me', GH, settings({ githubUser: 'octocat' }))).toBe(
+      'https://github.com/octocat',
+    );
   });
 
   it('falls back to a search when "me" has no configured user', () => {
@@ -131,8 +141,12 @@ describe('github', () => {
   });
 
   it('unwraps a pasted github.com url', () => {
-    expect(github('https://github.com/facebook/react', GH, settings())).toBe('https://github.com/facebook/react');
-    expect(github('github.com/facebook/react', GH, settings())).toBe('https://github.com/facebook/react');
+    expect(github('https://github.com/facebook/react', GH, settings())).toBe(
+      'https://github.com/facebook/react',
+    );
+    expect(github('github.com/facebook/react', GH, settings())).toBe(
+      'https://github.com/facebook/react',
+    );
     expect(github('https://www.github.com/facebook/react/issues', GH, settings())).toBe(
       'https://github.com/facebook/react/issues',
     );
@@ -169,7 +183,9 @@ describe('github sub-handlers', () => {
   it('githubPulls searches pull requests', () => {
     const pr = cmd(['pr'], 'https://github.com/pulls', 'githubPulls');
     expect(HANDLERS.githubPulls('', pr, settings())).toBe('https://github.com/pulls');
-    expect(HANDLERS.githubPulls('vitejs/vite', pr, settings())).toBe('https://github.com/pulls?q=vitejs%2Fvite');
+    expect(HANDLERS.githubPulls('vitejs/vite', pr, settings())).toBe(
+      'https://github.com/pulls?q=vitejs%2Fvite',
+    );
   });
 
   it('githubIssues searches issues', () => {
@@ -212,7 +228,9 @@ describe('reddit', () => {
 
   it('handles user paths and pasted urls', () => {
     expect(reddit('u/spez', RD, settings())).toBe('https://www.reddit.com/user/spez/');
-    expect(reddit('https://old.reddit.com/r/purdue', RD, settings())).toBe('https://www.reddit.com/r/purdue/');
+    expect(reddit('https://old.reddit.com/r/purdue', RD, settings())).toBe(
+      'https://www.reddit.com/r/purdue/',
+    );
   });
 
   it('searches for anything else', () => {
@@ -230,12 +248,18 @@ describe('npm', () => {
   });
 
   it('keeps the @ and / of a scoped package readable', () => {
-    expect(HANDLERS.npm('@scoped/name', NPM, settings())).toBe('https://www.npmjs.com/package/@scoped/name');
-    expect(HANDLERS.npm('@types/node', NPM, settings())).toBe('https://www.npmjs.com/package/@types/node');
+    expect(HANDLERS.npm('@scoped/name', NPM, settings())).toBe(
+      'https://www.npmjs.com/package/@scoped/name',
+    );
+    expect(HANDLERS.npm('@types/node', NPM, settings())).toBe(
+      'https://www.npmjs.com/package/@types/node',
+    );
   });
 
   it('searches when the input is not a package name', () => {
-    expect(HANDLERS.npm('react router', NPM, settings())).toBe('https://www.npmjs.com/search?q=react%20router');
+    expect(HANDLERS.npm('react router', NPM, settings())).toBe(
+      'https://www.npmjs.com/search?q=react%20router',
+    );
     expect(HANDLERS.npm('React', NPM, settings())).toBe('https://www.npmjs.com/search?q=React');
   });
 
@@ -255,7 +279,9 @@ describe('google workspace handlers', () => {
 
   it('gmail opens the inbox when bare and honours the account index', () => {
     expect(HANDLERS.gmail('', GMAIL, settings())).toBe('https://mail.google.com/mail/u/0/');
-    expect(HANDLERS.gmail('', GMAIL, settings({ googleAccount: 2 }))).toBe('https://mail.google.com/mail/u/2/');
+    expect(HANDLERS.gmail('', GMAIL, settings({ googleAccount: 2 }))).toBe(
+      'https://mail.google.com/mail/u/2/',
+    );
   });
 
   it('gdrive searches files or opens my-drive', () => {
@@ -296,8 +322,12 @@ describe('google workspace handlers', () => {
   });
 
   it('rejects a nonsense account index', () => {
-    expect(HANDLERS.gmail('', GMAIL, settings({ googleAccount: -3 }))).toBe('https://mail.google.com/mail/u/0/');
-    expect(HANDLERS.gmail('', GMAIL, settings({ googleAccount: 1.5 }))).toBe('https://mail.google.com/mail/u/0/');
+    expect(HANDLERS.gmail('', GMAIL, settings({ googleAccount: -3 }))).toBe(
+      'https://mail.google.com/mail/u/0/',
+    );
+    expect(HANDLERS.gmail('', GMAIL, settings({ googleAccount: 1.5 }))).toBe(
+      'https://mail.google.com/mail/u/0/',
+    );
   });
 });
 
@@ -313,7 +343,9 @@ describe('microsoft handlers', () => {
   it('onedrive searches files through the m365 portal', () => {
     const od = cmd(['od'], 'https://m365.cloud.microsoft/onedrive', 'onedrive');
     expect(HANDLERS.onedrive('', od, settings())).toBe('https://m365.cloud.microsoft/onedrive');
-    expect(HANDLERS.onedrive('budget', od, settings())).toBe('https://m365.cloud.microsoft/search?q=budget');
+    expect(HANDLERS.onedrive('budget', od, settings())).toBe(
+      'https://m365.cloud.microsoft/search?q=budget',
+    );
   });
 
   it('teams deep-links a chat only for an address-shaped argument', () => {
@@ -335,8 +367,12 @@ describe('microsoft handlers', () => {
 describe('purdue handlers', () => {
   it('brightspace deep-links a numeric org unit only', () => {
     const bs = builtin('bs');
-    expect(HANDLERS.brightspace('123456', bs, settings())).toBe('https://purdue.brightspace.com/d2l/home/123456');
-    expect(HANDLERS.brightspace('', bs, settings())).toBe('https://purdue.brightspace.com/d2l/home');
+    expect(HANDLERS.brightspace('123456', bs, settings())).toBe(
+      'https://purdue.brightspace.com/d2l/home/123456',
+    );
+    expect(HANDLERS.brightspace('', bs, settings())).toBe(
+      'https://purdue.brightspace.com/d2l/home',
+    );
   });
 
   it('brightspace sends non-numeric arguments to a purdue.edu search', () => {
@@ -347,7 +383,9 @@ describe('purdue handlers', () => {
 
   it('gradescope deep-links a numeric course only', () => {
     const gs = builtin('gs');
-    expect(HANDLERS.gradescope('987654', gs, settings())).toBe('https://www.gradescope.com/courses/987654');
+    expect(HANDLERS.gradescope('987654', gs, settings())).toBe(
+      'https://www.gradescope.com/courses/987654',
+    );
     expect(HANDLERS.gradescope('', gs, settings())).toBe('https://www.gradescope.com/');
   });
 
@@ -361,16 +399,28 @@ describe('purdue handlers', () => {
   // allowed to live in the handler: a user who repoints the row at their own
   // institution must keep both the deep link and the degrade.
   it('brightspace follows an edited url to another institution', () => {
-    const bs: Command = { ...builtin('bs'), url: 'https://iu.brightspace.com/d2l/home', searchUrl: undefined };
-    expect(HANDLERS.brightspace('4242', bs, settings())).toBe('https://iu.brightspace.com/d2l/home/4242');
+    const bs: Command = {
+      ...builtin('bs'),
+      url: 'https://iu.brightspace.com/d2l/home',
+      searchUrl: undefined,
+    };
+    expect(HANDLERS.brightspace('4242', bs, settings())).toBe(
+      'https://iu.brightspace.com/d2l/home/4242',
+    );
     expect(HANDLERS.brightspace('cs251', bs, settings())).toBe(
       'https://www.google.com/search?q=site%3Abrightspace.com+cs251',
     );
   });
 
   it('gradescope follows an edited url to another institution', () => {
-    const gs: Command = { ...builtin('gs'), url: 'https://gradescope.example.edu/', searchUrl: undefined };
-    expect(HANDLERS.gradescope('7', gs, settings())).toBe('https://gradescope.example.edu/courses/7');
+    const gs: Command = {
+      ...builtin('gs'),
+      url: 'https://gradescope.example.edu/',
+      searchUrl: undefined,
+    };
+    expect(HANDLERS.gradescope('7', gs, settings())).toBe(
+      'https://gradescope.example.edu/courses/7',
+    );
     expect(HANDLERS.gradescope('rubric', gs, settings())).toBe(
       'https://www.google.com/search?q=site%3Aexample.edu+rubric',
     );
@@ -378,7 +428,9 @@ describe('purdue handlers', () => {
 
   it('sends the words to an edited searchUrl rather than a site: search', () => {
     const gs: Command = { ...builtin('gs'), searchUrl: 'https://example.test/find?q={q}' };
-    expect(HANDLERS.gradescope('pay scale', gs, settings())).toBe('https://example.test/find?q=pay%20scale');
+    expect(HANDLERS.gradescope('pay scale', gs, settings())).toBe(
+      'https://example.test/find?q=pay%20scale',
+    );
   });
 
   it('builds a clean deep link from a url carrying a query or fragment', () => {
@@ -400,9 +452,13 @@ describe('purdue handlers', () => {
       'https://school.brightspace.com/d2l/home/12345',
     );
     const account: Command = { ...builtin('gs'), url: 'https://www.gradescope.com/account' };
-    expect(HANDLERS.gradescope('7', account, settings())).toBe('https://www.gradescope.com/courses/7');
+    expect(HANDLERS.gradescope('7', account, settings())).toBe(
+      'https://www.gradescope.com/courses/7',
+    );
     const courses: Command = { ...builtin('gs'), url: 'https://www.gradescope.com/courses' };
-    expect(HANDLERS.gradescope('7', courses, settings())).toBe('https://www.gradescope.com/courses/7');
+    expect(HANDLERS.gradescope('7', courses, settings())).toBe(
+      'https://www.gradescope.com/courses/7',
+    );
   });
 
   // `validateUrlTemplate` parses with `new URL`, which accepts a special
@@ -423,7 +479,11 @@ describe('purdue handlers', () => {
   // A port is part of the authority but not part of the site, and `site:` takes
   // a host: a tenant on a non-default port must not degrade to `site:x.test:8443`.
   it('degrades to the host of a url carrying a port, without the port', () => {
-    const gs: Command = { ...builtin('gs'), url: 'https://gradescope.test:8443/', searchUrl: undefined };
+    const gs: Command = {
+      ...builtin('gs'),
+      url: 'https://gradescope.test:8443/',
+      searchUrl: undefined,
+    };
     expect(HANDLERS.gradescope('7', gs, settings())).toBe('https://gradescope.test:8443/courses/7');
     expect(HANDLERS.gradescope('rubric', gs, settings())).toBe(
       'https://www.google.com/search?q=site%3Agradescope.test+rubric',
@@ -458,7 +518,9 @@ describe('meta', () => {
   it('opens the relative options route when bare', () => {
     const bl = cmd(['bl'], 'options.html#help', 'meta');
     expect(HANDLERS.meta('', bl, settings())).toBe('options.html#help');
-    expect(HANDLERS.meta('', cmd(['bl'], './options.html#help', 'meta'), settings())).toBe('options.html#help');
+    expect(HANDLERS.meta('', cmd(['bl'], './options.html#help', 'meta'), settings())).toBe(
+      'options.html#help',
+    );
   });
 
   it('passes a query to the help route', () => {
@@ -514,7 +576,9 @@ describe('aiUrl', () => {
   });
 
   it('encodes a prompt full of url metacharacters', () => {
-    expect(aiUrl('claude', 'a&b=c #d', settings())).toBe('https://claude.ai/new?q=a%26b%3Dc%20%23d');
+    expect(aiUrl('claude', 'a&b=c #d', settings())).toBe(
+      'https://claude.ai/new?q=a%26b%3Dc%20%23d',
+    );
   });
 });
 
@@ -584,7 +648,12 @@ describe('shape-guarded slots', () => {
     'https://tools.usps.com/go/TrackConfirmAction?tLabels={q}',
     'tracking',
   );
-  const IG = slotCmd('ig', 'https://www.instagram.com/', 'https://www.instagram.com/{q}/', 'instagram');
+  const IG = slotCmd(
+    'ig',
+    'https://www.instagram.com/',
+    'https://www.instagram.com/{q}/',
+    'instagram',
+  );
   const WA = slotCmd('whatsapp', 'https://web.whatsapp.com/', 'https://wa.me/{q}', 'whatsapp');
   const DEF = slotCmd(
     'def',
@@ -608,7 +677,9 @@ describe('shape-guarded slots', () => {
   });
 
   it('joins a meet only for a meeting code', () => {
-    expect(HANDLERS.meet('abc-defg-hij', MEET, settings())).toBe('https://meet.google.com/abc-defg-hij');
+    expect(HANDLERS.meet('abc-defg-hij', MEET, settings())).toBe(
+      'https://meet.google.com/abc-defg-hij',
+    );
     expect(HANDLERS.meet('https://meet.google.com/abc-defg-hij', MEET, settings())).toBe(
       'https://meet.google.com/abc-defg-hij',
     );
@@ -643,13 +714,33 @@ describe('shape-guarded slots', () => {
         'usps',
         'https://tools.usps.com/go/TrackConfirmAction?tLabels=9400111899223197428490',
       ],
-      ['92001903432200000000000000', 'usps', 'https://tools.usps.com/go/TrackConfirmAction?tLabels=92001903432200000000000000'],
-      ['EC123456789US', 'usps', 'https://tools.usps.com/go/TrackConfirmAction?tLabels=EC123456789US'],
+      [
+        '92001903432200000000000000',
+        'usps',
+        'https://tools.usps.com/go/TrackConfirmAction?tLabels=92001903432200000000000000',
+      ],
+      [
+        'EC123456789US',
+        'usps',
+        'https://tools.usps.com/go/TrackConfirmAction?tLabels=EC123456789US',
+      ],
       ['123456789012', 'fedex', 'https://www.fedex.com/wtrk/track/?trknbr=123456789012'],
       ['123456789012345', 'fedex', 'https://www.fedex.com/wtrk/track/?trknbr=123456789012345'],
-      ['9612019000000000000000', 'fedex', 'https://www.fedex.com/wtrk/track/?trknbr=9612019000000000000000'],
-      ['1234567890', 'dhl', 'https://www.dhl.com/global-en/home/tracking.html?tracking-id=1234567890'],
-      ['JD014600006281011111', 'dhl', 'https://www.dhl.com/global-en/home/tracking.html?tracking-id=JD014600006281011111'],
+      [
+        '9612019000000000000000',
+        'fedex',
+        'https://www.fedex.com/wtrk/track/?trknbr=9612019000000000000000',
+      ],
+      [
+        '1234567890',
+        'dhl',
+        'https://www.dhl.com/global-en/home/tracking.html?tracking-id=1234567890',
+      ],
+      [
+        'JD014600006281011111',
+        'dhl',
+        'https://www.dhl.com/global-en/home/tracking.html?tracking-id=JD014600006281011111',
+      ],
     ])('routes %s to %s', (number, carrier, url) => {
       expect(detectCarrier(number)?.id).toBe(carrier);
       expect(HANDLERS.track(number, TRACK, settings(), 'track')).toBe(url);
@@ -692,7 +783,9 @@ describe('shape-guarded slots', () => {
   });
 
   it('starts a whatsapp chat only for a phone number', () => {
-    expect(HANDLERS.whatsapp('+1 (555) 123-4567', WA, settings())).toBe('https://wa.me/15551234567');
+    expect(HANDLERS.whatsapp('+1 (555) 123-4567', WA, settings())).toBe(
+      'https://wa.me/15551234567',
+    );
     expect(HANDLERS.whatsapp('web login qr code', WA, settings())).toBe(
       'https://www.google.com/search?q=site%3Awhatsapp.com+web%20login%20qr%20code',
     );
@@ -714,7 +807,6 @@ describe('shape-guarded slots', () => {
     );
   });
 });
-
 
 describe('github repo sub-commands', () => {
   const GH = {

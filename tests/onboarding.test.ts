@@ -254,9 +254,9 @@ describe('categoryPicks', () => {
   it('copies the keys rather than aliasing the registry', () => {
     const row = rows[0];
     row.members[0].keys.push('zz-probe');
-    expect(BUILTIN_COMMANDS.find((cmd) => shortcutId(cmd) === row.members[0].id)?.keys).not.toContain(
-      'zz-probe',
-    );
+    expect(
+      BUILTIN_COMMANDS.find((cmd) => shortcutId(cmd) === row.members[0].id)?.keys,
+    ).not.toContain('zz-probe');
   });
 
   it('hides the packs nobody chooses', () => {

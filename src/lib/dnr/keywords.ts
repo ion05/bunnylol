@@ -32,8 +32,8 @@ export const MAX_ALTERNATION_CHARS = 120;
 /**
  * Keywords past this many shards are not intercepted; see `shardKeywords`.
  *
- * With an empty stop list the whole builtin registry is eligible (~317 aliases,
- * 18 shards per engine), so the old cap of 32 left room for barely 200 custom
+ * With an empty stop list the whole builtin registry is eligible (~180 aliases,
+ * 10 shards per engine), and a cap of 32 shards left room for barely 200 custom
  * aliases before the address bar started silently dropping them. Sized now so
  * ~1600 aliases fit, which is every builtin plus a very large imported profile,
  * and matched to `MAX_RULES` so neither cap binds noticeably before the other.

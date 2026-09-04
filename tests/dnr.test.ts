@@ -56,7 +56,11 @@ function filtersFor(engine: SearchEngine, keywords: string[] = KEYWORDS): string
 }
 
 /** What Chrome would actually navigate to: the whole match is replaced. */
-function redirectTo(url: string, engine: SearchEngine, keywords: string[] = KEYWORDS): string | null {
+function redirectTo(
+  url: string,
+  engine: SearchEngine,
+  keywords: string[] = KEYWORDS,
+): string | null {
   for (const rule of redirectRules([engine], keywords)) {
     const pattern = compile(rule.condition.regexFilter as string);
     if (!pattern.test(url)) continue;
@@ -118,7 +122,11 @@ describe('manifest support for the redirect target', () => {
     expect(MANIFEST.permissions).not.toContain('tabs');
     expect(MANIFEST.permissions).not.toContain('activeTab');
 
-    const sources = import.meta.glob('../src/**/*.ts', { query: '?raw', import: 'default', eager: true });
+    const sources = import.meta.glob('../src/**/*.ts', {
+      query: '?raw',
+      import: 'default',
+      eager: true,
+    });
     expect(Object.keys(sources).length).toBeGreaterThan(5);
     for (const source of Object.values(sources) as string[]) {
       // Every call site must be a create/update; a `tabs.query`, a `tabs.get`
@@ -132,7 +140,9 @@ describe('manifest support for the redirect target', () => {
 
 describe('buildRules', () => {
   it('captures the whole q value for a keyword plus arguments', () => {
-    expect(capture('https://www.google.com/search?q=gh+facebook/react', GOOGLE)).toBe('gh+facebook/react');
+    expect(capture('https://www.google.com/search?q=gh+facebook/react', GOOGLE)).toBe(
+      'gh+facebook/react',
+    );
     expect(capture('https://www.google.com/search?q=gh%20facebook%2Freact', GOOGLE)).toBe(
       'gh%20facebook%2Freact',
     );
@@ -148,7 +158,9 @@ describe('buildRules', () => {
   it('does not fire on a keyword prefix with the real builtin registry', () => {
     const real = activeKeywords(BUILTIN_COMMANDS);
     expect(capture('https://www.google.com/search?q=ghost+town', GOOGLE, real)).toBeNull();
-    expect(capture('https://www.google.com/search?q=gh+facebook/react', GOOGLE, real)).toBe('gh+facebook/react');
+    expect(capture('https://www.google.com/search?q=gh+facebook/react', GOOGLE, real)).toBe(
+      'gh+facebook/react',
+    );
   });
 
   it('matches a bare keyword with no arguments', () => {
@@ -158,14 +170,18 @@ describe('buildRules', () => {
   });
 
   it('tolerates other parameters before q=', () => {
-    expect(capture('https://www.google.com/search?client=firefox&hl=en&q=gh+react', GOOGLE)).toBe('gh+react');
-    expect(capture('https://www.google.com/search?sourceid=chrome&ie=UTF-8&q=npm+zod&oq=x', GOOGLE)).toBe(
-      'npm+zod',
+    expect(capture('https://www.google.com/search?client=firefox&hl=en&q=gh+react', GOOGLE)).toBe(
+      'gh+react',
     );
+    expect(
+      capture('https://www.google.com/search?sourceid=chrome&ie=UTF-8&q=npm+zod&oq=x', GOOGLE),
+    ).toBe('npm+zod');
   });
 
   it('stops the capture at the next parameter', () => {
-    expect(capture('https://www.google.com/search?q=gh+react&sourceid=chrome', GOOGLE)).toBe('gh+react');
+    expect(capture('https://www.google.com/search?q=gh+react&sourceid=chrome', GOOGLE)).toBe(
+      'gh+react',
+    );
   });
 
   it('works for every shipped engine', () => {
@@ -184,7 +200,9 @@ describe('buildRules', () => {
     const rules = redirectRules(SEARCH_ENGINES);
     for (const rule of rules) {
       expect(rule.action.type).toBe('redirect');
-      expect(rule.action.redirect?.regexSubstitution).toBe(`chrome-extension://${EXT_ID}/go.html?q=\\1`);
+      expect(rule.action.redirect?.regexSubstitution).toBe(
+        `chrome-extension://${EXT_ID}/go.html?q=\\1`,
+      );
       expect(rule.condition.resourceTypes).toEqual(['main_frame']);
       expect(rule.condition.isUrlFilterCaseSensitive).toBe(false);
       expect(rule.priority).toBeGreaterThan(0);
@@ -230,9 +248,12 @@ describe('buildRules', () => {
     // The whole matched substring is replaced, so anything the match leaves
     // behind survives into the redirected url. Every real interception carries
     // these trailing params.
-    expect(redirectTo('https://www.google.com/search?q=gh+facebook%2Freact&sourceid=chrome&ie=UTF-8', GOOGLE)).toBe(
-      `chrome-extension://${EXT_ID}/go.html?q=gh+facebook%2Freact`,
-    );
+    expect(
+      redirectTo(
+        'https://www.google.com/search?q=gh+facebook%2Freact&sourceid=chrome&ie=UTF-8',
+        GOOGLE,
+      ),
+    ).toBe(`chrome-extension://${EXT_ID}/go.html?q=gh+facebook%2Freact`);
     expect(redirectTo('https://www.bing.com/search?q=gh+react&PC=U316&FORM=CHROMN', BING)).toBe(
       `chrome-extension://${EXT_ID}/go.html?q=gh+react`,
     );
@@ -287,12 +308,18 @@ describe('buildRules', () => {
    * these assert the url Chrome would actually navigate to.
    */
   describe('the rewritten url', () => {
-    it('is exactly go.html plus the query, for every engine\'s real trailing params', () => {
+    it("is exactly go.html plus the query, for every engine's real trailing params", () => {
       expect(
-        redirectTo('https://www.google.com/search?q=gh+facebook%2Freact&sourceid=chrome&ie=UTF-8', GOOGLE),
+        redirectTo(
+          'https://www.google.com/search?q=gh+facebook%2Freact&sourceid=chrome&ie=UTF-8',
+          GOOGLE,
+        ),
       ).toBe(`chrome-extension://${EXT_ID}/go.html?q=gh+facebook%2Freact`);
       expect(
-        redirectTo('https://www.bing.com/search?q=gh+facebook%2Freact&qs=n&form=QBRE&sp=-1&pq=gh', BING),
+        redirectTo(
+          'https://www.bing.com/search?q=gh+facebook%2Freact&qs=n&form=QBRE&sp=-1&pq=gh',
+          BING,
+        ),
       ).toBe(`chrome-extension://${EXT_ID}/go.html?q=gh+facebook%2Freact`);
       expect(redirectTo('https://duckduckgo.com/?q=gh+facebook%2Freact&t=h_&ia=web', DDG)).toBe(
         `chrome-extension://${EXT_ID}/go.html?q=gh+facebook%2Freact`,
@@ -354,7 +381,9 @@ describe('buildRules', () => {
     it('covers every builtin alias: nothing is dropped', () => {
       const covered = new Set<string>();
       for (const rule of redirectRules(SEARCH_ENGINES, intercepted)) {
-        const alternation = /\(\(\?:(.*?)\)\(\?:\(\?:%20/.exec(rule.condition.regexFilter as string);
+        const alternation = /\(\(\?:(.*?)\)\(\?:\(\?:%20/.exec(
+          rule.condition.regexFilter as string,
+        );
         if (!alternation) continue;
         for (const alias of alternation[1].split('|')) covered.add(alias.replace(/\\/g, ''));
       }
@@ -451,7 +480,7 @@ describe('buildRules', () => {
       }
     });
 
-    it('never intercepts an escape typed into the engine\'s own search box', () => {
+    it("never intercepts an escape typed into the engine's own search box", () => {
       for (const rule of rules) {
         expect(rule.condition.excludedInitiatorDomains?.length).toBeGreaterThan(0);
       }
@@ -481,7 +510,10 @@ describe('buildRules', () => {
       const forced = resolve('=gh foo', commands, { ...DEFAULT_SETTINGS });
       const allow = allowRules([GOOGLE], real)[0];
       expect(compile(allow.condition.regexFilter as string).test(forced.url)).toBe(true);
-      for (const rule of [...redirectRules(SEARCH_ENGINES, real), ...escapeRules(SEARCH_ENGINES, real)]) {
+      for (const rule of [
+        ...redirectRules(SEARCH_ENGINES, real),
+        ...escapeRules(SEARCH_ENGINES, real),
+      ]) {
         expect(allow.priority as number).toBeGreaterThan(rule.priority as number);
       }
     });
@@ -495,7 +527,10 @@ describe('buildRules', () => {
   });
 
   it('excludes the engine as an initiator on every redirect rule, for every engine', () => {
-    const rules = redirectRules(SEARCH_ENGINES, activeKeywords(BUILTIN_COMMANDS, DEFAULT_STOP_LIST));
+    const rules = redirectRules(
+      SEARCH_ENGINES,
+      activeKeywords(BUILTIN_COMMANDS, DEFAULT_STOP_LIST),
+    );
     // The real registry shards, so this is several rules per engine.
     expect(rules.length).toBeGreaterThanOrEqual(SEARCH_ENGINES.length);
     expect(rules.length % SEARCH_ENGINES.length).toBe(0);
