@@ -7,7 +7,6 @@
 
 import { describe, expect, it } from 'vitest';
 import { EMPTY_DRAFT } from '../src/lib/draft';
-import type { Draft } from '../src/lib/draft';
 import { DEFAULT_OVERRIDES, FALLBACK_SECTION } from '../src/lib/types';
 import type { BuiltinCommand, Command } from '../src/lib/types';
 import type { Entry } from '../src/options/model/browse';
@@ -255,19 +254,16 @@ describe('validateDraft', () => {
   });
 });
 
-describe('buildCommand', () => {
-  it('adds https:// to a scheme-less URL', () => {
-    const cmd = buildCommand({ ...EMPTY_DRAFT, keys: 'x', url: 'example.com' }, new Set());
-    expect(cmd.url).toBe('https://example.com');
-  });
-
-  it('falls back to the lenient key split while the form is half-typed', () => {
-    // No comma, so `parseKeys` (via `validateAlias`) rejects the whole thing as
-    // one space-containing alias; `buildCommand` must not blank the row.
-    const cmd = buildCommand({ ...EMPTY_DRAFT, keys: 'foo bar', url: 'https://example.com' }, new Set());
-    expect(cmd.keys).toEqual(['foo bar']);
-  });
-
+/**
+ * Only the narrowing. This `buildCommand` is `lib/draft`'s with the draft's
+ * open category run through `normalizeCategory` first, so everything else it
+ * does (the scheme, the lenient key split, refusing to take `handler`,
+ * `provider`, `builtin` or `id` off the draft) is the shared builder's and is
+ * driven in `tests/draft.test.ts` `describe('buildCommand')`. Asserting it
+ * again here tests the same function twice and would go stale against the one
+ * that actually holds the behaviour.
+ */
+describe('buildCommand narrows the category', () => {
   it('degrades a category naming no known section to the fallback', () => {
     // Invariant 17: a custom command filed under a section that has since been
     // deleted has nowhere else to go, so it lands in "My shortcuts".
@@ -298,23 +294,6 @@ describe('buildCommand', () => {
     expect(cmd.category).toBe(FALLBACK_SECTION);
     expect(cmd.builtin).toBe(true);
     expect(cmd.id).toBe('gh');
-  });
-
-  it('never takes handler, provider, builtin or id from the draft', () => {
-    const hostile = {
-      ...EMPTY_DRAFT,
-      keys: 'x',
-      url: 'https://example.com',
-      handler: 'ai',
-      provider: 'evil',
-      builtin: true,
-      id: 'gh',
-    } as unknown as Draft;
-    const cmd = buildCommand(hostile, new Set(), null, 'u:x');
-    expect(cmd.handler).toBeUndefined();
-    expect(cmd.provider).toBeUndefined();
-    expect(cmd.builtin).toBe(false);
-    expect(cmd.id).toBe('u:x');
   });
 });
 

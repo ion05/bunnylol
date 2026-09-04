@@ -58,7 +58,12 @@ describe('manifest', () => {
   });
 
   it('pins the floor Chrome version and an ES-module service worker', () => {
-    // `light-dark()` in design/tokens.css is the floor; see README.
+    // `light-dark()` is the floor, and it shipped in Chrome 123. Every colour
+    // token is a light-dark() pair (`tests/tokens.test.ts` holds that end), and
+    // a var() resolving to a colour function the engine cannot parse is invalid
+    // at computed-value time: the property becomes `unset`, so backgrounds go
+    // transparent and the switch's off state disappears. Lowering this number
+    // does not degrade the UI, it breaks it.
     expect(MANIFEST.minimum_chrome_version).toBe('123');
     expect(MANIFEST.background.type).toBe('module');
   });

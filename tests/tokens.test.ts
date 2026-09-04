@@ -665,15 +665,3 @@ describe('the extension icon', () => {
     expect(toolbar(8, 64)).toEqual([...accent, 255]);
   });
 });
-
-describe('the manifest floor', () => {
-  it('is at least the Chrome that shipped light-dark()', () => {
-    // Every colour token is a light-dark() pair, and a var() that resolves to a
-    // colour function the engine cannot parse is invalid at computed-value time:
-    // the property becomes `unset`, so backgrounds go transparent and the
-    // switch's off state disappears. light-dark() shipped in Chrome 123.
-    expect(tokens).toContain('light-dark(');
-    const floor = Number(JSON.parse(manifestJson).minimum_chrome_version);
-    expect(floor).toBeGreaterThanOrEqual(123);
-  });
-});

@@ -11,10 +11,11 @@
  * The invariant these tests pin down is end-to-end rather than per-function: take
  * the url `resolve()` actually produces, hand it to the rules the extension
  * really registers, and ask which rule Chrome would apply. It must never be a
- * redirect. Every sweep runs against both `buildRules()` and the rules
- * `syncRules()` hands to `chrome.declarativeNetRequest`, and is driven off
- * `BUILTIN_COMMANDS`, so a command added later that happens to land on a search
- * engine fails here without anyone remembering to.
+ * redirect. The sweep runs against the rules `syncRules()` hands to
+ * `chrome.declarativeNetRequest` and nothing else, because that is the only path
+ * that ships (AGENTS.md: a test driving `buildRules` alone is not testing what
+ * ships). It is driven off `BUILTIN_COMMANDS`, so a command added later that
+ * happens to land on a search engine fails here without anyone remembering to.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -51,16 +52,28 @@ const SETTINGS: Settings = { ...DEFAULT_SETTINGS };
 const KEYWORDS = activeKeywords(COMMANDS, DEFAULT_STOP_LIST);
 
 /**
- * Every invariant below is checked against BOTH rule sets, because they are
- * different code paths: the extension only ever runs `syncRules`, which
- * validates each pattern through Chrome, splits the ones it refuses and
- * renumbers the ids, while `buildRules` is the pure mirror the rest of this
- * suite reasons about. A self-interception guarantee that holds for one of them
- * and not the other is not a guarantee.
+ * The rules the extension really runs on, and the only set the sweeps below are
+ * driven against. `syncRules` is the shipping path: it validates each pattern
+ * through Chrome, splits the ones it refuses and renumbers the ids, and
+ * AGENTS.md is explicit that a test driving `buildRules` alone is not testing
+ * what ships.
+ *
+ * Every sweep used to run twice, once over each set. That bought nothing for
+ * self-interception: both sets come out of the same `planRedirects`,
+ * `buildAllowRules` and `buildEscapeRules`, so the patterns are identical and
+ * there is no divergence in what Chrome would claim for a url. `buildRules` is
+ * driven exhaustively by `tests/dnr.test.ts` instead.
+ */
+const REGISTERED = await registeredRules();
+
+/**
+ * The mirror is still compared on the cheap structural facts further down (the
+ * rule counts and the escape hatch), which is where a `buildRules` that had
+ * drifted out of step with `syncRules` would actually show.
  */
 const RULE_SETS: Array<[string, chrome.declarativeNetRequest.Rule[]]> = [
   ['buildRules', buildRules(KEYWORDS, SEARCH_ENGINES, EXT_ID)],
-  ['syncRules', await registeredRules()],
+  ['syncRules', REGISTERED],
 ];
 
 /** The rules `syncRules` really hands to `chrome.declarativeNetRequest`. */
@@ -100,7 +113,8 @@ const ARG_SHAPES = [
   'site:example.com bar',
 ];
 
-describe.each(RULE_SETS)('the rules %s produces', (_label, RULES) => {
+describe('the rules syncRules registers', () => {
+  const RULES = REGISTERED;
   const claim = (url: string) => claimOf(RULES, url);
   const redirectTo = (url: string) => redirectToOf(RULES, url);
 
