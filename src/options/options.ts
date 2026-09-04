@@ -136,7 +136,7 @@ function render(): void {
   root.textContent = '';
   const shell = el('main', { class: 'shell' });
   shell.append(...renderView());
-  root.append(renderTopbar(), shell);
+  root.append(renderTopbar(), shell, renderFooter());
   paintStatus();
   window.scrollTo({ top: sameRoute ? scroll : 0 });
 }
@@ -189,6 +189,31 @@ function renderTopbar(): HTMLElement {
       el('div', {
         class: 'topbar-inner',
         children: [brandName, statusHost, resyncButton, nav],
+      }),
+    ],
+  });
+}
+
+function footerLink(href: string, text: string): HTMLAnchorElement {
+  const link = el('a', { text });
+  link.href = href;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  return link;
+}
+
+function renderFooter(): HTMLElement {
+  return el('footer', {
+    class: 'footer',
+    children: [
+      el('div', {
+        class: 'footer-inner',
+        children: [
+          'Built by ',
+          footerLink('https://aayanagarwal.com/', 'Aayan Agarwal'),
+          ' · ',
+          footerLink('https://github.com/ion05/bunnylol', 'GitHub'),
+        ],
       }),
     ],
   });
