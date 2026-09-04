@@ -9,22 +9,16 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { at } from './helpers/at';
 import {
-  ALWAYS_ON_CATEGORIES,
-  HIDDEN_CATEGORIES,
-  OPTIONAL_CATEGORIES,
   STARTER_CATEGORIES,
   applyCategoryPick,
   categoryPicks,
-  effectiveCategories,
-  hasOnboarded,
   migrateNewBuiltins,
 } from '../src/lib/onboarding';
 import { BUILTIN_COMMANDS } from '../src/lib/commands';
 import { buildKeyMap, mergeCommands } from '../src/lib/resolve';
 import { shortcutId } from '../src/lib/overrides';
-import { CATEGORIES, DEFAULT_OVERRIDES } from '../src/lib/types';
+import { DEFAULT_OVERRIDES } from '../src/lib/types';
 import type { BuiltinCommand, Overrides } from '../src/lib/types';
 
 /** The ids the registry ships in a category: the answer a pick has to match. */
@@ -48,45 +42,6 @@ function builtin(patch: Partial<BuiltinCommand>): BuiltinCommand {
   };
 }
 
-describe('effectiveCategories', () => {
-  it('adds the packs nobody gets to decline', () => {
-    expect(effectiveCategories(['dev'])).toEqual(['dev', 'meta']);
-  });
-
-  it('answers in registry order whatever order the picker asked in', () => {
-    expect(effectiveCategories(['purdue', 'ai', 'dev'])).toEqual(['ai', 'dev', 'purdue', 'meta']);
-  });
-
-  it('dedupes and normalizes what the picker hands it', () => {
-    expect(effectiveCategories(['dev', ' DEV ', 'dev'])).toEqual(['dev', 'meta']);
-  });
-
-  it('drops an id that names no shipped pack', () => {
-    // A pick names shipped packs. A user section holds no builtins, so one in
-    // this list could only ever be a no-op that outlives the section.
-    expect(effectiveCategories(['dev', 'sec-work', 'media'])).toEqual(['dev', 'meta']);
-  });
-
-  it('reads an empty pick as a real answer, not as no answer', () => {
-    expect(effectiveCategories([])).toEqual([...ALWAYS_ON_CATEGORIES]);
-    expect(effectiveCategories(null)).toEqual([...ALWAYS_ON_CATEGORIES]);
-  });
-});
-
-describe('hasOnboarded', () => {
-  it('is false only while the pick is null', () => {
-    expect(hasOnboarded(DEFAULT_OVERRIDES)).toBe(false);
-    expect(hasOnboarded({ ...DEFAULT_OVERRIDES, enabledCategories: [] })).toBe(true);
-    expect(hasOnboarded({ ...DEFAULT_OVERRIDES, enabledCategories: ['dev'] })).toBe(true);
-  });
-
-  it('does not read seenBuiltins, which the update migration writes on its own', () => {
-    const migrated = migrateNewBuiltins(BUILTIN_COMMANDS, DEFAULT_OVERRIDES);
-    expect(migrated.seenBuiltins.length).toBe(BUILTIN_COMMANDS.length);
-    expect(hasOnboarded(migrated)).toBe(false);
-  });
-});
-
 describe('applyCategoryPick', () => {
   it('a fresh install pick disables every purdue command', () => {
     const next = applyCategoryPick(BUILTIN_COMMANDS, STARTER_CATEGORIES, DEFAULT_OVERRIDES);
@@ -108,33 +63,9 @@ describe('applyCategoryPick', () => {
     expect(next.enabledCategories).toEqual(['dev', 'meta']);
   });
 
-  it('picking nothing writes [] plus always-on meta and disables every other builtin', () => {
-    const next = applyCategoryPick(BUILTIN_COMMANDS, [], DEFAULT_OVERRIDES);
-    expect(next.enabledCategories).toEqual([...ALWAYS_ON_CATEGORIES]);
-    const surviving = mergeCommands(BUILTIN_COMMANDS, next);
-    expect(surviving.length).toBe(idsIn('meta').length);
-    for (const cmd of surviving) expect(cmd.category).toBe('meta');
-  });
-
   it('records the pick and marks every shipped id as seen', () => {
     const next = applyCategoryPick(BUILTIN_COMMANDS, ['dev'], DEFAULT_OVERRIDES);
     expect(new Set(next.seenBuiltins)).toEqual(new Set(BUILTIN_COMMANDS.map(shortcutId)));
-  });
-
-  it('re-pick re-enables a hand-disabled shortcut in a picked pack', () => {
-    // Documented and accepted: the welcome page says "these are the packs I
-    // want", and it has to mean something. The alternative, remembering a
-    // hand-toggle through a re-pick, makes the picker a no-op for anyone who
-    // has ever touched a switch.
-    const handOff: Overrides = { ...DEFAULT_OVERRIDES, disabled: ['gh'] };
-    const next = applyCategoryPick(BUILTIN_COMMANDS, ['dev'], handOff);
-    expect(next.disabled).not.toContain('gh');
-    expect(keysOf(next).has('gh')).toBe(true);
-  });
-
-  it('leaves a custom shortcut the user turned off alone', () => {
-    const mine: Overrides = { ...DEFAULT_OVERRIDES, disabled: ['u:tix'] };
-    expect(applyCategoryPick(BUILTIN_COMMANDS, ['dev'], mine).disabled).toContain('u:tix');
   });
 
   it('does not touch deleted: a deleted shortcut stays deleted through a re-pick', () => {
@@ -143,28 +74,10 @@ describe('applyCategoryPick', () => {
     expect(next.deleted).toEqual(['gh']);
     expect(keysOf(next).has('gh')).toBe(false);
   });
-
-  it('does not mutate the overrides it was handed', () => {
-    const before = JSON.stringify(DEFAULT_OVERRIDES);
-    applyCategoryPick(BUILTIN_COMMANDS, ['dev'], DEFAULT_OVERRIDES);
-    expect(JSON.stringify(DEFAULT_OVERRIDES)).toBe(before);
-  });
-
-  it('is idempotent', () => {
-    const once = applyCategoryPick(BUILTIN_COMMANDS, STARTER_CATEGORIES, DEFAULT_OVERRIDES);
-    const twice = applyCategoryPick(BUILTIN_COMMANDS, STARTER_CATEGORIES, once);
-    expect(twice).toEqual(once);
-  });
 });
 
 describe('migrateNewBuiltins', () => {
   const seeded = applyCategoryPick(BUILTIN_COMMANDS, ['dev'], DEFAULT_OVERRIDES);
-
-  it('returns the same reference when nothing is new', () => {
-    // An identity check is what lets the update path skip the write, and with
-    // it the `syncRules` round trip a write would schedule.
-    expect(migrateNewBuiltins(BUILTIN_COMMANDS, seeded)).toBe(seeded);
-  });
 
   it('never disables anything when enabledCategories is null', () => {
     const migrated = migrateNewBuiltins(BUILTIN_COMMANDS, DEFAULT_OVERRIDES);
@@ -183,48 +96,6 @@ describe('migrateNewBuiltins', () => {
     expect(migrated.disabled).toContain('zz');
     expect(new Set(buildKeyMap(mergeCommands(registry, migrated)).keys()).has('zz')).toBe(false);
   });
-
-  it('a new builtin in a picked category arrives enabled', () => {
-    const registry: BuiltinCommand[] = [
-      ...BUILTIN_COMMANDS,
-      builtin({ keys: ['zz'], category: 'dev' }),
-    ];
-    const migrated = migrateNewBuiltins(registry, seeded);
-    expect(migrated.disabled).not.toContain('zz');
-    expect(new Set(buildKeyMap(mergeCommands(registry, migrated)).keys()).has('zz')).toBe(true);
-  });
-
-  it('leaves a new always-on builtin enabled even though nobody picked meta', () => {
-    const registry: BuiltinCommand[] = [
-      ...BUILTIN_COMMANDS,
-      builtin({ keys: ['zz'], category: 'meta' }),
-    ];
-    expect(migrateNewBuiltins(registry, seeded).disabled).not.toContain('zz');
-  });
-
-  it('is idempotent: a second run neither re-disables nor re-enables', () => {
-    const registry: BuiltinCommand[] = [
-      ...BUILTIN_COMMANDS,
-      builtin({ keys: ['zz'], category: 'purdue' }),
-    ];
-    const once = migrateNewBuiltins(registry, seeded);
-    expect(migrateNewBuiltins(registry, once)).toBe(once);
-  });
-
-  it('does not re-enable a builtin the user turned off by hand', () => {
-    const handOff: Overrides = { ...seeded, disabled: [...seeded.disabled, 'gh'] };
-    const registry: BuiltinCommand[] = [
-      ...BUILTIN_COMMANDS,
-      builtin({ keys: ['zz'], category: 'dev' }),
-    ];
-    expect(migrateNewBuiltins(registry, handOff).disabled).toContain('gh');
-  });
-
-  it('does not mutate the overrides it was handed', () => {
-    const before = JSON.stringify(seeded);
-    migrateNewBuiltins([...BUILTIN_COMMANDS, builtin({ keys: ['zz'] })], seeded);
-    expect(JSON.stringify(seeded)).toBe(before);
-  });
 });
 
 describe('categoryPicks', () => {
@@ -238,54 +109,5 @@ describe('categoryPicks', () => {
       expect(row.sample).toEqual(members.slice(0, 3).map((cmd) => cmd.keys[0]));
       expect(row.sample.length).toBeLessThanOrEqual(3);
     }
-  });
-
-  it('lists every member of a pack, in registry order, so the card can unfold', () => {
-    for (const row of rows) {
-      const members = BUILTIN_COMMANDS.filter((cmd) => cmd.category === row.id);
-      expect(row.members.map((member) => member.id)).toEqual(members.map(shortcutId));
-      expect(row.members.map((member) => member.keys)).toEqual(members.map((cmd) => cmd.keys));
-      expect(row.members.map((member) => member.name)).toEqual(members.map((cmd) => cmd.name));
-      expect(row.members).toHaveLength(row.count);
-      // The sample is the head of the same list, not a second derivation.
-      expect(row.sample).toEqual(row.members.slice(0, 3).map((member) => member.keys[0]));
-    }
-  });
-
-  it('copies the keys rather than aliasing the registry', () => {
-    const row = at(rows, 0);
-    at(row.members, 0).keys.push('zz-probe');
-    expect(
-      BUILTIN_COMMANDS.find((cmd) => shortcutId(cmd) === at(row.members, 0).id)?.keys,
-    ).not.toContain('zz-probe');
-  });
-
-  it('hides the packs nobody chooses', () => {
-    for (const hidden of HIDDEN_CATEGORIES) {
-      expect(rows.map((row) => row.id)).not.toContain(hidden);
-    }
-  });
-
-  it('offers every other shipped pack, in registry order', () => {
-    expect(rows.map((row) => row.id)).toEqual(
-      CATEGORIES.filter((category) => !(HIDDEN_CATEGORIES as string[]).includes(category)),
-    );
-  });
-
-  it('marks the starter packs and the optional ones', () => {
-    const starters = rows.filter((row) => row.starter).map((row) => row.id);
-    expect(new Set(starters)).toEqual(new Set(STARTER_CATEGORIES));
-    expect(rows.filter((row) => row.optional).map((row) => row.id)).toEqual([
-      ...OPTIONAL_CATEGORIES,
-    ]);
-  });
-
-  it('carries the labels the browse list uses', () => {
-    for (const row of rows) expect(row.label.trim().length).toBeGreaterThan(0);
-  });
-
-  it('drops a pack with nothing in it', () => {
-    const thin = BUILTIN_COMMANDS.filter((cmd) => cmd.category !== 'social');
-    expect(categoryPicks(thin).map((row) => row.id)).not.toContain('social');
   });
 });

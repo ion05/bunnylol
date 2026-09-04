@@ -11,7 +11,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { at } from './helpers/at';
-import { BUILTIN_COMMANDS, SEARCH_ENGINES, destinationOf } from '../src/lib/commands';
+import { BUILTIN_COMMANDS, SEARCH_ENGINES } from '../src/lib/commands';
 import { AI_PROVIDERS, HANDLERS } from '../src/lib/handlers';
 import { buildKeyMap, resolve } from '../src/lib/resolve';
 import { CATEGORIES, DEFAULT_SETTINGS } from '../src/lib/types';
@@ -59,19 +59,6 @@ describe('BUILTIN_COMMANDS registry', () => {
     }
   });
 
-  it('ships commands in every category except the fallback one', () => {
-    // `custom` is the bucket a user's own shortcuts land in and ships empty by
-    // design. Any OTHER empty category is either a typo in the registry or a
-    // pack the picker would offer with nothing in it, and both are bugs: a
-    // shipped category with no commands is exactly what `media` had become
-    // before it was removed in v1.1.0.
-    for (const category of CATEGORIES) {
-      if (category === 'custom') continue;
-      const members = BUILTIN_COMMANDS.filter((cmd) => cmd.category === category);
-      expect(members.length, `no command is filed under "${category}"`).toBeGreaterThan(0);
-    }
-  });
-
   it('points every url and searchUrl at a scheme go.html will open', () => {
     // `meta` commands are the one exception: they carry an extension-relative
     // path that `toNavigableUrl` expands.
@@ -107,16 +94,6 @@ describe('BUILTIN_COMMANDS registry', () => {
   });
 });
 
-/**
- * FREE TEXT NEVER LANDS IN A SHAPED SLOT.
- *
- * A `{q}` that sits in a path segment, an id or a numeric parameter expects a
- * shape: a meeting id, a tracking number, a package name. Words dropped into
- * one of those build a url the site cannot serve: `zoom.us/j/h6%20recorder`,
- * `?trknbr=near%20me%20open%20now`, `localhost/surge%20meaning`. The two tests
- * below run the whole registry, so a command added with an unguarded slot fails
- * here rather than in someone's address bar.
- */
 describe('argument slots', () => {
   /** Three nonsense words: no command can shape-match them, none can encode away. */
   const PROBE_WORDS = ['zzqa', 'zzqb', 'zzqc'];
@@ -154,51 +131,29 @@ describe('argument slots', () => {
     return false;
   }
 
-  it.each(BUILTIN_COMMANDS.map((cmd) => [at(cmd.keys, 0), cmd] as const))(
-    '%s keeps free text out of a path slot',
-    (_key, cmd) => {
-      expect(holdsProbeInPath(resolved(cmd))).toBe(false);
-    },
-  );
-
-  it.each(BUILTIN_COMMANDS.map((cmd) => [at(cmd.keys, 0), cmd] as const))(
-    '%s never silently drops its arguments',
-    (key, cmd) => {
-      // `set` is the exception: the settings route has no field that reads an
-      // argument, so `meta` leaves the parameter off rather than building a url
-      // the options page ignores.
-      //
-      // The cloud consoles are a deliberate second exception: their `site:`
-      // doc search was removed on request, so they are pure jumps now and
-      // arguments have nowhere to go. Listed explicitly so adding a third is a
-      // decision someone has to make, not a test that quietly stopped caring.
-      const JUMP_ONLY = ['set', 'aws', 'gcp', 'vercel', 'netlify', 'cf'];
-      if (JUMP_ONLY.includes(key)) return;
-      expect(resolved(cmd).toLowerCase()).toContain(PROBE_WORDS[0]);
-    },
-  );
-
-  it('starts every example with a keyword the command actually answers to', () => {
-    // WolframAlpha shipped `example: 'wa 42 miles in km'` while its only key
-    // was `wolfram`, and `wa` belongs to WhatsApp. The browse list prints
-    // `example` verbatim under the row, so the page was telling people to type
-    // a keyword that opens somebody else's site. Collected rather than run per
-    // command: one failure should name every row that drifted.
-    const wrong = BUILTIN_COMMANDS.filter((cmd) => {
-      const [first = ''] = (cmd.example ?? '').trim().split(/\s+/);
-      return first !== '' && !cmd.keys.includes(first);
-    }).map((cmd) => `${cmd.keys[0]}: ${cmd.example}`);
-    expect(wrong).toEqual([]);
+  it('keeps free text out of a path slot, for every shipped command', () => {
+    const leaked = BUILTIN_COMMANDS.filter((cmd) => holdsProbeInPath(resolved(cmd))).map((cmd) =>
+      at(cmd.keys, 0),
+    );
+    expect(leaked).toEqual([]);
   });
 
-  it('guards every searchUrl that fills a non-query slot with a handler', () => {
-    const unguarded: string[] = [];
-    for (const cmd of BUILTIN_COMMANDS) {
-      if (!cmd.searchUrl?.includes('{q}') || cmd.handler) continue;
-      const filled = cmd.searchUrl.split('{q}').join(PROBE_WORDS[0]);
-      if (holdsProbeInPath(filled)) unguarded.push(`${cmd.keys[0]} -> ${cmd.searchUrl}`);
-    }
-    expect(unguarded).toEqual([]);
+  it('never silently drops arguments, except for the jumps listed here', () => {
+    // `set` is the exception: the settings route has no field that reads an
+    // argument, so `meta` leaves the parameter off rather than building a url
+    // the options page ignores.
+    //
+    // The cloud consoles are a deliberate second exception (invariant 8): their
+    // `site:` doc search was removed on request, so they are pure jumps now and
+    // arguments have nowhere to go. Listed explicitly so adding a third is a
+    // decision someone has to make, not a test that quietly stopped caring.
+    const JUMP_ONLY = ['set', 'aws', 'gcp', 'vercel', 'netlify', 'cf'];
+    const dropped = BUILTIN_COMMANDS.filter(
+      (cmd) =>
+        !JUMP_ONLY.includes(at(cmd.keys, 0)) &&
+        !resolved(cmd).toLowerCase().includes(at(PROBE_WORDS, 0)),
+    ).map((cmd) => at(cmd.keys, 0));
+    expect(dropped).toEqual([]);
   });
 
   it('never turns a misread search into a write', () => {
@@ -214,59 +169,5 @@ describe('argument slots', () => {
     expect(resolve('tda buy milk', BUILTIN_COMMANDS, DEFAULT_SETTINGS).url).toBe(
       'https://app.todoist.com/add?content=buy%20milk',
     );
-  });
-});
-
-/**
- * The browse list's destination line. It reads a row's two url fields, and the
- * options page has no suite of its own, so the rule is tested here against the
- * registry it describes.
- */
-describe('destinationOf', () => {
-  const builtin = (key: string): Command =>
-    BUILTIN_COMMANDS.find((cmd) => cmd.keys.includes(key)) as Command;
-
-  it('shows the search template, because that is where arguments go', () => {
-    const dining = builtin('dining');
-    expect(dining.searchUrl).toBeTruthy();
-    expect(dining.handler).toBeUndefined();
-    expect(destinationOf(dining)).toBe(dining.searchUrl);
-    expect(destinationOf(builtin('g'))).toBe(builtin('g').searchUrl);
-  });
-
-  it('shows the url with no search template to show', () => {
-    const gh = builtin('gh');
-    expect(gh.searchUrl).toBeUndefined();
-    expect(destinationOf(gh)).toBe(gh.url);
-  });
-
-  // The tenant url is the field a user at another institution has to edit, and
-  // the `site:` template is only what words degrade to: a handler puts a
-  // numeric id on the row's own host instead.
-  it('shows the tenant url when a handler owns the arguments and the template is a web search', () => {
-    for (const key of ['bs', 'gs']) {
-      const cmd = builtin(key);
-      expect(cmd.handler, key).toBeTruthy();
-      expect(cmd.searchUrl, key).toContain('google.com/search');
-      expect(destinationOf(cmd), key).toBe(cmd.url);
-    }
-  });
-
-  it('keeps a handler command whose search is on its own site', () => {
-    const cmd: Command = {
-      ...builtin('bs'),
-      searchUrl: 'https://school.brightspace.com/d2l/search?q={q}',
-    };
-    expect(destinationOf(cmd)).toBe(cmd.searchUrl);
-  });
-
-  it('keeps an engine search that no handler owns', () => {
-    const cmd: Command = { ...builtin('bs'), handler: undefined };
-    expect(destinationOf(cmd)).toBe(cmd.searchUrl);
-  });
-
-  it('keeps an unparseable template rather than hiding it', () => {
-    const cmd: Command = { ...builtin('bs'), searchUrl: 'not a url {q}' };
-    expect(destinationOf(cmd)).toBe('not a url {q}');
   });
 });

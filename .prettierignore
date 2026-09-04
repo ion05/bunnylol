@@ -11,14 +11,14 @@ pnpm-lock.yaml
 # The approved design bundle. AGENTS.md: change it through a design review, not
 # in passing. `design/canvas/*.dc.html` are exported artboards (.gitattributes
 # already marks them linguist-generated), and `design/tokens.css` is parsed as
-# text by scripts/gen-icons.mjs and asserted on by tests/tokens.test.ts. Its
-# trailing contrast-ratio comments are aligned by hand and carry the audit.
+# text by scripts/gen-icons.mjs, which throws if the accent declarations move.
+# Its trailing contrast-ratio comments are aligned by hand and carry the audit.
 design/
 
 # The dispatch page's inline stylesheet is deliberately minified: this page's
 # whole job is to redirect before it paints, so it fetches no font and loads no
-# sheet. tests/tokens.test.ts also pins it as text, matching `.err-title{` with
-# no space before the brace, which is exactly what a CSS formatter would insert.
+# sheet, and the values are copied by hand from design/tokens.css rather than
+# substituted at build time.
 go.html
 
 # Prose is hand-wrapped at about 100 columns and uses *emphasis*. Prettier

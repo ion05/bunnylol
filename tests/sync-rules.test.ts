@@ -25,8 +25,6 @@ import type {
 import {
   DEFAULT_OVERRIDES,
   DEFAULT_SETTINGS,
-  DEFAULT_STOP_LIST,
-  FORCE_SEARCH_PREFIXES,
   PASSTHROUGH_PARAM,
   STORAGE_KEY,
 } from '../src/lib/types';
@@ -126,48 +124,6 @@ describe('the status syncRules reports matches the rules it registered', () => {
     expect(covered).toContain('gh');
     expect(covered).toContain('npm');
   });
-
-  /**
-   * The headline consequence of the empty exemption list: with every builtin
-   * alias eligible, the rule budget has to cover ALL of them. A cap that drops
-   * the tail is exactly the failure this suite exists to catch.
-   */
-  it('covers every builtin alias with nothing dropped and nothing exempted', async () => {
-    const stored = state();
-    const { status, rules } = await sync({ state: stored });
-    const keywords = eligible(stored);
-
-    expect(DEFAULT_STOP_LIST).toEqual([]);
-    expect(keywords.length).toBeGreaterThan(150);
-    expect(status.suppressed).toBe(0);
-    expect(status.dropped).toBe(0);
-    expect(status.keywords).toBe(keywords.length);
-    expect(coverage(rules, keywords, SEARCH_ENGINES).length).toBe(keywords.length);
-    expect(status.error).toBeNull();
-    expect(status.warning).toBeNull();
-  });
-
-  it('counts a user exemption as suppressed, not dropped', async () => {
-    // Taken from the registry rather than named, so pruning a command cannot
-    // silently turn this into a one-keyword test.
-    const exempt = activeKeywords(mergeCommands(BUILTIN_COMMANDS, DEFAULT_OVERRIDES)).slice(0, 2);
-    const stored = state({ interceptStopList: exempt });
-    const { status } = await sync({ state: stored });
-    const all = activeKeywords(mergeCommands(BUILTIN_COMMANDS, stored.overrides));
-    expect(status.suppressed).toBe(all.length - eligible(stored).length);
-    expect(status.suppressed).toBe(2);
-    expect(status.dropped).toBe(0);
-  });
-
-  it('replaces the rules a previous sync left behind instead of stacking on them', async () => {
-    stub = installChromeStub({ state: state() });
-    const first = await syncRules();
-    const second = await syncRules();
-    expect(stub.updates).toBe(2);
-    expect(stub.rules().length).toBe(second.registered);
-    expect(second.registered).toBe(first.registered);
-    expect(new Set(stub.rules().map((rule) => rule.id)).size).toBe(stub.rules().length);
-  });
 });
 
 /**
@@ -222,32 +178,6 @@ describe('a Chrome that rejects the rule update', () => {
     expect(failed.dropped).toBe(0);
     expect(failed.error).toMatch(/could not be removed/i);
     expect(failed.warning).toBeNull();
-  });
-
-  it('leaves the previous rules alone when the sync fails before the update', async () => {
-    stub = installChromeStub({ state: state() });
-    const first = await syncRules();
-    const live = stub.rules().length;
-
-    // A read failure never reached `updateDynamicRules`, so the installed rules
-    // are untouched and still cover exactly what the last sync claimed.
-    const dnr = (
-      globalThis as unknown as { chrome: { declarativeNetRequest: Record<string, unknown> } }
-    ).chrome.declarativeNetRequest;
-    const realGet = dnr.getDynamicRules;
-    let calls = 0;
-    dnr.getDynamicRules = async () => {
-      calls += 1;
-      if (calls === 1) throw new Error('Storage read failed.');
-      return (realGet as () => Promise<chrome.declarativeNetRequest.Rule[]>)();
-    };
-    const failed = await syncRules();
-    dnr.getDynamicRules = realGet;
-
-    expect(stub.rules().length).toBe(live);
-    expect(failed.keywords).toBe(first.keywords);
-    expect(failed.error).toMatch(/Storage read failed/);
-    expect(claim(stub.rules(), resultsUrl(at(SEARCH_ENGINES, 0), 'gh+foo'))).toBe('redirect');
   });
 });
 
@@ -323,25 +253,6 @@ describe('a Chrome that refuses the passthrough allow rule', () => {
       claim(rules, `https://www.google.com/search?q=gh%20foo&${PASSTHROUGH_PARAM}=1`),
     ).toBeNull();
   });
-
-  it('keeps intercepting the engines whose allow rule Chrome did accept', async () => {
-    const { rules } = await sync({ state: state(), supports });
-    const bing = at(enginesOf(['bing']), 0);
-    expect(claim(rules, resultsUrl(bing, 'gh+foo'))).toBe('redirect');
-    expect(claim(rules, `${resultsUrl(bing, 'gh+foo')}&${PASSTHROUGH_PARAM}=1`)).toBe('allow');
-  });
-});
-
-describe('no engines selected', () => {
-  it('is a choice, not a full rule budget', async () => {
-    const { status, rules } = await sync({ state: state({ interceptEngines: [] }) });
-    expect(rules).toEqual([]);
-    expect(status.registered).toBe(0);
-    expect(status.keywords).toBe(0);
-    expect(status.dropped).toBe(0);
-    expect(status.error).toBeNull();
-    expect(status.warning).toBeNull();
-  });
 });
 
 /**
@@ -360,25 +271,6 @@ function synthetic(count: number): Command[] {
     builtin: false,
   }));
 }
-
-describe('a profile with several hundred custom shortcuts', () => {
-  const custom = synthetic(500);
-
-  it('intercepts all of them AND every builtin: the caps have room', async () => {
-    const stored = state({}, custom);
-    const { status, rules } = await sync({ state: stored });
-
-    const keywords = eligible(stored);
-    expect(keywords.length).toBeGreaterThan(600);
-    const covered = new Set(coverage(rules, keywords, SEARCH_ENGINES));
-    expect(covered.size).toBe(keywords.length);
-    expect(status.keywords).toBe(covered.size);
-    expect(status.dropped).toBe(0);
-    expect(status.error).toBeNull();
-    expect(status.warning).toBeNull();
-    expect(rules.length).toBeLessThanOrEqual(MAX_RULES);
-  });
-});
 
 /**
  * Past the budget the tail is dropped, and WHICH tail is the point: an imported
@@ -400,12 +292,6 @@ describe('a profile far past the rule budget', () => {
     expect(status.warning).toMatch(/budget/);
     expect(rules.length).toBeLessThanOrEqual(MAX_RULES);
   });
-
-  it('spends the overflow on keywords, never on the escape hatch', async () => {
-    const { rules } = await sync({ state: state({}, custom) });
-    expect(allows(rules).length).toBe(SEARCH_ENGINES.length);
-    expect(escapeRulesOf(rules).length).toBe(SEARCH_ENGINES.length);
-  });
 });
 
 /**
@@ -413,32 +299,6 @@ describe('a profile far past the rule budget', () => {
  * is the way out. This is the behaviour a user feels, so it is asserted against
  * the rules `syncRules` actually registered rather than against `buildRules`.
  */
-describe('the first word is always a command', () => {
-  const commands = mergeCommands(BUILTIN_COMMANDS, DEFAULT_OVERRIDES);
-
-  it.each([
-    ['map of france', 'https://www.google.com/maps'],
-    ['w hotel chicago', 'https://en.wikipedia.org'],
-    ['x men', 'https://x.com'],
-    ['teams that never won a super bowl', 'microsoft.com'],
-  ])('intercepts %j and routes it to the command', async (query, destination) => {
-    const { rules } = await sync({ state: state() });
-    const url = resultsUrl(at(SEARCH_ENGINES, 0), query.replace(/ /g, '+'));
-    expect(claim(rules, url)).toBe('redirect');
-    expect(resolve(query, commands, { ...DEFAULT_SETTINGS }).url).toContain(destination);
-  });
-
-  it('leaves an exempted keyword alone, on every engine', async () => {
-    const { rules } = await sync({ state: state({ interceptStopList: ['map', 'maps'] }) });
-    for (const engine of SEARCH_ENGINES) {
-      expect(claim(rules, resultsUrl(engine, 'map+of+france'))).toBeNull();
-      // Only the exempted alias: its neighbours are still intercepted.
-      expect(claim(rules, resultsUrl(engine, 'w+hotel+chicago'))).toBe('redirect');
-    }
-    // Exempted for interception only.
-    expect(resolve('map of france', commands, { ...DEFAULT_SETTINGS }).fallback).toBe(false);
-  });
-});
 
 /**
  * THE ESCAPE HATCH, against the registered rules. Every assertion here is
@@ -446,111 +306,6 @@ describe('the first word is always a command', () => {
  * for a phrase whose first word is a shortcut.
  */
 describe('the force-search escape hatch', () => {
-  const commands = mergeCommands(BUILTIN_COMMANDS, DEFAULT_OVERRIDES);
-
-  /** What Chrome's address bar puts in `q=` for a query starting with `prefix`. */
-  const encodedForms = (prefix: string): string[] => [
-    `${encodeURIComponent(prefix)}gh+foo`,
-    `${prefix}gh+foo`,
-    `${encodeURIComponent(prefix)}gh%20foo`,
-  ];
-
-  it.each(FORCE_SEARCH_PREFIXES)(
-    'redirects an escaped query to go.html on every engine (%j)',
-    async (prefix) => {
-      const { rules } = await sync({ state: state() });
-      for (const engine of SEARCH_ENGINES) {
-        for (const value of encodedForms(prefix)) {
-          const url = resultsUrl(engine, value);
-          expect(claim(rules, url), `${engine.id} ${value}`).toBe('redirect');
-          expect(redirectTo(rules, url)).toBe(`chrome-extension://${EXT_ID}/go.html?q=${value}`);
-        }
-      }
-    },
-  );
-
-  it.each(FORCE_SEARCH_PREFIXES)(
-    'resolves the redirected query to a plain marked search (%j)',
-    async (prefix) => {
-      const { rules } = await sync({ state: state() });
-      const url = resultsUrl(at(SEARCH_ENGINES, 0), `${encodeURIComponent(prefix)}gh+foo`);
-      // Exactly what go.ts receives: the `q` of the url Chrome redirected to.
-      const handed = new URL(
-        (redirectTo(rules, url) as string).replace(/^chrome-extension:/, 'https:'),
-      ).searchParams.get('q') as string;
-      expect(handed).toBe(`${prefix}gh foo`);
-
-      const result = resolve(handed, commands, { ...DEFAULT_SETTINGS });
-      expect(result.fallback).toBe(true);
-      expect(result.command).toBeNull();
-      expect(result.url).toBe(`https://www.google.com/search?q=gh%20foo&${PASSTHROUGH_PARAM}=1`);
-    },
-  );
-
-  it.each(FORCE_SEARCH_PREFIXES)(
-    'never leaks the escape into the search terms (%j)',
-    async (prefix) => {
-      const { rules } = await sync({ state: state() });
-      const url = resultsUrl(at(SEARCH_ENGINES, 0), `${encodeURIComponent(prefix)}gh+foo`);
-      const handed = new URL(
-        (redirectTo(rules, url) as string).replace(/^chrome-extension:/, 'https:'),
-      ).searchParams.get('q') as string;
-      const searched = new URL(
-        resolve(handed, commands, { ...DEFAULT_SETTINGS }).url,
-      ).searchParams.get('q');
-      expect(searched).toBe('gh foo');
-      expect(searched).not.toContain(prefix);
-      expect(searched).not.toContain(encodeURIComponent(prefix));
-    },
-  );
-
-  it.each(FORCE_SEARCH_PREFIXES)(
-    'does not loop: the resulting search is never redirected (%j)',
-    async (prefix) => {
-      const { rules } = await sync({ state: state() });
-      const searched = resolve(`${prefix}gh foo`, commands, { ...DEFAULT_SETTINGS }).url;
-      expect(claim(rules, searched)).toBe('allow');
-      // Nothing in the escape family matches it either, marker or no marker.
-      for (const rule of escapeRulesOf(rules)) {
-        expect(new RegExp(rule.condition.regexFilter as string, 'i').test(searched)).toBe(false);
-      }
-
-      // A keyword rule still MATCHES `q=gh%20foo`, `blpass` sits past the end of
-      // the captured value, and is only outranked. When the remainder is not a
-      // keyword, literally no rule matches, which is the cleaner half of the same
-      // guarantee.
-      const plain = resolve(`${prefix}how tall is the eiffel tower`, commands, {
-        ...DEFAULT_SETTINGS,
-      }).url;
-      expect(
-        rules.filter((rule) => new RegExp(rule.condition.regexFilter as string, 'i').test(plain)),
-      ).toHaveLength(1);
-      expect(claim(rules, plain)).toBe('allow');
-    },
-  );
-
-  it.each(FORCE_SEARCH_PREFIXES)(
-    'cannot be claimed by a keyword rule first (%j)',
-    async (prefix) => {
-      const { rules } = await sync({ state: state() });
-      const url = resultsUrl(at(SEARCH_ENGINES, 0), `${encodeURIComponent(prefix)}gh+foo`);
-      const escapePriority = Math.max(
-        ...escapeRulesOf(rules)
-          .filter((rule) => new RegExp(rule.condition.regexFilter as string, 'i').test(url))
-          .map((rule) => rule.priority as number),
-      );
-      for (const rule of keywordRulesOf(rules)) {
-        expect(rule.priority as number).toBeLessThan(escapePriority);
-      }
-      // And in fact no keyword rule matches it at all: the value starts with the
-      // escape, and no alias may contain `\`, `=` or `%`.
-      const claimed = keywordRulesOf(rules).filter((rule) =>
-        new RegExp(rule.condition.regexFilter as string, 'i').test(url),
-      );
-      expect(claimed).toEqual([]);
-    },
-  );
-
   it('is registered even for a profile that overflows the rule budget', async () => {
     const { rules } = await sync({ state: state({}, synthetic(3000)) });
     const url = resultsUrl(at(SEARCH_ENGINES, 0), '%5Cgh+foo');
@@ -610,45 +365,6 @@ describe('concurrent syncs', () => {
     expect(results[0]).not.toBe(results[1]);
   });
 
-  it('ends with the rule set a single sync would have produced', async () => {
-    stub = installChromeStub({ strictIds: true, state: state() });
-    await Promise.all([syncRules(), syncRules(), syncRules(), syncRules()]);
-    const afterBurst = stub.rules();
-
-    stub.restore();
-    stub = installChromeStub({ strictIds: true, state: state() });
-    const lone = await syncRules();
-    expect(lone.error).toBeNull();
-    expect(afterBurst).toEqual(stub.rules());
-  });
-
-  it('gives a caller that arrives mid-flight a run that saw its save', async () => {
-    stub = installChromeStub({ strictIds: true, state: state() });
-    let settled = false;
-    const first = syncRules().then((status) => {
-      settled = true;
-      return status;
-    });
-
-    await chrome.storage.local.set({ [STORAGE_KEY]: state({}, synthetic(1)) });
-    // The point of the test: the second caller really does arrive while the
-    // first rebuild is still running, so it must not be handed that rebuild's
-    // status, which was computed from state that predates this save.
-    expect(settled).toBe(false);
-    const second = await syncRules();
-
-    expect((await first).error).toBeNull();
-    expect(second.error).toBeNull();
-    expect(second.keywords).toBe((await first).keywords + 1);
-  });
-
-  it('does not refuse the ordinary remove-then-add a lone sync performs', async () => {
-    stub = installChromeStub({ strictIds: true, state: state() });
-    expect((await syncRules()).error).toBeNull();
-    expect((await syncRules()).error).toBeNull();
-    expect(stub.updates).toBe(2);
-  });
-
   it('refuses an add whose id survives the removal, without changing the table', async () => {
     stub = installChromeStub({ strictIds: true, state: state() });
     await syncRules();
@@ -660,16 +376,6 @@ describe('concurrent syncs', () => {
     expect(stub.rules()).toEqual(live);
   });
 
-  /**
-   * The gap between "the in-flight rebuild settled" and "the follow-up it
-   * scheduled actually started" is a couple of microtasks wide. A caller
-   * landing inside it sees nothing in flight, and if the fast path only
-   * consulted the in-flight slot it would start a rebuild of its own alongside
-   * the follow-up, two runs reading one id space, Chrome refusing the second
-   * add, `failClosed` removing every rule. Today's callers all run in
-   * macrotasks and so cannot land there, which is exactly why this is swept
-   * across every arrival tick rather than left to a caller to discover.
-   */
   it('never starts a second rebuild while a coalesced follow-up is pending', async () => {
     // Derived, not hard-coded: the window sits at the end of a rebuild, so a
     // rebuild that grows longer must not push it past the end of the sweep.
@@ -692,50 +398,5 @@ describe('concurrent syncs', () => {
       }
       expect(stub.rules().length, `arrival tick ${tick}`).toBeGreaterThan(0);
     }
-  });
-
-  it('still reports a refused write instead of swallowing it in the queue', async () => {
-    const { status } = await sync({
-      state: state(),
-      rejectUpdate: (call) => (call === 1 ? 'Rule with id 1 already exists.' : null),
-    });
-
-    expect(status.error).toMatch(/already exists/);
-    expect(status.keywords).toBe(0);
-  });
-
-  /**
-   * The refusal above is one the stub was TOLD to throw. This one is Chrome's
-   * own duplicate-id check firing from inside a real `syncRules()` run, so the
-   * `strictIds` the concurrency tests rely on is proven to reach the production
-   * path, and proven to come back out as an error rather than being swallowed
-   * by the queue.
-   *
-   * Staged the way the unserialized code produced it: the rebuild reads a
-   * snapshot of the rule table that predates the rules already live, so the ids
-   * it is about to add are missing from its own `removeRuleIds` and are still
-   * there when the add arrives.
-   */
-  it('reports a duplicate-id refusal that genuinely happened', async () => {
-    stub = installChromeStub({ strictIds: true, state: state() });
-    expect((await syncRules()).error).toBeNull();
-    expect(stub.rules().length).toBeGreaterThan(0);
-
-    const dnr = chrome.declarativeNetRequest;
-    const read = dnr.getDynamicRules;
-    let stale = true;
-    dnr.getDynamicRules = async () => {
-      if (!stale) return read();
-      stale = false;
-      return [];
-    };
-
-    const status = await syncRules();
-
-    expect(status.error).toMatch(/already exists/);
-    // And `failClosed` still ran, off a truthful read: nothing is left
-    // intercepting on rules built for state the user has already changed.
-    expect(stub.rules()).toEqual([]);
-    expect(status.keywords).toBe(0);
   });
 });

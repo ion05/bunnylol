@@ -3,13 +3,14 @@
 Bug reports, new shortcuts and fixes are all welcome. Before you start:
 
 - **[AGENTS.md](AGENTS.md) is the architecture note**, and its "Invariants that were violated during
-  development" section is not decoration. Every entry is a bug that already shipped once. Every one
-  has a regression test. And every one looks like reasonable code, which is why they came back. Read
-  it before you touch routing, validation or the override layer.
+  development" section is not decoration. Every entry is a bug that already shipped once, and every
+  one looks like reasonable code, which is why they came back. Most carry one regression test, named
+  in the entry; two carry none and say so. Read it before you touch routing, validation or the
+  override layer.
 - **No new dependencies in what ships.** Nothing is bundled into the extension but this repo's own
   source and one font. If you need a helper, inline it. Dev tooling is judged on its own merits and
-  is currently jsdom, prettier and eslint on top of typescript, vite and vitest. Adding to that list
-  is a decision somebody makes on purpose.
+  is currently prettier and eslint on top of typescript, vite and vitest. Adding to that list is a
+  decision somebody makes on purpose.
 
 ## Setup
 
@@ -49,6 +50,23 @@ the matcher. Then load the extension and try it.
 When you add a test, make sure it fails when the thing it guards is broken. Break the code, watch it
 go red, put it back.
 
+## The test suite
+
+20 files, about 150 cases, under a second. It is small on purpose. Before you add a test, answer
+this: **if it vanished and the code broke, would a user notice?**
+
+It covers `resolve()` turning a typed query into a destination and honouring the `\` and `=` escape,
+one or two shapes per smart handler, the redirect rules against real Chrome-generated search URLs,
+import and export, the override layer, and a few property tests over the shipped registry (which is
+why adding a command usually needs no new test).
+
+It deliberately does not cover stylesheets or design tokens, the DOM a view assembles (the decisions
+behind it are pure, in `src/options/model/*.ts`, and those are testable), that a removed feature
+stayed removed, or the same rule twice through a wrapper. A table that runs one assertion over every
+row of the registry is one property test, not 96 cases: that is how a suite gets to four figures
+without covering anything new. Views are verified in a real browser, which is the only place layout
+and focus behaviour are visible anyway.
+
 ## Adding or changing a command
 
 Commands are plain data in `src/lib/commands.ts`.
@@ -78,7 +96,8 @@ A shortcut only *you* need does not need a PR at all. Make it in the options pag
 - Vanilla TS and CSS in the UI. No framework.
 - Colours, sizes and spacing in the UI stylesheets come from `design/tokens.css`. No literal hex, no
   raw `font-size: Npx`, and never `color: var(--accent)`, because the sand accent is a fill and
-  fails contrast as text. `tests/tokens.test.ts` enforces all of it.
+  fails contrast as text. Reviewed by hand: the 72-case suite that enforced it went with the rest
+  of the design tests.
 - **Comment only where the reason is non-obvious.** Do not restate the code. A comment that says
   *why this and not the obvious alternative* is worth more than five that narrate what the next line
   does.
@@ -93,9 +112,8 @@ clean tree changes nothing.
 Both configs are short and commented. Every rule eslint has switched off names the convention it was
 fighting, so if a rule is in your way, read why it is off before turning it back on. Four things are
 outside the formatter on purpose: `design/` is the approved design bundle and changes through a
-design review, `go.html` carries a deliberately minified inline stylesheet that
-`tests/tokens.test.ts` matches as text, Markdown is hand-wrapped prose, and `pnpm-lock.yaml` belongs
-to pnpm.
+design review, `go.html` carries a deliberately minified inline stylesheet the dispatch page needs
+to paint without one, Markdown is hand-wrapped prose, and `pnpm-lock.yaml` belongs to pnpm.
 
 ## Pull requests
 

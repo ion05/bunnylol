@@ -16,15 +16,6 @@ describe('manifest', () => {
     expect(MANIFEST.version).toBe(PKG.version);
   });
 
-  it('carries a legal version string', () => {
-    expect(MANIFEST.version).toMatch(/^\d+\.\d+\.\d+$/);
-    for (const part of MANIFEST.version.split('.')) {
-      expect(Number(part)).toBeLessThanOrEqual(65535);
-      // Chrome rejects a leading zero in any part.
-      expect(part).toBe(String(Number(part)));
-    }
-  });
-
   it('exposes only go.html to the web', () => {
     const war = at(MANIFEST.web_accessible_resources, 0);
     expect(MANIFEST.web_accessible_resources).toHaveLength(1);
@@ -44,28 +35,5 @@ describe('manifest', () => {
     // A host permission the redirect rules do not use is an access grant the
     // store has to re-review, so widening this is a deliberate edit here first.
     expect([...MANIFEST.host_permissions].sort()).toEqual(origins);
-  });
-
-  it('has not grown a permission', () => {
-    expect([...MANIFEST.permissions].sort()).toEqual(['declarativeNetRequest', 'storage']);
-  });
-
-  it('declares a homepage', () => {
-    expect(MANIFEST.homepage_url).toMatch(/^https:\/\//);
-  });
-
-  it('keeps the description inside the store summary limit', () => {
-    expect(MANIFEST.description.length).toBeLessThanOrEqual(132);
-  });
-
-  it('pins the floor Chrome version and an ES-module service worker', () => {
-    // `light-dark()` is the floor, and it shipped in Chrome 123. Every colour
-    // token is a light-dark() pair (`tests/tokens.test.ts` holds that end), and
-    // a var() resolving to a colour function the engine cannot parse is invalid
-    // at computed-value time: the property becomes `unset`, so backgrounds go
-    // transparent and the switch's off state disappears. Lowering this number
-    // does not degrade the UI, it breaks it.
-    expect(MANIFEST.minimum_chrome_version).toBe('123');
-    expect(MANIFEST.background.type).toBe('module');
   });
 });

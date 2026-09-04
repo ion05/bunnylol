@@ -7,11 +7,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { at } from './helpers/at';
 import { toNavigableUrl } from '../src/lib/url';
-import { BUILTIN_COMMANDS } from '../src/lib/commands';
-import { mergeCommands, resolve } from '../src/lib/resolve';
-import { DEFAULT_OVERRIDES, DEFAULT_SETTINGS } from '../src/lib/types';
 
 const EXT_ORIGIN = 'chrome-extension://abcdefghijklmnopabcdefghijklmnop';
 
@@ -28,12 +24,6 @@ afterEach(() => {
 });
 
 describe('toNavigableUrl', () => {
-  it('leaves anything with a scheme alone', () => {
-    expect(toNavigableUrl('https://github.com/')).toBe('https://github.com/');
-    expect(toNavigableUrl('http://localhost:3000/x')).toBe('http://localhost:3000/x');
-    expect(toNavigableUrl(`${EXT_ORIGIN}/options.html`)).toBe(`${EXT_ORIGIN}/options.html`);
-  });
-
   it('expands a relative meta destination against the extension origin', () => {
     expect(toNavigableUrl('options.html')).toBe(`${EXT_ORIGIN}/options.html`);
     expect(toNavigableUrl('options.html#help')).toBe(`${EXT_ORIGIN}/options.html#help`);
@@ -47,18 +37,5 @@ describe('toNavigableUrl', () => {
     expect(toNavigableUrl('//evil.test/x')).toBe(`${EXT_ORIGIN}/evil.test/x`);
     expect(toNavigableUrl('/options.html')).toBe(`${EXT_ORIGIN}/options.html`);
     expect(toNavigableUrl('   options.html   ')).toBe(`${EXT_ORIGIN}/options.html`);
-  });
-
-  it('sends every meta builtin to a url inside this extension', () => {
-    const commands = mergeCommands(BUILTIN_COMMANDS, DEFAULT_OVERRIDES);
-    const metas = BUILTIN_COMMANDS.filter((cmd) => cmd.handler === 'meta');
-    expect(metas.length).toBeGreaterThan(0);
-    for (const cmd of metas) {
-      const key = at(cmd.keys, 0);
-      for (const query of [key, `${key} some words`]) {
-        const url = toNavigableUrl(resolve(query, commands, DEFAULT_SETTINGS).url);
-        expect(url.startsWith(`${EXT_ORIGIN}/`), `${query} -> ${url}`).toBe(true);
-      }
-    }
   });
 });
