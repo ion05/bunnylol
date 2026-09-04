@@ -22,7 +22,7 @@ the surfaces that matter most for a security review:
 - The passthrough and escape path (`FORCE_SEARCH_PREFIXES` in
   `src/lib/types.ts`) that lets a user force a plain search.
 - URL construction in `src/lib/handlers.ts`.
-- The JSON import parser in `src/lib/storage.ts`.
+- The JSON import parser in `src/lib/storage/parse-import.ts`.
 - Anything that could put untrusted text into the DOM as markup rather than
   as text.
 

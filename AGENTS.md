@@ -46,7 +46,10 @@ src/lib/validate.ts     The single validation boundary: aliases, URLs, section i
 src/lib/overrides.ts    Shortcut identity (`shortcutId`, `u:` ids) + the edit/delete/section algebra
 src/lib/onboarding.ts   What a pack pick means: `applyCategoryPick`, `migrateNewBuiltins`
 src/lib/merge-import.ts Folding an import onto the state already here (`mergeOverrides`)
-src/lib/storage.ts      chrome.storage.local persistence, JSON import/export, the v1 readers
+src/lib/storage.ts      chrome.storage.local persistence, export, and the entry point below
+src/lib/storage/normalize.ts     LENIENT reader: any blob in, a usable state out. Never throws.
+src/lib/storage/parse-import.ts  STRICT import parser + the v1 file reader. Refuses by name.
+src/lib/storage/shared.ts        What both need: guards, the shipped ids, custom-id assignment.
 src/lib/dnr.ts          declarativeNetRequest rule generation + syncRules
 src/lib/draft.ts        What the edit form edits, and the pure parsing around it
 src/lib/text.ts         String helpers every surface shares
@@ -141,7 +144,7 @@ tests. **If a test in this list fails, do not "fix" the test.**
    aliases: at ~400 custom shortcuts, `gh`, `g` and `npm` silently stopped being intercepted.
 
 6. **All alias, URL and section validation goes through `src/lib/validate.ts`.** Nothing re-derives
-   a rule locally. Today's callers are the import parser (`storage.ts`), the override algebra
+   a rule locally. Today's callers are the import parser (`storage/parse-import.ts`), the override algebra
    (`overrides.ts`), the one shortcut form (through `draft.ts` and `model/form.ts`), the section
    editor and the "Exempt keywords" field in Settings, and `resolve.ts` for `isInterceptableAlias`.
    That list will grow, so add a call site rather than a local rule. When the rule lived in
