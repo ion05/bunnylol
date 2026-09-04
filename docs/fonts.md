@@ -62,11 +62,10 @@ The font exists twice on purpose:
 - `design/fonts/`, so `design/`'s previews render standalone in a browser, with no build.
 - `public/fonts/`, so the extension ships it.
 
-They must stay byte-identical. `tests/tokens.test.ts` asserts that by sha256-ing the bytes of both
-files. It also asserts that the shipped copy hashes to the value recorded in the table above. So
-neither the drift that actually happens (one copy updated to a new Inter release and the other left
-behind) nor a silent edit to both can pass. Update the table when the release changes: the test
-reads the hash straight out of it.
+They must stay byte-identical, and the shipped copy must hash to the value recorded in the table
+above. A test asserted both by sha256-ing the bytes until the suite was cut back to behaviour a user
+meets; check it by hand (`shasum -a 256 design/fonts/* public/fonts/*`) when you change the release,
+and update the table.
 
 ### Known issue in the design previews
 

@@ -15,9 +15,9 @@
  *
  * On top of that identity sits the algebra: `applyEdit` folds a stored
  * `ShortcutEdit` onto a shipped command, `diffEdit` produces one from an edited
- * copy, `editedFields` says what actually moved, and `foldLegacyKeyOverrides`
- * migrates the v1 `keyOverrides` map into it. A DIFF, not a copy: a corrected
- * URL in a later build still reaches a user who only renamed the command.
+ * copy, and `foldLegacyKeyOverrides` migrates the v1 `keyOverrides` map into
+ * it. A DIFF, not a copy: a corrected URL in a later build still reaches a user
+ * who only renamed the command.
  *
  * The section algebra sits here for the same reason: a category is now an open
  * id resolved against `Overrides.sections`, so "which group is this shortcut
@@ -74,10 +74,11 @@ const FALLBACK_SLUG = 'shortcut';
  * one past the length cap. A hand-edited file cannot key an override map with
  * something the resolver could never look up again.
  *
- * It deliberately does NOT also require the mint alphabet: a shipped id is a
- * shipped key, and one of those is `?`, so an alphabet check here would leave
- * that command with no identity at all. Adoption of a *claimed* id is narrowed
- * to the `u:` namespace at the storage boundary instead, where the claim is.
+ * It deliberately does NOT also require the mint alphabet: a shipped id IS a
+ * shipped key, and the registry is not held to that alphabet, so a shipped key
+ * outside it would be left with no identity at all rather than merely unminted.
+ * Adoption of a *claimed* id is narrowed to the `u:` namespace at the storage
+ * boundary instead, where the claim is.
  */
 export function normalizeId(raw: unknown): string {
   if (typeof raw !== 'string') return '';
@@ -150,21 +151,6 @@ function fit(slug: string, suffix: string): string {
 }
 
 // ------------------------------------------------------------ edit algebra ----
-
-/**
- * Every field an edit may name, in the order the form shows them. It is what
- * `editedFields` reports and the order it reports them in, so the "edited"
- * badge and the import merge plan read a diff the same way the form does.
- */
-const EDITABLE_FIELDS = [
-  'keys',
-  'name',
-  'description',
-  'url',
-  'searchUrl',
-  'category',
-  'example',
-] as const;
 
 /**
  * Folds a stored edit onto a shipped command, without mutating either.
@@ -290,25 +276,6 @@ export function diffEdit(
 }
 
 /**
- * The fields this edit actually moves off the shipped definition, for the
- * "edited" badge and the import merge plan.
- *
- * Asked of the RESULT, not of the keys the edit happens to carry: an edit
- * naming a field and setting it to the value the command already ships with has
- * changed nothing, and a row that claims otherwise sends the user looking for a
- * difference that is not there.
- */
-export function editedFields(
-  shipped: Command,
-  edit: ShortcutEdit | undefined,
-  known: ReadonlySet<string> = BUILTIN_CATEGORY_IDS,
-): string[] {
-  const diff = diffEdit(shipped, applyEdit(shipped, edit, known), known);
-  if (!diff) return [];
-  return EDITABLE_FIELDS.filter((field) => field in diff);
-}
-
-/**
  * The v1 reader for rebinding. Format 1 stored replacement aliases in their own
  * `Overrides.keyOverrides` map; format 2 has one writer for `keys`, the edit
  * layer, because two of them is exactly the drift that lets a rebind persist in
@@ -391,7 +358,8 @@ export function sectionLabel(id: string, sections: Section[] | undefined): strin
   // `Object.hasOwn`, not `CATEGORY_LABELS[key]`: `key` is an open id off
   // untrusted data and `validateSectionId` accepts `constructor`, so a plain
   // lookup would answer with something off `Object.prototype`.
-  if (Object.hasOwn(CATEGORY_LABELS, key)) return CATEGORY_LABELS[key as keyof typeof CATEGORY_LABELS];
+  if (Object.hasOwn(CATEGORY_LABELS, key))
+    return CATEGORY_LABELS[key as keyof typeof CATEGORY_LABELS];
   return key;
 }
 
@@ -562,7 +530,10 @@ export function sectionLabelTaken(
  * the profile is at `MAX_SECTIONS`: refused rather than added and silently
  * dropped by the storage boundary on the next save.
  */
-export function addSection(overrides: Overrides, label: string): { overrides: Overrides; id: string } {
+export function addSection(
+  overrides: Overrides,
+  label: string,
+): { overrides: Overrides; id: string } {
   const check = validateSectionLabel(label);
   const sections = overrides?.sections ?? [];
   if (!check.ok || sections.length >= MAX_SECTIONS) return { overrides, id: '' };
@@ -702,5 +673,8 @@ function aliasList(raw: unknown): string[] {
 }
 
 function sameKeys(a: string[], b: string[]): boolean {
-  return a.length === b.length && a.every((key, i) => key.toLowerCase() === b[i].toLowerCase());
+  // `b[i]?.` rather than an index that assumes the length check: the only way
+  // it answers `undefined` is a shorter `b`, and "not the same keys" is the
+  // right answer to that anyway.
+  return a.length === b.length && a.every((key, i) => key.toLowerCase() === b[i]?.toLowerCase());
 }

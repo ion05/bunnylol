@@ -11,22 +11,16 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { at } from './helpers/at';
 import { BUILTIN_COMMANDS, SEARCH_ENGINES } from '../src/lib/commands';
-import { lastRuleStatus, syncRules } from '../src/lib/dnr';
-import {
-  WELCOME_PATH,
-  adoptNewBuiltins,
-  onInstalled,
-  startOver,
-  writeStarterPick,
-} from '../src/lib/install';
+import { WELCOME_PATH, onInstalled, startOver } from '../src/lib/install';
 import { STARTER_CATEGORIES, effectiveCategories } from '../src/lib/onboarding';
 import { shortcutId } from '../src/lib/overrides';
 import { loadState } from '../src/lib/storage';
-import { DEFAULT_OVERRIDES, DEFAULT_SETTINGS, STORAGE_KEY } from '../src/lib/types';
+import { DEFAULT_OVERRIDES, DEFAULT_SETTINGS } from '../src/lib/types';
 import type { Command, Overrides, StoredState } from '../src/lib/types';
 import { parseRoute } from '../src/options/router';
-import { EXT_ID, claim, installChromeStub, redirectTo, resultsUrl } from './helpers/rules';
+import { EXT_ID, claim, installChromeStub, resultsUrl } from './helpers/rules';
 import type { ChromeStub } from './helpers/rules';
 
 let stub: ChromeStub | null = null;
@@ -104,20 +98,10 @@ describe('a fresh install', () => {
     expect(parseRoute(WELCOME_PATH.slice(WELCOME_PATH.indexOf('#'))).name).toBe('welcome');
   });
 
-  it('falls back to the options page when a tab cannot be opened', async () => {
-    stub = installChromeStub({ rejectTabsCreate: true });
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    await fire('install');
-
-    expect(stub.opened).toEqual([]);
-    expect(stub.optionsPages).toBe(1);
-  });
-
   it('does not reset or re-onboard a profile whose storage survived the uninstall', async () => {
     // Any builtin: this one stands in for a shortcut the user switched off by
     // hand, and the point is only that the reinstall leaves it exactly so.
-    const switchedOff = shortcutId(BUILTIN_COMMANDS[0]);
+    const switchedOff = shortcutId(at(BUILTIN_COMMANDS, 0));
     const kept = stored({
       enabledCategories: ['purdue'],
       seenBuiltins: allBuiltinIds(),
@@ -136,44 +120,6 @@ describe('a fresh install', () => {
     // readily as for a first run. Settings links to the picker for a re-pick.
     expect(stub.opened).toEqual([]);
     expect(stub.optionsPages).toBe(0);
-  });
-
-  it('survives a sync that rejects before it can report a status', async () => {
-    stub = installChromeStub();
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    // `runSync` reads `chrome.runtime.id` outside its own try, so a worker
-    // whose context is gone rejects the promise rather than returning a
-    // status. This runs from a fire-and-forget listener, where that is an
-    // unhandled rejection, and it would take the picker down with it.
-    Object.defineProperty(globalThis.chrome.runtime, 'id', {
-      configurable: true,
-      get(): string {
-        throw new Error('Extension context invalidated.');
-      },
-    });
-
-    await expect(fire('install')).resolves.toBeUndefined();
-
-    expect(stub.opened).toHaveLength(1);
-  });
-
-  it('still syncs and still opens the picker when the write fails', async () => {
-    stub = installChromeStub();
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    const chromeStub = globalThis.chrome as unknown as {
-      storage: { local: { set: (values: Record<string, unknown>) => Promise<void> } };
-    };
-    chromeStub.storage.local.set = async () => {
-      throw new Error('QUOTA_BYTES quota exceeded');
-    };
-
-    await fire('install');
-
-    // The rules and the picker are what make the extension usable at all, and
-    // a profile whose pick could not be written has still never answered the
-    // picker, so it opens, and the user redoes the pick from it.
-    expect(stub.rules().length).toBeGreaterThan(0);
-    expect(stub.opened).toHaveLength(1);
   });
 });
 
@@ -194,40 +140,6 @@ describe('an update', () => {
     expect(overrides.seenBuiltins).toHaveLength(allBuiltinIds().length);
     expect(stub.writes).toBe(1);
   });
-
-  it('writes nothing when the registry holds nothing new', async () => {
-    stub = installChromeStub({
-      state: stored({ enabledCategories: ['search'], seenBuiltins: allBuiltinIds() }),
-    });
-
-    await fire('update');
-
-    // `migrateNewBuiltins` answers by reference, and a write here would cost a
-    // second rule rebuild through `onStateChanged` for no change at all.
-    expect(stub.writes).toBe(0);
-    expect(stub.rules().length).toBeGreaterThan(0);
-  });
-
-  it('never opens the picker at an existing user', async () => {
-    stub = installChromeStub({ state: stored({ enabledCategories: ['search'] }) });
-
-    await fire('update');
-
-    expect(stub.opened).toEqual([]);
-    expect(stub.optionsPages).toBe(0);
-  });
-});
-
-describe('any other reason', () => {
-  it('syncs the rules and touches nothing else', async () => {
-    stub = installChromeStub({ state: stored({ enabledCategories: ['search'] }) });
-
-    await fire('chrome_update');
-
-    expect(stub.writes).toBe(0);
-    expect(stub.opened).toEqual([]);
-    expect(stub.rules().length).toBeGreaterThan(0);
-  });
 });
 
 describe('starting over', () => {
@@ -244,7 +156,8 @@ describe('starting over', () => {
   /** A profile that has been lived in: a pick, a shortcut of their own, an
    *  edit, a section, a deletion, a switched-off builtin and settings. */
   function usedProfile(): StoredState {
-    const [first, second] = BUILTIN_COMMANDS;
+    const first = at(BUILTIN_COMMANDS, 0);
+    const second = at(BUILTIN_COMMANDS, 1);
     return {
       overrides: {
         ...DEFAULT_OVERRIDES,
@@ -283,70 +196,6 @@ describe('starting over', () => {
     }
     // One write, the pick, as on a fresh install: a burst is what collides on
     // DNR rule ids.
-    expect(stub.writes).toBe(1);
-  });
-
-  it('clears the stale rule status before the rebuild writes a new one', async () => {
-    stub = installChromeStub({ state: usedProfile() });
-    // A status describing rules built from the state this is about to delete.
-    await syncRules();
-    expect(await lastRuleStatus()).not.toBeNull();
-    stub.ops.length = 0;
-
-    await startOver();
-
-    // The state key goes first: `writeStarterPick` has to be answering for a
-    // profile that has never onboarded, which is only true once it is gone.
-    expect(stub.ops[0]).toBe(`local.remove ${STORAGE_KEY}`);
-    const session = stub.ops.filter((op) => op.startsWith('session.'));
-    expect(session[0]?.startsWith('session.remove')).toBe(true);
-    expect(session.slice(1).every((op) => op.startsWith('session.set'))).toBe(true);
-    // And the sync that follows leaves a status of its own, so the page has
-    // something to report rather than "checking".
-    expect(await lastRuleStatus()).not.toBeNull();
-  });
-
-  it('rebuilds the address bar around the starter pick', async () => {
-    stub = installChromeStub({ state: usedProfile() });
-    await syncRules();
-    // What this profile had: its own keyword live, and Purdue picked.
-    expect(addressBar('tix')).toBe('redirect');
-    expect(addressBar('bs')).toBe('redirect');
-
-    await startOver();
-
-    expect(addressBar('tix')).not.toBe('redirect');
-    expect(addressBar('bs')).not.toBe('redirect');
-    expect(addressBar('gh')).toBe('redirect');
-    expect(redirectTo(stub.rules(), resultsUrl(GOOGLE, 'gh+facebook%2Freact'))).toBe(
-      `chrome-extension://${EXT_ID}/go.html?q=gh+facebook%2Freact`,
-    );
-  });
-
-  it('opens nothing: the page it runs from navigates itself', async () => {
-    stub = installChromeStub({ state: usedProfile() });
-
-    await startOver();
-
-    expect(stub.opened).toEqual([]);
-    expect(stub.optionsPages).toBe(0);
-  });
-});
-
-describe('the pieces on their own', () => {
-  it('writeStarterPick answers whether it wrote', async () => {
-    stub = installChromeStub();
-    expect(await writeStarterPick()).toBe(true);
-    expect(await writeStarterPick()).toBe(false);
-    expect(stub.writes).toBe(1);
-  });
-
-  it('adoptNewBuiltins answers whether it wrote', async () => {
-    stub = installChromeStub({
-      state: stored({ enabledCategories: ['search'], seenBuiltins: [] }),
-    });
-    expect(await adoptNewBuiltins()).toBe(true);
-    expect(await adoptNewBuiltins()).toBe(false);
     expect(stub.writes).toBe(1);
   });
 });

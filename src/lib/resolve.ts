@@ -232,12 +232,14 @@ export function isBouncedUrl(value: string): boolean {
 }
 
 /**
- * A command destination can itself be a search on an engine we intercept:
- * `weather` IS a google search, and so are `g`, `gimg`, `gem` and the `gsite`
- * handler. Navigating there unmarked re-enters our own redirect rule, which
- * hands the url back to go.html: `weather` loops forever, `g npm install`
- * lands on the npm package page. Marking every destination in one place covers
- * `cmd.url`, `searchUrl` expansion and every handler return value alike.
+ * A command destination can itself be a search on an engine we intercept: `g`
+ * and `ddg` ARE searches, every `site:` degrade is one, and so is a handler
+ * that falls back to a plain search. Navigating there unmarked re-enters our
+ * own redirect rule, which hands the url back to go.html: `g npm install`
+ * lands on the npm package page, and a degrade that puts its own keyword back
+ * into the query (`gmeet`, `track`) loops forever. Marking every destination in
+ * one place covers `cmd.url`, `searchUrl` expansion and every handler return
+ * value alike.
  */
 function destination(cmd: Command, args: string, settings: Settings, keyword: string): string {
   return guardOwnOutput(rawDestination(cmd, args, settings, keyword));
@@ -351,10 +353,12 @@ function scoreCommand(q: string, cmd: Command): number {
 /** True when `needle` occurs in `haystack` at the start of a word. */
 function startsAWord(haystack: string, needle: string): boolean {
   if (!needle) return false;
-  for (let from = 0; from <= haystack.length - needle.length; ) {
+  for (let from = 0; from <= haystack.length - needle.length;) {
     const at = haystack.indexOf(needle, from);
     if (at < 0) return false;
-    if (at === 0 || !WORD_CHAR.test(haystack[at - 1])) return true;
+    // `charAt`, not `[]`: it is total, and out of range it answers '', which is
+    // not a word character, which is the same answer as being at position 0.
+    if (at === 0 || !WORD_CHAR.test(haystack.charAt(at - 1))) return true;
     from = at + 1;
   }
   return false;

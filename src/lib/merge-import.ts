@@ -275,4 +275,3 @@ function refileEdit(
   const category = moved.get(edit.category);
   return category ? { ...edit, category } : edit;
 }
-

@@ -6,7 +6,13 @@
  *
  * Persistence lives here too: `commitOverrides`/`commitSettings`/`commitState`
  * are the only three ways anything on this page writes to storage, and each
- * one applies the write optimistically before it is confirmed.
+ * one applies the write optimistically before it is confirmed. All three share
+ * one error contract: they REJECT, so every caller carries a `.catch` and none
+ * of them can mistake a failed write for a finished one.
+ *
+ * Undoing that optimistic apply is the caller's job where the caller has one
+ * (`savePick` in views/packs.ts), and `commitSettings`'s own, because its
+ * callers are field and checkbox handlers with nowhere to put a rollback.
  */
 
 import { BUILTIN_COMMANDS } from '../lib/commands';
@@ -23,7 +29,10 @@ export interface Notice {
   text: string;
 }
 
-let stored: StoredState = { overrides: clone(DEFAULT_OVERRIDES), settings: clone(DEFAULT_SETTINGS) };
+let stored: StoredState = {
+  overrides: clone(DEFAULT_OVERRIDES),
+  settings: clone(DEFAULT_SETTINGS),
+};
 let commands: Command[] = mergeCommands(BUILTIN_COMMANDS, stored.overrides);
 let route: Route = { name: 'help', params: new URLSearchParams() };
 let lastRoute: RouteName | null = null;
@@ -125,12 +134,24 @@ export async function commitOverrides(next: Overrides): Promise<void> {
 }
 
 export async function commitSettings(next: Settings, saved?: HTMLElement): Promise<void> {
+  const before = stored.settings;
   applyState({ ...stored, settings: next });
   try {
     await saveSettings(next);
   } catch (err) {
-    reportFailure(err);
-    return;
+    // The apply above is optimistic, so a rejected write would otherwise leave
+    // the page, and every render after it, showing a value that is not in
+    // storage. Same hazard `savePick` guards in views/packs.ts.
+    //
+    // The settings SLICE, not the whole `StoredState` snapshot: these three
+    // writers are async and interleave, so a `commitOverrides` that landed
+    // while this one was in flight must not be undone by its failure.
+    applyState({ ...stored, settings: before });
+    // Rethrown rather than swallowed, so this reads like `commitOverrides` and
+    // `commitState`. One error contract across the three writers means a caller
+    // cannot accidentally treat a failed settings write as a completed one, and
+    // the callers already carry `.catch(reportFailure)` for the other two.
+    throw err;
   }
   if (saved) flash(saved);
   paintStatusHook?.();

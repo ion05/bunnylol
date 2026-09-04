@@ -42,16 +42,18 @@ export function parseRoute(hash: string): Route {
   return { name, params };
 }
 
-// Two slots, because the monolith's two paths did different things: the
-// hashchange handler also synced the browse filter from `?q=`, while `go()`'s
-// same-hash path only re-rendered.
+// Two slots, because the two paths do different things: a real hash change also
+// syncs the browse filter from `?q=`, while `go()`'s same-hash path only
+// re-renders. One slot would make `go('#help')` re-read `?q=` over the filter
+// text the user has typed since.
 let onHashChange: (() => void) | null = null;
 let rerender: (() => void) | null = null;
 
-/** Installs the hashchange subscription that `boot()` used to install directly:
- *  parse the new hash into the route, store it, and let the caller decide what
- *  to do next. `onChange` runs on a real hash change; `render` is the
- *  render-only callback `go()` uses below. */
+/** Installs the hashchange subscription: parse the new hash into the route,
+ *  store it, and let the caller decide what to do next. Both callbacks are
+ *  injected rather than imported, which is what keeps this module free of any
+ *  view. `onChange` runs on a real hash change; `render` is the render-only
+ *  callback `go()` uses below. */
 export function startRouter(onChange: () => void, render: () => void): void {
   onHashChange = onChange;
   rerender = render;

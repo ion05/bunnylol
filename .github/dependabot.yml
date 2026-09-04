@@ -1,0 +1,18 @@
+# GitHub Actions only, deliberately.
+#
+# The npm ecosystem is left out because this project's dependency policy is the
+# point: four devDependencies, no runtime dependencies, and nothing from
+# node_modules reaches the shipped extension. A weekly stream of npm bumps would
+# be noise against a lockfile that is meant to move rarely and on purpose.
+#
+# The action pins are the opposite case. They are `@v4` major tags on somebody
+# else's repository, they are the only third-party code that runs with access to
+# this repository, and nobody notices when one goes stale.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: 'ci:'

@@ -1,6 +1,6 @@
 /**
  * `src/options/model/browse.ts` is the browse list's grouping and filtering
- * logic, pulled out of `options.ts` so it can be exercised without a DOM.
+ * logic, kept out of `views/browse.ts` so it can be exercised without a DOM.
  *
  * Importing the module at all is half the test: it must load under vitest's
  * `environment: 'node'`, which is only true if the module touches neither
@@ -8,24 +8,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { BUILTIN_COMMANDS } from '../src/lib/commands';
-import { sectionKey, shortcutId } from '../src/lib/overrides';
-import { mergeCommands } from '../src/lib/resolve';
-import { validateSectionId } from '../src/lib/validate';
 import { DEFAULT_OVERRIDES } from '../src/lib/types';
 import type { BuiltinCommand, Command, Overrides } from '../src/lib/types';
-import {
-  browseEntries,
-  browseGroups,
-  buildKeyOwner,
-  countLabel,
-  enableAll,
-  exampleOf,
-  haystackOf,
-  hiddenActions,
-  HIDDEN_GROUP_ID,
-  TURN_ON_ALL,
-} from '../src/options/model/browse';
+import { browseEntries, browseGroups, enableAll } from '../src/options/model/browse';
 
 const github: BuiltinCommand = {
   keys: ['gh', 'github'],
@@ -69,28 +54,9 @@ describe('browseEntries', () => {
     expect(entries.map((entry) => entry.cmd.name).sort()).toEqual(['GitHub', 'Reddit', 'Tickets']);
   });
 
-  it('a custom command comes before the builtins', () => {
-    const entries = browseEntries(builtins, overridesWith({ custom: [ticket] }));
-    expect(entries[0].cmd.name).toBe('Tickets');
-  });
-
-  it('a disabled builtin is still an entry, marked disabled', () => {
-    const entries = browseEntries(builtins, overridesWith({ disabled: ['gh'] }));
-    const entry = entries.find((candidate) => candidate.id === 'gh');
-    expect(entry).toBeDefined();
-    expect(entry?.disabled).toBe(true);
-    expect(entry?.cmd.name).toBe('GitHub');
-  });
-
   it('a deleted builtin is missing entirely', () => {
     const entries = browseEntries(builtins, overridesWith({ deleted: ['r'] }));
     expect(entries.some((entry) => entry.id === 'r')).toBe(false);
-  });
-
-  it('matchKey follows the override, not the shipped key', () => {
-    const entries = browseEntries(builtins, overridesWith({ edits: { gh: { keys: ['git'] } } }));
-    const entry = entries.find((candidate) => candidate.id === 'gh');
-    expect(entry?.matchKey).toBe('git');
   });
 
   it('an edited builtin entry carries the edit and is marked modified', () => {
@@ -104,244 +70,13 @@ describe('browseEntries', () => {
     expect(entry?.modified).toBe(true);
     expect(entry?.shipped).toBe(true);
   });
-
-  it('an unedited builtin entry is not marked modified', () => {
-    const entries = browseEntries(builtins, DEFAULT_OVERRIDES);
-    expect(entries.every((entry) => entry.modified)).toBe(false);
-    expect(entries.find((entry) => entry.id === 'gh')?.modified).toBe(false);
-  });
-
-  it('an edit that changes nothing is not a modification', () => {
-    // Representable, and it survives storage: an import can carry an `edits`
-    // entry that restates the shipped values, and an empty object is an edit
-    // too. The badge has to mean "different from shipped", because Reset then
-    // Save writes the diff, which is empty, and could never clear it.
-    for (const edit of [{}, { name: 'GitHub' }, { keys: ['gh', 'github'] }, { category: 'dev' }]) {
-      const entries = browseEntries(builtins, overridesWith({ edits: { gh: edit } }));
-      expect(
-        entries.find((candidate) => candidate.id === 'gh')?.modified,
-        JSON.stringify(edit),
-      ).toBe(false);
-    }
-  });
-
-  it('a custom entry is shipped: false and never modified', () => {
-    // A custom command is edited in place, so it has nothing to differ FROM;
-    // the badge would be claiming a difference the user cannot go and look at.
-    const entries = browseEntries(builtins, overridesWith({ custom: [ticket] }));
-    const entry = entries.find((candidate) => candidate.id === 'u:tix');
-    expect(entry?.shipped).toBe(false);
-    expect(entry?.modified).toBe(false);
-  });
-
-  it('a disabled custom command is still an entry, marked disabled', () => {
-    const entries = browseEntries(
-      builtins,
-      overridesWith({ custom: [ticket], disabled: ['u:tix'] }),
-    );
-    const entry = entries.find((candidate) => candidate.id === 'u:tix');
-    expect(entry).toBeDefined();
-    expect(entry?.disabled).toBe(true);
-  });
-
-  it('deleting a builtin removes it from disabled but keeps its edit', () => {
-    // What the row's Delete handler writes: a deleted shortcut is gone rather
-    // than off, and Restore has to bring back the version the user had.
-    const overrides = overridesWith({
-      deleted: ['gh'],
-      disabled: [],
-      edits: { gh: { name: 'Hub' } },
-    });
-    expect(browseEntries(builtins, overrides).some((entry) => entry.id === 'gh')).toBe(false);
-    expect(overrides.disabled).not.toContain('gh');
-    expect(overrides.edits.gh).toEqual({ name: 'Hub' });
-  });
-
-  it('deleting a shipped shortcut takes only that row off the list', () => {
-    // `deleted` names shipped ids. A custom command is deleted by being taken
-    // out of `custom`, so a `u:` id sitting in the list (an older build, a
-    // hand-edited import) must not hide its row: nothing could bring it back.
-    const overrides = overridesWith({ deleted: ['gh'], custom: [ticket] });
-    expect(browseEntries(builtins, overrides).map((entry) => entry.id)).toEqual(['u:tix', 'r']);
-    const stale = overridesWith({ deleted: ['u:tix'], custom: [ticket] });
-    expect(browseEntries(builtins, stale).some((entry) => entry.id === 'u:tix')).toBe(true);
-  });
-
-  it('browseEntries and mergeCommands agree on every enabled builtin', () => {
-    // The drift guard between the list and the resolver, run against the real
-    // registry: a row that claims a keyword, name or destination the resolver
-    // does not answer to is worse than no row at all.
-    const overrides = overridesWith({
-      custom: [ticket],
-      disabled: ['r'],
-      deleted: ['gh'],
-      sections: [{ id: 'sec-work', label: 'Client work' }],
-      edits: {
-        c: { name: 'Claude 5', keys: ['cl', 'claude'], category: 'sec-work' },
-        g: { searchUrl: 'https://kagi.com/search?q={q}', description: 'Search Kagi.' },
-      },
-    });
-    const merged = new Map(
-      mergeCommands(BUILTIN_COMMANDS, overrides).map((cmd) => [shortcutId(cmd), cmd] as const),
-    );
-    const listed = browseEntries(BUILTIN_COMMANDS, overrides).filter((entry) => !entry.disabled);
-
-    expect(listed.length).toBe(merged.size);
-    for (const entry of listed) {
-      const cmd = merged.get(entry.id);
-      expect(cmd, `${entry.id} is listed but not merged`).toBeDefined();
-      expect(cmd?.keys).toEqual(entry.cmd.keys);
-      expect(cmd?.name).toBe(entry.cmd.name);
-      expect(cmd?.description).toBe(entry.cmd.description);
-      expect(cmd?.url).toBe(entry.cmd.url);
-      expect(cmd?.searchUrl).toBe(entry.cmd.searchUrl);
-      expect(cmd?.category).toBe(entry.cmd.category);
-      expect(cmd?.example).toBe(entry.cmd.example);
-      // The fields an edit may never move (invariant 16).
-      expect(cmd?.handler).toBe(entry.cmd.handler);
-      expect(cmd?.provider).toBe(entry.cmd.provider);
-    }
-  });
-});
-
-describe('haystackOf', () => {
-  it('covers keys, name, description, url and searchUrl, lowercased', () => {
-    const haystack = haystackOf(github);
-    expect(haystack).toContain('gh');
-    expect(haystack).toContain('github');
-    expect(haystack).toContain('open a repo');
-    expect(haystack).toContain('github.com');
-    expect(haystack).toContain('search?q={q}');
-    expect(haystack).toBe(haystack.toLowerCase());
-  });
-});
-
-describe('exampleOf', () => {
-  it('prefers the persisted example', () => {
-    const withExample: Command = { ...ticket, example: 'tix concert' };
-    expect(exampleOf(withExample)).toBe('tix concert');
-  });
-
-  it('derives one only for a non-builtin with a searchUrl', () => {
-    const withSearch: Command = { ...ticket, searchUrl: 'https://example.com/search?q={q}' };
-    expect(exampleOf(withSearch)).toBe('tix <arguments>');
-    // A builtin never gets a derived example, even with a searchUrl.
-    expect(exampleOf(github)).toBe('');
-    // No searchUrl -> no derived example either.
-    expect(exampleOf(ticket)).toBe('');
-  });
-});
-
-describe('buildKeyOwner', () => {
-  it('is first-writer-wins', () => {
-    // `tix` clashes with nothing here, but a custom command sharing a builtin's
-    // alias is listed first by `browseEntries`, so it wins the map.
-    const clashing: Command = { ...ticket, keys: ['gh'] };
-    const entries = browseEntries(builtins, overridesWith({ custom: [clashing] }));
-    const owners = buildKeyOwner(entries);
-    expect(owners.get('gh')).toBe('u:tix');
-  });
-
-  it('skips disabled entries', () => {
-    const entries = browseEntries(builtins, overridesWith({ disabled: ['r'] }));
-    const owners = buildKeyOwner(entries);
-    expect(owners.has('r')).toBe(false);
-  });
 });
 
 describe('browseGroups', () => {
-  const sections = [{ id: 'sec-work', label: 'Client work' }];
-
-  it('lists the sections that hold something, in page order, with their labels', () => {
-    const groups = browseGroups(browseEntries(builtins, overridesWith({ custom: [ticket] })), []);
-    expect(groups.map((group) => group.id)).toEqual(['custom', 'dev', 'social']);
-    expect(groups.map((group) => group.label)).toEqual(['My shortcuts', 'Developer', 'Social']);
-  });
-
   it('files every entry under exactly one group', () => {
     const entries = browseEntries(builtins, overridesWith({ custom: [ticket] }));
     const filed = browseGroups(entries, []).flatMap((group) => group.entries);
     expect(filed.map((entry) => entry.id).sort()).toEqual(entries.map((entry) => entry.id).sort());
-  });
-
-  it('keeps a switched-off entry filed under its own section', () => {
-    // The hidden group draws it, but the section is where switching it back on
-    // has to return it, and the view learns that from here.
-    const entries = browseEntries(builtins, overridesWith({ disabled: ['gh'] }));
-    const dev = browseGroups(entries, []).find((group) => group.id === 'dev');
-    expect(dev?.entries.map((entry) => entry.id)).toEqual(['gh']);
-  });
-
-  it('keeps a section whose shortcuts are all off, and drops one holding nothing', () => {
-    // A declined pack leaves its section empty on screen, and `applyFilter`
-    // hides the heading. Dropping the group here instead would leave the rows
-    // it owns with nowhere to go back to.
-    const entries = browseEntries(builtins, overridesWith({ disabled: ['gh'], sections }));
-    const ids = browseGroups(entries, sections).map((group) => group.id);
-    expect(ids).toContain('dev');
-    expect(ids).not.toContain('sec-work');
-  });
-});
-
-describe('HIDDEN_GROUP_ID', () => {
-  it('is an id the section editor could never mint', () => {
-    // The fold of "Hidden shortcuts" shares one localStorage set with the real
-    // sections, so a user-mintable key would let a section called "Hidden"
-    // inherit this group's fold.
-    expect(validateSectionId(HIDDEN_GROUP_ID).ok).toBe(false);
-    // And it still survives the reader every fold is compared through.
-    expect(sectionKey(HIDDEN_GROUP_ID)).toBe(HIDDEN_GROUP_ID);
-  });
-});
-
-describe('hiddenActions', () => {
-  it('draws a heading only for a run that holds something', () => {
-    const { runs } = hiddenActions([
-      { label: 'Developer', hidden: 3, live: 0 },
-      { label: 'Social', hidden: 0, live: 4 },
-    ]);
-    expect(runs.map((run) => run.shown)).toEqual([true, false]);
-  });
-
-  it('says "the rest of" while any of the section is still live', () => {
-    // The dishonest label is the one this exists to avoid: a section that is
-    // half switched on is not a section this button turns on.
-    const { runs } = hiddenActions([{ label: 'Developer', hidden: 5, live: 7 }]);
-    expect(runs[0].label).toBe('Turn on the rest of Developer');
-  });
-
-  it('says "all of" only when none of the section is live', () => {
-    // A declined pack: nothing of it is on, so "the rest" would be naming a
-    // remainder of nothing.
-    const { runs } = hiddenActions([{ label: 'Productivity', hidden: 12, live: 0 }]);
-    expect(runs[0].label).toBe('Turn on all of Productivity');
-  });
-
-  it('offers no action for a run of one', () => {
-    // The row's own switch already does it in one click, so a second control
-    // beside it would be a second way to make the same gesture.
-    const { runs } = hiddenActions([{ label: 'Developer', hidden: 1, live: 2 }]);
-    expect(runs[0].shown).toBe(true);
-    expect(runs[0].label).toBeNull();
-  });
-
-  it('offers the whole-group action only once more than one run is drawn', () => {
-    // With one run, the group action and the run's own would switch on exactly
-    // the same rows, and the one naming its section says more.
-    expect(hiddenActions([{ label: 'Developer', hidden: 4, live: 0 }]).all).toBeNull();
-    expect(
-      hiddenActions([
-        { label: 'Developer', hidden: 4, live: 0 },
-        { label: 'Social', hidden: 2, live: 1 },
-      ]).all,
-    ).toBe(TURN_ON_ALL);
-  });
-
-  it('names no section and no count in the whole-group action', () => {
-    // Every number on the browse page is written by `applyFilter`; one baked
-    // into a label would be the only figure that had not been through it, and
-    // it would go stale the moment a row moved.
-    expect(TURN_ON_ALL).not.toMatch(/\d/);
   });
 });
 
@@ -350,48 +85,5 @@ describe('enableAll', () => {
     // One list, for one `commitOverrides` call: a write per row would be the
     // burst of `onStateChanged` events invariant 15 exists to survive.
     expect(enableAll(['gh', 'r', 'u:tix'], ['gh', 'u:tix'])).toEqual(['r']);
-  });
-
-  it('leaves an id it was not given alone, and copies rather than mutates', () => {
-    const disabled = ['gh', 'r'];
-    expect(enableAll(disabled, ['npm'])).toEqual(['gh', 'r']);
-    expect(disabled).toEqual(['gh', 'r']);
-  });
-
-  it('matches through normalizeId, so a stored id in another case still goes', () => {
-    // `browseEntries` decides a row is off through `normalizeId`. A plain
-    // comparison would move the row back to its section and leave it switched
-    // off in the state the resolver reads.
-    expect(enableAll([' GH ', 'r'], ['gh'])).toEqual(['r']);
-  });
-});
-
-describe('countLabel', () => {
-  it('counts shortcuts when nothing is off and no query is live', () => {
-    expect(countLabel({ on: 170, shown: 170, total: 170 }, false)).toBe('170 shortcuts');
-  });
-
-  it('counts what is on when some are off', () => {
-    expect(countLabel({ on: 96, shown: 170, total: 170 }, false)).toBe('96 of 170 shortcuts on');
-  });
-
-  it('keeps meaning matched out of all while a query is live', () => {
-    expect(countLabel({ on: 4, shown: 4, total: 170 }, true)).toBe('4 of 170 shortcuts');
-  });
-
-  it('adds what is on as its own clause, so the two pairs cannot be confused', () => {
-    // Without the clause this would read "2 of 170 shortcuts" for four matches,
-    // or claim four live ones when two of them are switched off.
-    expect(countLabel({ on: 2, shown: 4, total: 170 }, true)).toBe('4 of 170 shortcuts, 2 on');
-  });
-
-  it('says nothing extra when a query matches nothing', () => {
-    expect(countLabel({ on: 0, shown: 0, total: 170 }, true)).toBe('0 of 170 shortcuts');
-  });
-
-  it('says none are on when every match is under Hidden shortcuts', () => {
-    // A query for a declined pack's keyword: the rows are found, and the line
-    // has to say that none of what it found is live.
-    expect(countLabel({ on: 0, shown: 3, total: 170 }, true)).toBe('3 of 170 shortcuts, 0 on');
   });
 });

@@ -5,8 +5,9 @@
  * qualifier anywhere on this page: the whole point is that there is no
  * difference.
  *
- * The `textContent` rule `views/browse.ts` documents applies here too: this
- * view echoes the draft back in the live preview.
+ * The `textContent` rule `views/browse-row.ts` documents applies here too: this
+ * view echoes the draft back in the live preview, and a shortcut name is
+ * untrusted input (AGENTS.md invariant 11).
  */
 
 import { BUILTIN_COMMANDS } from '../../lib/commands';
@@ -318,11 +319,7 @@ export function renderForm(): HTMLElement {
         messages,
         el('div', {
           class: 'form-actions',
-          children: [
-            saveButton,
-            resetButton,
-            button('Cancel', () => go('#help'), 'btn'),
-          ],
+          children: [saveButton, resetButton, button('Cancel', () => go('#help'), 'btn')],
         }),
       ],
     }),
@@ -374,12 +371,13 @@ export function renderForm(): HTMLElement {
     const current = readDraft();
     const problems = validateDraft(current, currentContext());
     // The pooled list carries only what no single field owns.
-    paintProblems(messages, problems.filter((problem) => problem.field === undefined));
+    paintProblems(
+      messages,
+      problems.filter((problem) => problem.field === undefined),
+    );
     for (const name of FORM_FIELDS) {
       const visible = submitted || touched.has(name);
-      slots[name].setProblems(
-        visible ? problems.filter((problem) => problem.field === name) : [],
-      );
+      slots[name].setProblems(visible ? problems.filter((problem) => problem.field === name) : []);
     }
     // Nothing left to put back is the one state where Reset would do nothing at
     // all, and a button that does nothing should say so before it is pressed.
@@ -432,10 +430,7 @@ export function renderForm(): HTMLElement {
     // the same id we did.
     const id =
       target.id ||
-      mintUserId(
-        splitKeys(current.keys)[0] ?? '',
-        new Set(overrides.custom.map(shortcutId)),
-      );
+      mintUserId(splitKeys(current.keys)[0] ?? '', new Set(overrides.custom.map(shortcutId)));
     const cmd = buildCommand({ ...current, category }, known, target.base, id);
 
     let next: Overrides;
@@ -472,7 +467,10 @@ export function renderForm(): HTMLElement {
       paintProblems(messages, [{ level: 'error', text: `Could not save: ${errorText(err)}` }]);
       return;
     }
-    setNotice({ tone: 'ok', text: `Saved “${cmd.name}”. Type ${cmd.keys[0]} in the address bar to use it.` });
+    setNotice({
+      tone: 'ok',
+      text: `Saved “${cmd.name}”. Type ${cmd.keys[0]} in the address bar to use it.`,
+    });
     go('#help');
   }
 
@@ -486,7 +484,7 @@ export function renderForm(): HTMLElement {
   return panel;
 }
 
-export function paintProblems(host: HTMLElement, problems: Problem[]): void {
+function paintProblems(host: HTMLElement, problems: Problem[]): void {
   host.textContent = '';
   for (const problem of problems) {
     host.append(
@@ -498,7 +496,7 @@ export function paintProblems(host: HTMLElement, problems: Problem[]): void {
   }
 }
 
-export function paintPreview(
+function paintPreview(
   draft: Draft,
   target: FormTarget,
   rows: HTMLElement,
@@ -512,8 +510,10 @@ export function paintPreview(
   // the user reads the wrong explanation for what the rows are showing.
   const notes: string[] = [];
 
-  const keys = splitKeys(draft.keys);
-  if (keys.length === 0 || !draft.url.trim()) {
+  // The lead alias stands in for `keys.length === 0`: same test, and it is the
+  // one the preview rows below are typed with.
+  const [key] = splitKeys(draft.keys);
+  if (key === undefined || !draft.url.trim()) {
     rows.append(
       el('div', {
         class: 'preview-row',
@@ -536,7 +536,6 @@ export function paintPreview(
   const commands = previewCommands(BUILTIN_COMMANDS, overrides, cmd, target.id, target.shipped);
   const switchedOff =
     target.id !== '' && overrides.disabled.some((id) => normalizeId(id) === target.id);
-  const key = keys[0];
   const sampleArgs = getSampleArgs();
   const withArgs = sampleArgs.trim() ? `${key} ${sampleArgs.trim()}` : key;
 

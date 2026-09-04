@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   check:
-    name: typecheck + test + build
+    name: lint + typecheck + test + build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,6 +25,11 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      # First, because it is the fastest signal: eslint and prettier --check
+      # together run in a couple of seconds, well under the typecheck.
+      - run: pnpm lint
+
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
@@ -32,7 +37,7 @@ jobs:
       # `pnpm build` runs scripts/gen-icons.mjs, so a change to the generator or
       # to --accent repaints these. Committed PNGs that the generator no longer
       # produces are a silent drift no other step can see.
-      - run: git diff --exit-code -- public/icons store
+      - run: git diff --exit-code -- public/icons
 
       # The packer has no test, it writes a binary nothing else reads, so the
       # only cheap guard is that it still runs over a real build. `release/` is

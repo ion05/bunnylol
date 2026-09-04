@@ -11,7 +11,13 @@
  * own is not a confirmation, it is a delay.
  */
 
-import { expandTemplate, isBouncedUrl, resolve, stripPassthrough, withPassthrough } from '../lib/resolve';
+import {
+  expandTemplate,
+  isBouncedUrl,
+  resolve,
+  stripPassthrough,
+  withPassthrough,
+} from '../lib/resolve';
 import { loadResolveContext } from '../lib/storage';
 import { errorText, firstToken } from '../lib/text';
 import { toNavigableUrl } from '../lib/url';
@@ -144,7 +150,10 @@ function fail(query: string, error: unknown): void {
   // used to append would be a flex item of its own.
   const actions = document.createElement('p');
   actions.className = 'err-actions';
-  actions.append(link(searchUrl(query), 'Search for it instead'), link(optionsUrl(), 'BunnyLol settings'));
+  actions.append(
+    link(searchUrl(query), 'Search for it instead'),
+    link(optionsUrl(), 'BunnyLol settings'),
+  );
 
   box.replaceChildren(title, echo, why, actions);
   box.hidden = false;

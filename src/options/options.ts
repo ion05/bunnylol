@@ -48,10 +48,11 @@ async function boot(): Promise<void> {
   setRoute(parseRoute(location.hash));
   setFilter(getRoute().name === 'help' ? (getRoute().params.get('q') ?? '') : '');
 
-  // Installed before the first render, not after: in the monolith these three
-  // were plain module state and function calls, always live. A view built by
-  // that first render can commit or navigate, and a hook installed afterwards
-  // would make those calls silent no-ops.
+  // Installed before the first render, not after. All three are nullable slots
+  // in `store.ts` and `router.ts` that no-op while they are empty, and the view
+  // that first render builds can already commit or navigate, so a hook
+  // installed afterwards would swallow that first commit and that first
+  // navigation without a word.
   setAfterCommit(scheduleStatusRefresh);
   setStatusPainter(paintStatus);
   startRouter(onRouteChange, render);
@@ -83,10 +84,11 @@ async function boot(): Promise<void> {
   void refreshStatus();
 }
 
-/** What `router.ts`'s hashchange listener runs after it updates the route:
- *  the `browseFilter` sync and the re-render used to live directly inside
- *  `boot()`'s `hashchange` handler. `go()`'s same-hash path deliberately gets
- *  `render` instead of this, exactly as the monolith did. */
+/** What `router.ts`'s hashchange listener runs after it updates the route: sync
+ *  the browse filter from `?q=`, then re-render. `go()`'s same-hash path is
+ *  deliberately given `render` instead of this, because re-rendering the page
+ *  the user is already on must not re-read `?q=` over the filter text they have
+ *  typed since. */
 function onRouteChange(): void {
   const route = getRoute();
   if (route.name === 'help' && route.params.has('q')) setFilter(route.params.get('q') ?? '');

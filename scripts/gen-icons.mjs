@@ -8,10 +8,8 @@
  * Those two tokens are declared as flat hexes rather than light-dark() pairs
  * precisely because a PNG has one colour, not one per scheme.
  *
- * Writes public/icons/icon{16,32,48,128}.png, which are full-bleed for the
- * toolbar and the extensions page, and store/icon128.png, which is the same
- * art at 96px centred in a 128px frame for the Web Store listing. store/ sits
- * outside public/, so it is never copied into dist/ or a release zip.
+ * Writes public/icons/icon{16,32,48,128}.png, full-bleed for the toolbar and
+ * the extensions page. The 128 is also what the README shows as the logo.
  *
  * Deterministic: re-running writes byte-identical files.
  *
@@ -85,9 +83,7 @@ function encodePng(width, height, rgba) {
 function sdRoundedRect(x, y, cx, cy, halfW, halfH, r) {
   const qx = Math.abs(x - cx) - halfW + r;
   const qy = Math.abs(y - cy) - halfH + r;
-  return (
-    Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r
-  );
+  return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r;
 }
 
 function sdCapsule(x, y, ax, ay, bx, by, r) {
@@ -107,7 +103,6 @@ const EAR_BASE_Y = 0.585;
 /** Half the tile's width, in the unit square. The toolbar icons are full
  *  bleed; the Web Store asks for 96px of art inside a 128px frame. */
 const TILE_HALF = 0.48;
-const STORE_TILE_HALF = 0.375;
 
 function insideBackground(x, y, half) {
   return sdRoundedRect(x, y, 0.5, 0.5, half, half, 0.22 * (half / TILE_HALF)) <= 0;
@@ -177,6 +172,3 @@ const emit = (file, size, half) => {
 for (const size of SIZES) {
   emit(join(root, 'public', 'icons', `icon${size}.png`), size, TILE_HALF);
 }
-
-/* The listing icon, which is uploaded by hand rather than packed. */
-emit(join(root, 'store', 'icon128.png'), 128, STORE_TILE_HALF);

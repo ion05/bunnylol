@@ -203,14 +203,13 @@ export function claim(
  * whole point of the priority tiers. Picking the first match in the array would
  * make this helper agree with the rule builder by accident.
  */
-export function redirectTo(
-  rules: chrome.declarativeNetRequest.Rule[],
-  url: string,
-): string | null {
+export function redirectTo(rules: chrome.declarativeNetRequest.Rule[], url: string): string | null {
   const matching = rules.filter((rule) => rule.action.type === 'redirect' && matches(rule, url));
   if (matching.length === 0) return null;
   const top = Math.max(...matching.map(priorityOf));
-  const rule = matching.find((candidate) => priorityOf(candidate) === top) as chrome.declarativeNetRequest.Rule;
+  const rule = matching.find(
+    (candidate) => priorityOf(candidate) === top,
+  ) as chrome.declarativeNetRequest.Rule;
   const pattern = compile(rule.condition.regexFilter as string);
   const substitution = rule.action.redirect?.regexSubstitution as string;
   return url.replace(pattern, substitution.replace(/\\(\d)/g, '$$$1'));

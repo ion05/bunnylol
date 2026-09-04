@@ -162,7 +162,7 @@ function clashText(key: string, ownerId: string, ctx: FormContext): string {
     : `“${key}” currently opens ${name}. ${taker} will take over and that one loses its only keyword.`;
 }
 
-export function urlProblem(value: string, label: string, field: FormField): Problem | null {
+function urlProblem(value: string, label: string, field: FormField): Problem | null {
   let parsed: URL;
   try {
     parsed = new URL(value);
@@ -267,8 +267,7 @@ export function previewCommands(
   editing: string,
   shipped = false,
 ): Command[] {
-  const index =
-    shipped && editing ? builtins.findIndex((cmd) => shortcutId(cmd) === editing) : -1;
+  const index = shipped && editing ? builtins.findIndex((cmd) => shortcutId(cmd) === editing) : -1;
   if (index < 0) return mergeCommands(builtins, previewOverrides(overrides, editing, draft));
 
   const registry = [...builtins];

@@ -9,8 +9,8 @@
  * to a missing extension resource, because `toNavigableUrl` treats anything
  * without a scheme as an extension-relative path.
  *
- * The section id and label questions live here for the same reason, before
- * there is a section editor to put them next to.
+ * The section id and label questions live here for the same reason, rather than
+ * beside the Sections card in Settings that is only one of their callers.
  *
  * Pure, and imports only the escape prefixes from the contract: it is used by
  * the resolver, by storage's lenient recovery path and by the strict import
@@ -29,7 +29,7 @@ import { FORCE_SEARCH_PREFIXES } from './types';
  * address-bar intercepted, so `activeKeywords` filters on this while storage
  * keeps the alias.
  */
-export const SAFE_KEYWORD = /^[a-z0-9_][a-z0-9_-]*$/;
+const SAFE_KEYWORD = /^[a-z0-9_][a-z0-9_-]*$/;
 
 /** Nobody types a 33-character keyword; longer entries are imported junk. */
 export const MAX_KEYWORD_LENGTH = 32;
@@ -117,7 +117,7 @@ export function validateUrlTemplate(raw: string): UrlCheck {
  * stored on every member command, and it round-trips through the export file,
  * so it has to be a single canonical token.
  */
-export const SAFE_SECTION_ID = /^[a-z0-9][a-z0-9-]*$/;
+const SAFE_SECTION_ID = /^[a-z0-9][a-z0-9-]*$/;
 
 /** Same "imported junk" ceiling as a keyword; ids are machine-facing. */
 export const MAX_SECTION_ID_LENGTH = 32;

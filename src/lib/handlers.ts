@@ -31,7 +31,10 @@ import { DEFAULT_SETTINGS } from './types';
  * Mode (`udm=50`), which is the same model and does answer from the query
  * string. A bare `gem` still opens the Gemini app itself.
  */
-export const AI_PROVIDERS: AiProvider[] = [
+// Typed as a non-empty tuple rather than `AiProvider[]`, because `findProvider`
+// degrades an unknown provider id to the FIRST entry: emptying this list would
+// not be a shorter menu, it would be an `ai` command that resolves to nothing.
+export const AI_PROVIDERS: [AiProvider, ...AiProvider[]] = [
   {
     id: 'claude',
     label: 'Claude',
@@ -59,11 +62,25 @@ export const AI_PROVIDERS: AiProvider[] = [
 ];
 
 /**
+ * A lookup table a hostile key cannot answer out of `Object.prototype`.
+ *
+ * Every table below is indexed with text the user controls: a word typed after
+ * a shortcut, or a path segment of a URL they edited. On a plain object literal
+ * `TABLE['constructor']` is truthy and interpolates `function Object() { … }`
+ * into the destination. Nothing escaped an origin, but this is the shape
+ * AGENTS.md invariant 17 exists for, and it is cheaper to close than to keep
+ * checking. `Object.create(null)` inherits nothing, so a miss is a miss.
+ */
+function lookup(entries: Record<string, string>): Record<string, string> {
+  return Object.assign(Object.create(null) as Record<string, string>, entries);
+}
+
+/**
  * Fallback dispatch for AI commands with no `provider`: imported or
  * hand-written commands that name the `ai` handler but predate that field.
  * Builtins carry `provider` and never consult this.
  */
-const AI_KEYS: Record<string, string> = {
+const AI_KEYS: Record<string, string> = lookup({
   c: 'claude',
   cl: 'claude',
   claude: 'claude',
@@ -73,7 +90,7 @@ const AI_KEYS: Record<string, string> = {
   gemini: 'gemini',
   cc: 'claudecode',
   claudecode: 'claudecode',
-};
+});
 
 /** Unpaired surrogates, which `encodeURIComponent` throws on. */
 const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
@@ -83,7 +100,7 @@ const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[
  * can carry an unpaired surrogate; substituting U+FFFD keeps the user moving
  * instead of stranding them, and matches what every browser renders anyway.
  */
-export function encodeQuery(value: string): string {
+function encodeQuery(value: string): string {
   return encodeURIComponent(value.replace(LONE_SURROGATE, '\uFFFD'));
 }
 
@@ -91,7 +108,7 @@ export function encodeQuery(value: string): string {
  * Percent-encodes a run of path segments, but leaves `/` and `@` readable,
  * both are legal in a path, and `@scope/pkg` URLs are unreadable without them.
  */
-export function encodePath(value: string): string {
+function encodePath(value: string): string {
   return dropDotSegments(encodeQuery(value).replace(/%2F/gi, '/').replace(/%40/gi, '@'));
 }
 
@@ -239,7 +256,9 @@ function plainSearch(keyword: string, args: string, settings: Settings): string 
 }
 
 function findProvider(providerId: string): AiProvider {
-  const id = String(providerId ?? '').trim().toLowerCase();
+  const id = String(providerId ?? '')
+    .trim()
+    .toLowerCase();
   const found = AI_PROVIDERS.find((provider) => provider.id === id);
   return found ?? AI_PROVIDERS[0];
 }
@@ -264,12 +283,12 @@ const GITHUB_HOME = 'https://github.com/';
  * item path differ for pull requests, `/pulls` but `/pull/123`, so the
  * mapping cannot just append the number to the tab.
  */
-const GITHUB_NUMBERED: Record<string, string> = {
+const GITHUB_NUMBERED: Record<string, string> = lookup({
   pulls: 'pull',
   issues: 'issues',
-};
+});
 
-const GITHUB_TABS: Record<string, string> = {
+const GITHUB_TABS: Record<string, string> = lookup({
   issues: 'issues',
   issue: 'issues',
   i: 'issues',
@@ -285,7 +304,7 @@ const GITHUB_TABS: Record<string, string> = {
   branches: 'branches',
   commits: 'commits',
   tags: 'tags',
-};
+});
 
 function stripGithubHost(value: string): string {
   return value.replace(/^(?:https?:\/\/)?(?:www\.)?github\.com(?:\/|$)/i, '');
@@ -313,11 +332,11 @@ function github(args: string, cmd: Command, settings: Settings): string {
     return tokens.length > 0 ? githubSearch(tokens.join(' ')) : cmd.url || GITHUB_HOME;
   }
 
-  const tokens = stripGithubHost(raw).split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) return cmd.url || GITHUB_HOME;
-
-  const head = tokens[0];
-  const rest = tokens.slice(1).join(' ');
+  // Destructured rather than length-checked: `head` is the same first token
+  // either way, and this is the form the compiler can see is present.
+  const [head, ...afterHead] = stripGithubHost(raw).split(/\s+/).filter(Boolean);
+  if (head === undefined) return cmd.url || GITHUB_HOME;
+  const rest = afterHead.join(' ');
 
   if (!rest && head.toLowerCase() === 'me') {
     const user = (settings.githubUser || '').trim();
@@ -331,15 +350,19 @@ function github(args: string, cmd: Command, settings: Settings): string {
     const repo = `${GITHUB_HOME}${encodePath(path)}`;
     if (!rest) return repo;
 
+    // `rest` joins tokens that were non-empty, so it always splits into at
+    // least one word; a wordless `rest` would name no tab and fall through to
+    // the repo search below, which is where the `?? ''` lands anyway.
     const [flag, ...tail] = rest.split(/\s+/);
-    const tab = GITHUB_TABS[flag.toLowerCase()];
+    const tab = GITHUB_TABS[flag?.toLowerCase() ?? ''];
     if (tab) {
       if (tail.length === 0) return `${repo}/${tab}`;
       const item = GITHUB_NUMBERED[tab];
+      const lone = tail.length === 1 ? tail[0] : undefined;
       // `gh facebook/react pr 123` -> that pull request; `#123` too, since that
       // is how the number is written everywhere else.
-      if (item && tail.length === 1 && /^#?\d+$/.test(tail[0])) {
-        return `${repo}/${item}/${tail[0].replace('#', '')}`;
+      if (item && lone && /^#?\d+$/.test(lone)) {
+        return `${repo}/${item}/${lone.replace('#', '')}`;
       }
       // Words after the flag search within that tab rather than being dropped.
       return `${repo}/${tab}?q=${enc(tail.join(' '))}`;
@@ -377,11 +400,14 @@ function reddit(args: string, cmd: Command, _settings: Settings): string {
   const path = raw.replace(/^(?:https?:\/\/)?(?:www\.|old\.|new\.)?reddit\.com(?:\/|$)/i, '');
   if (!path) return cmd.url || REDDIT_HOME;
 
-  const user = /^\/?u(?:ser)?\/([A-Za-z0-9_-]{1,20})\/?$/.exec(path);
-  if (user) return `${REDDIT_HOME}user/${encodePath(user[1])}/`;
+  // Testing the capture rather than the match: both groups are non-optional, so
+  // a match always fills them, and reading them out is what says so.
+  const [, redditor] = /^\/?u(?:ser)?\/([A-Za-z0-9_-]{1,20})\/?$/.exec(path) ?? [];
+  if (redditor) return `${REDDIT_HOME}user/${encodePath(redditor)}/`;
 
-  const sub = /^\/?r\/([A-Za-z0-9_]{2,21})((?:\/[A-Za-z0-9_-]+)*)\/?$/.exec(path);
-  if (sub) return `${REDDIT_HOME}r/${encodePath(sub[1])}${sub[2] ? encodePath(sub[2]) : '/'}`;
+  const [, sub, subPath] =
+    /^\/?r\/([A-Za-z0-9_]{2,21})((?:\/[A-Za-z0-9_-]+)*)\/?$/.exec(path) ?? [];
+  if (sub) return `${REDDIT_HOME}r/${encodePath(sub)}${subPath ? encodePath(subPath) : '/'}`;
 
   if (/^[A-Za-z0-9_]{2,21}$/.test(path)) return `${REDDIT_HOME}r/${encodePath(path)}/`;
 
@@ -413,8 +439,10 @@ function googleAccount(settings: Settings): string {
  */
 function splitGoogleAccount(args: string, settings: Settings): { account: string; query: string } {
   const raw = args.trim();
-  const match = /^(\d{1,2})(?:\s+([\s\S]*))?$/.exec(raw);
-  if (match) return { account: match[1], query: (match[2] ?? '').trim() };
+  // Group 1 is non-optional, so a match always carries the digits; group 2 is
+  // the one that is genuinely absent for a bare `gmail 1`.
+  const [, account, query] = /^(\d{1,2})(?:\s+([\s\S]*))?$/.exec(raw) ?? [];
+  if (account) return { account, query: (query ?? '').trim() };
   return { account: googleAccount(settings), query: raw };
 }
 
@@ -437,12 +465,12 @@ function gdrive(args: string, _cmd: Command, settings: Settings): string {
  * of the app's own URL: the commands stay plain data and the account index
  * lives in one place.
  */
-const GOOGLE_APP_TYPES: Record<string, string> = {
+const GOOGLE_APP_TYPES: Record<string, string> = lookup({
   document: 'document',
   spreadsheets: 'spreadsheet',
   presentation: 'presentation',
   forms: 'form',
-};
+});
 
 function googleApp(args: string, cmd: Command, settings: Settings): string {
   const { account, query } = splitGoogleAccount(args, settings);
@@ -552,10 +580,10 @@ function ai(args: string, cmd: Command, settings: Settings): string {
  * `#settings` has no field for one, so appending a parameter there would build
  * a url the page ignores.
  */
-const META_PARAMS: Record<string, string> = {
+const META_PARAMS: Record<string, string> = lookup({
   help: 'q',
   new: 'prefill',
-};
+});
 
 function meta(args: string, cmd: Command, _settings: Settings): string {
   const base = (cmd.url || 'options.html').trim().replace(/^\.?\//, '');
@@ -564,7 +592,9 @@ function meta(args: string, cmd: Command, _settings: Settings): string {
 
   const hash = base.indexOf('#');
   const tail = hash === -1 ? base : base.slice(hash + 1);
-  const route = tail.split('?')[0];
+  // `split` always yields a first piece, and an empty route names no parameter,
+  // which is the same answer this gives a route that is not in the map.
+  const [route = ''] = tail.split('?');
   const param = META_PARAMS[route];
   if (!param) return base;
   const sep = tail.includes('?') ? '&' : '?';

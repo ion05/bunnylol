@@ -162,6 +162,12 @@ export interface Settings {
    * with the destination, a button that opens it and a link to search for what
    * was typed instead. Off by default, because the ordinary dispatch must not
    * ask a question. Nothing auto-navigates: see `confirmOpen` in go.ts.
+   *
+   * NOT a toast any more, and the name is kept anyway. It was one once, on a
+   * 1.2s timer; the checkbox now reads "Confirm before opening a shortcut" and
+   * go.ts calls the thing it gates `confirmOpen`. Renaming the stored field
+   * would make every export written so far, and every profile in storage, read
+   * as "off". Grep landed you here: there is no toast left to find.
    */
   dispatchToast: boolean;
 }
@@ -276,7 +282,12 @@ export interface ResolveResult {
  * alias rather than the typed one. Optional so a handler called directly still
  * type-checks, as in the tests or with an imported command.
  */
-export type HandlerFn = (args: string, cmd: Command, settings: Settings, keyword?: string) => string;
+export type HandlerFn = (
+  args: string,
+  cmd: Command,
+  settings: Settings,
+  keyword?: string,
+) => string;
 
 /**
  * The user's EXEMPTION list: aliases they have asked BunnyLol to leave out of
@@ -338,9 +349,7 @@ export const STORAGE_KEY = 'bunnylol.state.v1';
 
 /** Messages the UI surfaces send to the service worker. */
 export type BgMessage =
-  | { type: 'resyncRules' }
-  | { type: 'getRuleStatus' }
-  | { type: 'getExtensionId' };
+  { type: 'resyncRules' } | { type: 'getRuleStatus' } | { type: 'getExtensionId' };
 
 export interface RuleStatus {
   /** Dynamic rules Chrome actually holds, read back after the sync. */

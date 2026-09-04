@@ -11,8 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `gr` (also `goodreads`): search books and reviews on Goodreads. It shipped
-  until v1.1.0 dropped the `media` category it was filed under; it is back, in
+- `gr` (also `goodreads`): search books and reviews on Goodreads, filed under
   Search.
 - `track <number>` (also `pkg`): one keyword for any parcel. BunnyLol reads
   the carrier (UPS, USPS, FedEx or DHL) off the shape of the number and opens
@@ -83,20 +82,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   it is about to open, and offers an Open button, which holds the focus, and
   the escape search. The 1.2 second toast it replaces navigated on its own,
   which is a delay rather than a confirmation.
-- The rule-status pill says **Shortcuts active** instead of counting
-  keywords, and **Some keywords not intercepted** when coverage is partial.
-  The count moved every time a shortcut was switched on or off, and nobody
-  acted on it. The numbers that do matter, what you exempted and what Chrome
-  refused, are still on the line under it and on the Settings coverage line.
 - `web_accessible_resources` is narrowed to `go.html`. `go.js` and `assets/*`
   are same-origin subresources of an extension page and never needed an
   entry. Listing them exposed them, and the shipped sourcemaps, to the search
   engines.
 
 ### Removed
-- The green *Shortcuts active* pill. The rule-status pill in the topbar now
-  appears only when there is something to act on: partial coverage, a failed
-  sync, or interception switched off. A healthy profile shows nothing.
+- The always-on rule-status pill. It now appears only when there is something
+  to act on: partial coverage, a failed sync, or interception switched off. A
+  healthy profile shows nothing, and neither does one whose only shortfall is a
+  keyword you exempted yourself. When it does appear it says **Some keywords
+  not intercepted** rather than counting keywords, since the count moved every
+  time a shortcut was switched on or off and nobody acted on it. The numbers
+  that do matter, what you exempted and what Chrome refused, are on the line
+  under it and on the Settings coverage line.
 - The `?` shortcut and the **Default AI** setting it read (`settings.defaultAi`).
   Pick the assistant with its own keyword instead: `c`, `gpt`, `gem` or `cc`.
 - The **AI prompt templates** card. `settings.aiTemplates` still overrides a
@@ -117,6 +116,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] - 2026-09-01
 
+Never published anywhere. Recorded as the baseline the 1.1.0 entries are
+written against, which is why it has no link below.
+
 ### Added
 
 - First release: keyword shortcuts for the address bar via
@@ -124,5 +126,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   popup, and an omnibox keyword (`bl`).
 
 [Unreleased]: https://github.com/ion05/bunnylol/compare/v1.1.0...HEAD
-[1.1.0]: https://github.com/ion05/bunnylol/compare/v1.0.0...v1.1.0
-[1.0.0]: https://github.com/ion05/bunnylol/releases/tag/v1.0.0
+[1.1.0]: https://github.com/ion05/bunnylol/releases/tag/v1.1.0

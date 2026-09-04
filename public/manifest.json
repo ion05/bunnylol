@@ -15,10 +15,7 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": [
-    "storage",
-    "declarativeNetRequest"
-  ],
+  "permissions": ["storage", "declarativeNetRequest"],
   "host_permissions": [
     "https://www.google.com/*",
     "https://www.bing.com/*",
@@ -44,11 +41,7 @@
   "web_accessible_resources": [
     {
       "resources": ["go.html"],
-      "matches": [
-        "https://www.google.com/*",
-        "https://www.bing.com/*",
-        "https://duckduckgo.com/*"
-      ]
+      "matches": ["https://www.google.com/*", "https://www.bing.com/*", "https://duckduckgo.com/*"]
     }
   ]
 }

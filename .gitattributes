@@ -1,3 +1,7 @@
 * text=auto eol=lf
 *.png binary
 *.woff2 binary
+
+# Exported artboards, not hand-written source. Marking them keeps GitHub's
+# language bar and its diffs about the code somebody actually maintains.
+design/canvas/*.dc.html linguist-generated=true

@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Last updated: 2026-09-01
+Last updated: 2026-09-03
 
 ## Summary
 
@@ -20,6 +20,12 @@ The extension also caches its rule-registration status under
 until the browser closes and never reaches disk. It holds counts and, when
 Chrome rejects a pattern, the affected keywords.
 
+The options page keeps one more value, `bunnylol.collapsed`, in the ordinary
+`localStorage` of its own extension page (`COLLAPSE_KEY` in
+`src/options/model/collapse.ts`). It is the list of shortcut groups you have
+folded on that page, and nothing else. It is per-machine view state rather
+than settings, which is why it is not in the exported file.
+
 ## What happens when you type in the address bar
 
 BunnyLol registers local `declarativeNetRequest` redirect rules for
@@ -34,9 +40,12 @@ do not match are left untouched and go to the search engine as normal.
 ## What the extension cannot see
 
 BunnyLol has no content scripts, reads no page content, and has no access to
-your browsing history. It does not request the `tabs` permission. The popup
-uses only `chrome.tabs.create` and `chrome.tabs.update`
-(`src/popup/popup.ts`), which do not require it.
+your browsing history. It does not request the `tabs` permission. Three places
+open a tab, and all of them use only `chrome.tabs.create` and
+`chrome.tabs.update`, which do not require that permission: the toolbar popup
+(`src/popup/popup.ts`), the omnibox keyword (`src/background.ts`), and the
+welcome tab shown once on install (`src/lib/install.ts`). Neither call can
+read a tab, only point one at a URL.
 
 ## Third parties
 

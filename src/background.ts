@@ -227,5 +227,9 @@ function pickAlias(cmd: Command, keyword: string): string {
 
 /** Chrome silently drops a suggestion whose description is not well-formed XML. */
 function escapeXml(text: string): string {
-  return text.replace(/[&<>"']/g, (char) => XML_ESCAPES[char]);
+  // The character class and the map hold the same five characters, so the
+  // fallback is unreachable; keeping the character is what it should do if a
+  // later edit adds one to the class and forgets the map, since dropping it
+  // would silently corrupt the text instead.
+  return text.replace(/[&<>"']/g, (char) => XML_ESCAPES[char] ?? char);
 }

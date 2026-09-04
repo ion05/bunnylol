@@ -124,10 +124,6 @@ a {
   background: var(--text-decor);
 }
 
-.status-ok .status-dot {
-  background: var(--ok);
-}
-
 /* Colour and weight move together, so the tone is never carried by colour
    alone. */
 .status-warn {
@@ -807,7 +803,7 @@ a {
    stroke is a single mid grey instead of a light/dark pair: #8a8a82 is 3.10:1
    on the light --bg-sunken and 5.07:1 on the dark one, clearing the 3:1 WCAG
    1.4.11 asks of a control's affordance in both schemes. This is the one place
-   the palette is inlined outside tokens.css; tests/tokens.test.ts pins it. */
+   the palette is inlined outside tokens.css. */
 .select {
   appearance: none;
   padding-right: var(--sp-8);
@@ -862,10 +858,6 @@ a {
   align-items: center;
   gap: var(--sp-4);
   padding-top: var(--sp-2);
-}
-
-.form-actions .spacer {
-  margin-right: auto;
 }
 
 /* The "New section…" row. Full width because it belongs to the select above it

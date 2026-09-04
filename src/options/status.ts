@@ -8,7 +8,12 @@
 
 import type { RuleStatus } from '../lib/types';
 
-export type PillTone = 'busy' | 'ok' | 'warn' | 'bad';
+/**
+ * No 'ok'. A healthy sync answers `null` and the topbar renders nothing, so
+ * the green tone had no input that could reach it: every path out of
+ * `pillView` below is busy, warn, bad or null.
+ */
+export type PillTone = 'busy' | 'warn' | 'bad';
 
 export interface PillView {
   tone: PillTone;
@@ -78,7 +83,6 @@ export function pillView({ status, busy, engineCount }: PillInput): PillView | n
  *  of text, with the neutral tone carrying no modifier at all. */
 export const PILL_CLASS: Record<PillTone, string> = {
   busy: 'status',
-  ok: 'status status-ok',
   warn: 'status status-warn',
   bad: 'status status-bad',
 };

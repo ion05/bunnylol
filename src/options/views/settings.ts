@@ -17,9 +17,10 @@ import {
   sectionMembers,
   sectionOptions,
 } from '../../lib/overrides';
+import { countShortcuts } from '../../lib/text';
 import type { Overrides, SearchEngineId } from '../../lib/types';
 import { DEFAULT_SETTINGS, FALLBACK_SECTION } from '../../lib/types';
-import { validateSectionLabel } from '../../lib/validate';
+import { validateAlias, validateSectionLabel } from '../../lib/validate';
 import { el, nextId } from '../../ui/dom';
 import {
   button,
@@ -38,7 +39,7 @@ import { engineProblem } from '../model/form';
 import { go } from '../router';
 import { getStatus, runtimeId, setSuppressedHost } from '../rule-status';
 import { commitOverrides, commitSettings, getState, reportFailure, stopSet } from '../store';
-import { countShortcuts, renderData } from './data';
+import { renderData } from './data';
 
 const ENGINE_PRESETS: { label: string; template: string }[] = [
   { label: 'Google', template: 'https://www.google.com/search?q={q}' },
@@ -52,7 +53,7 @@ export function renderSettings(): Node[] {
   return [renderDefaults(), renderSections(), renderInterception(), renderStopList(), renderData()];
 }
 
-export function renderDefaults(): HTMLElement {
+function renderDefaults(): HTMLElement {
   const card = panelCard('Default Usernames');
 
   const githubInput = textInput(getState().settings.githubUser, 'octocat');
@@ -60,7 +61,7 @@ export function renderDefaults(): HTMLElement {
     void commitSettings(
       { ...getState().settings, githubUser: githubInput.value.trim() },
       card.saved,
-    );
+    ).catch(reportFailure);
   });
 
   const engineInput = textInput(
@@ -99,7 +100,10 @@ export function renderDefaults(): HTMLElement {
     }
     engineInput.value = enginePreset.value;
     engineField.setProblems([]);
-    void commitSettings({ ...getState().settings, defaultEngine: enginePreset.value }, card.saved);
+    void commitSettings(
+      { ...getState().settings, defaultEngine: enginePreset.value },
+      card.saved,
+    ).catch(reportFailure);
   });
 
   engineInput.addEventListener('change', () => {
@@ -124,7 +128,9 @@ export function renderDefaults(): HTMLElement {
     );
     engineInput.value = value;
     syncPreset(value);
-    void commitSettings({ ...getState().settings, defaultEngine: value }, card.saved);
+    void commitSettings({ ...getState().settings, defaultEngine: value }, card.saved).catch(
+      reportFailure,
+    );
   });
 
   const accountInput = el('input', {
@@ -135,7 +141,9 @@ export function renderDefaults(): HTMLElement {
   accountInput.addEventListener('change', () => {
     const parsed = Math.max(0, Math.floor(Number(accountInput.value) || 0));
     accountInput.value = String(parsed);
-    void commitSettings({ ...getState().settings, googleAccount: parsed }, card.saved);
+    void commitSettings({ ...getState().settings, googleAccount: parsed }, card.saved).catch(
+      reportFailure,
+    );
   });
 
   card.body.append(
@@ -144,12 +152,16 @@ export function renderDefaults(): HTMLElement {
       children: [
         field('GitHub username', githubInput),
         field('Fallback search engine', enginePreset),
+        // Directly under the preset it belongs to. "Custom…" focuses this
+        // input, and the error it raises is about the value typed into it, so
+        // anything between the two makes the select jump the user somewhere
+        // they cannot see and puts the message under an unrelated field.
+        engineField.node,
         field(
           'Google account index',
           accountInput,
           'The N in /u/N/. Account 0 is the one you signed in with first.',
         ),
-        engineField.node,
       ],
     }),
   );
@@ -166,7 +178,7 @@ export function renderDefaults(): HTMLElement {
  * labelled as one; it simply has no Delete, which is the whole of what the
  * distinction means here.
  */
-export function renderSections(): HTMLElement {
+function renderSections(): HTMLElement {
   const card = panelCard('Sections');
 
   const rows = el('div', { class: 'rows' });
@@ -445,7 +457,7 @@ function fallbackLabel(): string {
   return sectionLabel(FALLBACK_SECTION, getState().overrides.sections);
 }
 
-export function renderInterception(): HTMLElement {
+function renderInterception(): HTMLElement {
   const card = panelCard(
     'Search interception',
     'BunnyLol will work when you try to search using one of these engines. bl always works irrespective of engine.',
@@ -459,7 +471,9 @@ export function renderInterception(): HTMLElement {
         if (on) set.add(engine.id);
         else set.delete(engine.id);
         const interceptEngines = SEARCH_ENGINES.map((item) => item.id).filter((id) => set.has(id));
-        void commitSettings({ ...getState().settings, interceptEngines }, card.saved);
+        void commitSettings({ ...getState().settings, interceptEngines }, card.saved).catch(
+          reportFailure,
+        );
       }),
     );
   }
@@ -488,8 +502,16 @@ export function renderInterception(): HTMLElement {
       class: 'field-hint',
       text: 'Optional alternative: add that URL as a custom search engine at chrome://settings/searchEngines and give it a keyword. Interception above already covers the common case.',
     }),
+    // It reads like a dispatch-page setting, and it is one, but go.html is
+    // reached ONLY from this card: by the DNR redirect the checkboxes above
+    // arm, or by the custom search engine built from the URL beside them. The
+    // popup and the omnibox navigate straight from `resolve()` and never see
+    // it. So this is what the interception path does once it fires, and it
+    // belongs with the switches that decide whether it fires at all.
     checkbox('Confirm before opening a shortcut', getState().settings.dispatchToast, (on) => {
-      void commitSettings({ ...getState().settings, dispatchToast: on }, card.saved);
+      void commitSettings({ ...getState().settings, dispatchToast: on }, card.saved).catch(
+        reportFailure,
+      );
     }),
   );
   return card.section;
@@ -500,7 +522,7 @@ export function renderInterception(): HTMLElement {
  * reads "excluded because they are common words" will look for the list that
  * protects them and find nothing.
  */
-export function renderStopList(): HTMLElement {
+function renderStopList(): HTMLElement {
   const card = panelCard(
     'Exempt keywords',
     'These keywords are not matched to a shortcut. They are searched directly.',
@@ -523,8 +545,12 @@ export function renderStopList(): HTMLElement {
 
   const commitList = (next: string[]): void => {
     const unique = [...new Set(next.map((key) => key.trim().toLowerCase()).filter(Boolean))].sort();
+    // `paintChips` only on success. A failed write rolls the list back to what
+    // the chips already show, so repainting either way would be a no-op at best
+    // and, on the failure path, a repaint of state that is not in storage.
     void commitSettings({ ...getState().settings, interceptStopList: unique }, card.saved).then(
       paintChips,
+      reportFailure,
     );
   };
 
@@ -543,14 +569,20 @@ export function renderStopList(): HTMLElement {
   }
 
   const add = (): void => {
-    const key = addInput.value.trim().toLowerCase();
-    if (!key) return;
-    if (/\s/.test(key)) {
-      addField.setProblems([
-        { level: 'error', text: 'One keyword at a time. A keyword cannot contain a space.' },
-      ]);
+    if (!addInput.value.trim()) return;
+    // Invariant 6: the one validator, not a local re-derivation of a third of
+    // it. Whitespace was the only rule this field applied, so `\gh` and a paste
+    // past the keyword cap both stored a permanent chip that can never match
+    // anything: `resolve()` strips an escape prefix before the key map is ever
+    // consulted, which is exactly the dead entry `validateAlias` rejects.
+    const check = validateAlias(addInput.value);
+    if (!check.ok) {
+      addField.setProblems([{ level: 'error', text: `That keyword ${check.reason}.` }]);
       return;
     }
+    // Stored as the validator normalised it, so the chip, the `stopSet()`
+    // lookup below and `resolve()`'s lowercased keyword are the same string.
+    const key = check.alias;
     if (stopSet().has(key)) {
       addField.setProblems([{ level: 'error', text: `“${key}” is already exempt.` }]);
       return;

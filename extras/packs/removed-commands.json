@@ -9,10 +9,7 @@
     ],
     "custom": [
       {
-        "keys": [
-          "copilot",
-          "msai"
-        ],
+        "keys": ["copilot", "msai"],
         "name": "Microsoft Copilot",
         "description": "Open Microsoft Copilot; arguments search the web.",
         "url": "https://copilot.microsoft.com/",
@@ -22,10 +19,7 @@
         "_note": "Consumer Copilot has no supported search route. Every `?q=` form returns a 302 to the bare home page and drops the prompt, including Microsoft's own bing.com/search?showconv=1 entry point. So this opens the app rather than a guessed URL. The app is a chat SPA with nothing indexed, so a site: search would be just as empty. The words go to a plain search instead."
       },
       {
-        "keys": [
-          "hf",
-          "huggingface"
-        ],
+        "keys": ["hf", "huggingface"],
         "name": "Hugging Face",
         "description": "Search models, datasets and spaces.",
         "url": "https://huggingface.co/",
@@ -34,10 +28,7 @@
         "example": "hf whisper large"
       },
       {
-        "keys": [
-          "bing",
-          "b"
-        ],
+        "keys": ["bing", "b"],
         "name": "Bing",
         "description": "Search Bing.",
         "url": "https://www.bing.com/",
@@ -46,9 +37,7 @@
         "example": "bing weather chicago"
       },
       {
-        "keys": [
-          "brave"
-        ],
+        "keys": ["brave"],
         "name": "Brave Search",
         "description": "Search with Brave.",
         "url": "https://search.brave.com/",
@@ -57,9 +46,7 @@
         "example": "brave rust vs zig"
       },
       {
-        "keys": [
-          "kagi"
-        ],
+        "keys": ["kagi"],
         "name": "Kagi",
         "description": "Search with Kagi.",
         "url": "https://kagi.com/",
@@ -68,10 +55,7 @@
         "example": "kagi sqlite wal mode"
       },
       {
-        "keys": [
-          "gsite",
-          "site"
-        ],
+        "keys": ["gsite", "site"],
         "name": "Site search",
         "description": "Google a single site. First word is the domain.",
         "url": "https://www.google.com/",
@@ -80,10 +64,7 @@
         "example": "gsite react.dev hooks -> google site:react.dev hooks"
       },
       {
-        "keys": [
-          "weather",
-          "wx"
-        ],
+        "keys": ["weather", "wx"],
         "name": "Weather",
         "description": "Weather for a place.",
         "url": "https://www.google.com/search?q=weather",
@@ -92,10 +73,7 @@
         "example": "weather west lafayette"
       },
       {
-        "keys": [
-          "stock",
-          "ticker"
-        ],
+        "keys": ["stock", "ticker"],
         "name": "Yahoo Finance",
         "description": "Quote for a ticker symbol.",
         "url": "https://finance.yahoo.com/",
@@ -105,10 +83,7 @@
         "example": "stock NVDA"
       },
       {
-        "keys": [
-          "wayback",
-          "archive"
-        ],
+        "keys": ["wayback", "archive"],
         "name": "Wayback Machine",
         "description": "Latest archived snapshot of a URL.",
         "url": "https://web.archive.org/",
@@ -118,10 +93,7 @@
         "example": "wayback nytimes.com"
       },
       {
-        "keys": [
-          "lh",
-          "localhost"
-        ],
+        "keys": ["lh", "localhost"],
         "name": "localhost",
         "description": "Open a local dev server. Bare invocation uses port 3000.",
         "url": "http://localhost:3000",
@@ -130,10 +102,7 @@
         "example": "lh 8080 -> http://localhost:8080"
       },
       {
-        "keys": [
-          "so",
-          "stackoverflow"
-        ],
+        "keys": ["so", "stackoverflow"],
         "name": "Stack Overflow",
         "description": "Search Stack Overflow.",
         "url": "https://stackoverflow.com/",
@@ -142,9 +111,7 @@
         "example": "so python asyncio gather exception"
       },
       {
-        "keys": [
-          "mdn"
-        ],
+        "keys": ["mdn"],
         "name": "MDN Web Docs",
         "description": "Web platform documentation.",
         "url": "https://developer.mozilla.org/",
@@ -153,10 +120,7 @@
         "example": "mdn structuredClone"
       },
       {
-        "keys": [
-          "caniuse",
-          "ciu"
-        ],
+        "keys": ["caniuse", "ciu"],
         "name": "Can I use",
         "description": "Browser support tables.",
         "url": "https://caniuse.com/",
@@ -165,10 +129,7 @@
         "example": "caniuse container queries"
       },
       {
-        "keys": [
-          "lc",
-          "leetcode"
-        ],
+        "keys": ["lc", "leetcode"],
         "name": "LeetCode",
         "description": "Search LeetCode problems.",
         "url": "https://leetcode.com/problemset/",
@@ -177,9 +138,7 @@
         "example": "lc two sum"
       },
       {
-        "keys": [
-          "pypi"
-        ],
+        "keys": ["pypi"],
         "name": "PyPI",
         "description": "Search Python packages.",
         "url": "https://pypi.org/",
@@ -188,10 +147,7 @@
         "example": "pypi httpx"
       },
       {
-        "keys": [
-          "pydocs",
-          "pydoc"
-        ],
+        "keys": ["pydocs", "pydoc"],
         "name": "Python Docs",
         "description": "Search the Python 3 standard library docs.",
         "url": "https://docs.python.org/3/",
@@ -200,9 +156,7 @@
         "example": "pydocs itertools groupby"
       },
       {
-        "keys": [
-          "crates"
-        ],
+        "keys": ["crates"],
         "name": "crates.io",
         "description": "Search Rust crates.",
         "url": "https://crates.io/",
@@ -211,9 +165,7 @@
         "example": "crates serde"
       },
       {
-        "keys": [
-          "docsrs"
-        ],
+        "keys": ["docsrs"],
         "name": "docs.rs",
         "description": "Rust crate API documentation.",
         "url": "https://docs.rs/",
@@ -222,10 +174,7 @@
         "example": "docsrs tokio"
       },
       {
-        "keys": [
-          "golang",
-          "gopkg"
-        ],
+        "keys": ["golang", "gopkg"],
         "name": "pkg.go.dev",
         "description": "Search Go packages.",
         "url": "https://pkg.go.dev/",
@@ -234,9 +183,7 @@
         "example": "golang errgroup"
       },
       {
-        "keys": [
-          "rubygems"
-        ],
+        "keys": ["rubygems"],
         "name": "RubyGems",
         "description": "Search Ruby gems.",
         "url": "https://rubygems.org/",
@@ -245,10 +192,7 @@
         "example": "rubygems rails"
       },
       {
-        "keys": [
-          "packagist",
-          "composer"
-        ],
+        "keys": ["packagist", "composer"],
         "name": "Packagist",
         "description": "Search PHP packages.",
         "url": "https://packagist.org/",
@@ -257,9 +201,7 @@
         "example": "packagist guzzle"
       },
       {
-        "keys": [
-          "nuget"
-        ],
+        "keys": ["nuget"],
         "name": "NuGet",
         "description": "Search .NET packages.",
         "url": "https://www.nuget.org/",
@@ -268,10 +210,7 @@
         "example": "nuget newtonsoft.json"
       },
       {
-        "keys": [
-          "mvn",
-          "maven"
-        ],
+        "keys": ["mvn", "maven"],
         "name": "Maven Central",
         "description": "Search Java artifacts.",
         "url": "https://mvnrepository.com/",
@@ -280,10 +219,7 @@
         "example": "mvn jackson databind"
       },
       {
-        "keys": [
-          "dockerhub",
-          "docker"
-        ],
+        "keys": ["dockerhub", "docker"],
         "name": "Docker Hub",
         "description": "Search container images.",
         "url": "https://hub.docker.com/",
@@ -292,10 +228,7 @@
         "example": "docker postgres"
       },
       {
-        "keys": [
-          "gitlab",
-          "gl"
-        ],
+        "keys": ["gitlab", "gl"],
         "name": "GitLab",
         "description": "Search GitLab projects.",
         "url": "https://gitlab.com/",
@@ -305,10 +238,7 @@
         "_note": "gitlab.com/search requires auth and bounces signed-out users to sign-in; /explore/projects is the public equivalent."
       },
       {
-        "keys": [
-          "bitbucket",
-          "bb"
-        ],
+        "keys": ["bitbucket", "bb"],
         "name": "Bitbucket",
         "description": "Bitbucket workspaces and repos.",
         "url": "https://bitbucket.org/",
@@ -317,10 +247,7 @@
         "example": "bitbucket -> bitbucket.org"
       },
       {
-        "keys": [
-          "sourcegraph",
-          "sg"
-        ],
+        "keys": ["sourcegraph", "sg"],
         "name": "Sourcegraph",
         "description": "Cross-repository code search.",
         "url": "https://sourcegraph.com/",
@@ -329,10 +256,7 @@
         "example": "sg lang:go http.HandlerFunc"
       },
       {
-        "keys": [
-          "devdocs",
-          "dd"
-        ],
+        "keys": ["devdocs", "dd"],
         "name": "DevDocs",
         "description": "Unified API documentation browser.",
         "url": "https://devdocs.io/",
@@ -341,10 +265,7 @@
         "example": "dd array.prototype.flatmap"
       },
       {
-        "keys": [
-          "ts",
-          "typescript"
-        ],
+        "keys": ["ts", "typescript"],
         "name": "TypeScript",
         "description": "TypeScript handbook and docs.",
         "url": "https://www.typescriptlang.org/",
@@ -353,9 +274,7 @@
         "example": "ts satisfies operator"
       },
       {
-        "keys": [
-          "react"
-        ],
+        "keys": ["react"],
         "name": "React",
         "description": "React documentation.",
         "url": "https://react.dev/",
@@ -364,10 +283,7 @@
         "example": "react useSyncExternalStore"
       },
       {
-        "keys": [
-          "node",
-          "nodedocs"
-        ],
+        "keys": ["node", "nodedocs"],
         "name": "Node.js Docs",
         "description": "Node.js API documentation.",
         "url": "https://nodejs.org/api/",
@@ -376,10 +292,7 @@
         "example": "node fs promises readFile"
       },
       {
-        "keys": [
-          "bundlephobia",
-          "bphobia"
-        ],
+        "keys": ["bundlephobia", "bphobia"],
         "name": "Bundlephobia",
         "description": "Size cost of an npm package.",
         "url": "https://bundlephobia.com/",
@@ -389,9 +302,7 @@
         "example": "bundlephobia lodash"
       },
       {
-        "keys": [
-          "npmtrends"
-        ],
+        "keys": ["npmtrends"],
         "name": "npm trends",
         "description": "Compare npm package downloads.",
         "url": "https://npmtrends.com/",
@@ -402,9 +313,7 @@
         "_note": "Package pages intermittently 500 upstream (e.g. /react) while others load; the URL shape is correct, so the command stays as-is."
       },
       {
-        "keys": [
-          "codepen"
-        ],
+        "keys": ["codepen"],
         "name": "CodePen",
         "description": "Search pens.",
         "url": "https://codepen.io/",
@@ -413,10 +322,7 @@
         "example": "codepen css grid gallery"
       },
       {
-        "keys": [
-          "vscode",
-          "vsx"
-        ],
+        "keys": ["vscode", "vsx"],
         "name": "VS Code",
         "description": "VS Code site; arguments search the extension marketplace.",
         "url": "https://code.visualstudio.com/",
@@ -425,10 +331,7 @@
         "example": "vsx eslint"
       },
       {
-        "keys": [
-          "gnews",
-          "news"
-        ],
+        "keys": ["gnews", "news"],
         "name": "Google News",
         "description": "Search the news.",
         "url": "https://news.google.com/",
@@ -437,11 +340,7 @@
         "example": "news semiconductor tariffs"
       },
       {
-        "keys": [
-          "gimg",
-          "img",
-          "images"
-        ],
+        "keys": ["gimg", "img", "images"],
         "name": "Google Images",
         "description": "Google image search.",
         "url": "https://images.google.com/",
@@ -450,10 +349,7 @@
         "example": "img purdue bell tower"
       },
       {
-        "keys": [
-          "gvid",
-          "videos"
-        ],
+        "keys": ["gvid", "videos"],
         "name": "Google Video",
         "description": "Google video search.",
         "url": "https://www.google.com/search?tbm=vid",
@@ -462,10 +358,7 @@
         "example": "gvid rust lifetimes talk"
       },
       {
-        "keys": [
-          "gbooks",
-          "books"
-        ],
+        "keys": ["gbooks", "books"],
         "name": "Google Books",
         "description": "Search books.",
         "url": "https://books.google.com/",
@@ -474,10 +367,7 @@
         "example": "gbooks godel escher bach"
       },
       {
-        "keys": [
-          "gflights",
-          "flights"
-        ],
+        "keys": ["gflights", "flights"],
         "name": "Google Flights",
         "description": "Search flights.",
         "url": "https://www.google.com/travel/flights",
@@ -486,10 +376,7 @@
         "example": "gflights ind to sfo friday"
       },
       {
-        "keys": [
-          "gtrends",
-          "trends"
-        ],
+        "keys": ["gtrends", "trends"],
         "name": "Google Trends",
         "description": "Explore search interest over time.",
         "url": "https://trends.google.com/trends/",
@@ -498,10 +385,7 @@
         "example": "gtrends electric vehicles"
       },
       {
-        "keys": [
-          "gplay",
-          "play"
-        ],
+        "keys": ["gplay", "play"],
         "name": "Google Play",
         "description": "Search the Play Store.",
         "url": "https://play.google.com/store",
@@ -510,10 +394,7 @@
         "example": "gplay duolingo"
       },
       {
-        "keys": [
-          "sharepoint",
-          "sp"
-        ],
+        "keys": ["sharepoint", "sp"],
         "name": "SharePoint",
         "description": "SharePoint start page, or search your sites.",
         "url": "https://m365.cloud.microsoft/launch/sharepoint",
@@ -522,10 +403,7 @@
         "example": "sharepoint team site"
       },
       {
-        "keys": [
-          "azure",
-          "az"
-        ],
+        "keys": ["azure", "az"],
         "name": "Azure Portal",
         "description": "Azure portal; arguments search Microsoft Learn.",
         "url": "https://portal.azure.com/",
@@ -534,10 +412,7 @@
         "example": "az blob storage lifecycle"
       },
       {
-        "keys": [
-          "mslearn",
-          "learn"
-        ],
+        "keys": ["mslearn", "learn"],
         "name": "Microsoft Learn",
         "description": "Microsoft technical documentation.",
         "url": "https://learn.microsoft.com/",
@@ -546,10 +421,7 @@
         "example": "mslearn graph api permissions"
       },
       {
-        "keys": [
-          "gss",
-          "gradescopesso"
-        ],
+        "keys": ["gss", "gradescopesso"],
         "name": "Gradescope (Purdue login)",
         "description": "Sign in to Gradescope with Purdue school credentials.",
         "url": "https://www.gradescope.com/login",
@@ -559,10 +431,7 @@
         "_note": "Gradescope's own login page; \"School Credentials\" is the Purdue SAML SSO path. Purdue's former idp/gradescope1 entry point no longer exists."
       },
       {
-        "keys": [
-          "purdue",
-          "pu"
-        ],
+        "keys": ["purdue", "pu"],
         "name": "Purdue University",
         "description": "purdue.edu, or search the Purdue site.",
         "url": "https://www.purdue.edu/",
@@ -571,10 +440,7 @@
         "example": "purdue academic integrity policy"
       },
       {
-        "keys": [
-          "boilerconnect",
-          "bcon"
-        ],
+        "keys": ["boilerconnect", "bcon"],
         "name": "BoilerConnect",
         "description": "Advising appointments and student success.",
         "url": "https://purdue.campus.eab.com/",
@@ -583,10 +449,7 @@
         "example": "boilerconnect -> advising appointments"
       },
       {
-        "keys": [
-          "courseinsights",
-          "ci"
-        ],
+        "keys": ["courseinsights", "ci"],
         "name": "Purdue Course Insights",
         "description": "Course grade distributions; arguments search the web.",
         "url": "https://sswis.mypurdue.purdue.edu/CourseInsights/",
@@ -596,11 +459,7 @@
         "_note": "Login-walled SPA: a site: fallback would send arguments nowhere useful, so they go to a plain search. A bare invocation opens the app."
       },
       {
-        "keys": [
-          "catalog",
-          "pcat",
-          "courses"
-        ],
+        "keys": ["catalog", "pcat", "courses"],
         "name": "Purdue Course Catalog",
         "description": "Official course descriptions and requirements.",
         "url": "https://catalog.purdue.edu/",
@@ -609,10 +468,7 @@
         "example": "catalog ma 26100"
       },
       {
-        "keys": [
-          "citybus",
-          "bus"
-        ],
+        "keys": ["citybus", "bus"],
         "name": "CityBus",
         "description": "Greater Lafayette CityBus routes and tracker.",
         "url": "https://www.in.gov/citybuslafayette/",
@@ -621,10 +477,7 @@
         "example": "citybus route 4"
       },
       {
-        "keys": [
-          "purduesports",
-          "boilers"
-        ],
+        "keys": ["purduesports", "boilers"],
         "name": "Purdue Athletics",
         "description": "Schedules, scores and tickets.",
         "url": "https://purduesports.com/",
@@ -633,9 +486,7 @@
         "example": "boilers basketball schedule"
       },
       {
-        "keys": [
-          "piazza"
-        ],
+        "keys": ["piazza"],
         "name": "Piazza",
         "description": "Course Q&A boards.",
         "url": "https://piazza.com/",
@@ -644,9 +495,7 @@
         "example": "piazza -> piazza.com"
       },
       {
-        "keys": [
-          "quora"
-        ],
+        "keys": ["quora"],
         "name": "Quora",
         "description": "Search questions and answers.",
         "url": "https://www.quora.com/",
@@ -655,10 +504,7 @@
         "example": "quora how do jet engines work"
       },
       {
-        "keys": [
-          "slack",
-          "slk"
-        ],
+        "keys": ["slack", "slk"],
         "name": "Slack",
         "description": "Open Slack in the browser.",
         "url": "https://app.slack.com/client",
@@ -667,10 +513,7 @@
         "example": "slack -> app.slack.com"
       },
       {
-        "keys": [
-          "spot",
-          "spotify"
-        ],
+        "keys": ["spot", "spotify"],
         "name": "Spotify",
         "description": "Search Spotify.",
         "url": "https://open.spotify.com/",
@@ -679,10 +522,7 @@
         "example": "spot bonobo"
       },
       {
-        "keys": [
-          "ytm",
-          "ytmusic"
-        ],
+        "keys": ["ytm", "ytmusic"],
         "name": "YouTube Music",
         "description": "Search YouTube Music.",
         "url": "https://music.youtube.com/",
@@ -691,10 +531,7 @@
         "example": "ytm radiohead"
       },
       {
-        "keys": [
-          "sc",
-          "soundcloud"
-        ],
+        "keys": ["sc", "soundcloud"],
         "name": "SoundCloud",
         "description": "Search SoundCloud.",
         "url": "https://soundcloud.com/",
@@ -703,9 +540,7 @@
         "example": "sc dj sets"
       },
       {
-        "keys": [
-          "bandcamp"
-        ],
+        "keys": ["bandcamp"],
         "name": "Bandcamp",
         "description": "Search artists and albums.",
         "url": "https://bandcamp.com/",
@@ -714,9 +549,7 @@
         "example": "bandcamp khruangbin"
       },
       {
-        "keys": [
-          "genius"
-        ],
+        "keys": ["genius"],
         "name": "Genius",
         "description": "Search song lyrics.",
         "url": "https://genius.com/",
@@ -725,10 +558,7 @@
         "example": "genius pyramids"
       },
       {
-        "keys": [
-          "nf",
-          "netflix"
-        ],
+        "keys": ["nf", "netflix"],
         "name": "Netflix",
         "description": "Search Netflix.",
         "url": "https://www.netflix.com/browse",
@@ -737,9 +567,7 @@
         "example": "nf arcane"
       },
       {
-        "keys": [
-          "hulu"
-        ],
+        "keys": ["hulu"],
         "name": "Hulu",
         "description": "Search Hulu.",
         "url": "https://www.hulu.com/hub/home",
@@ -748,10 +576,7 @@
         "example": "hulu the bear"
       },
       {
-        "keys": [
-          "primevideo",
-          "pv"
-        ],
+        "keys": ["primevideo", "pv"],
         "name": "Prime Video",
         "description": "Open Prime Video.",
         "url": "https://www.primevideo.com/",
@@ -760,10 +585,7 @@
         "example": "primevideo -> primevideo.com"
       },
       {
-        "keys": [
-          "disney",
-          "dplus"
-        ],
+        "keys": ["disney", "dplus"],
         "name": "Disney+",
         "description": "Open Disney+.",
         "url": "https://www.disneyplus.com/",
@@ -772,9 +594,7 @@
         "example": "disney -> disneyplus.com"
       },
       {
-        "keys": [
-          "twitch"
-        ],
+        "keys": ["twitch"],
         "name": "Twitch",
         "description": "Search Twitch channels and categories.",
         "url": "https://www.twitch.tv/",
@@ -783,9 +603,7 @@
         "example": "twitch speedrun"
       },
       {
-        "keys": [
-          "imdb"
-        ],
+        "keys": ["imdb"],
         "name": "IMDb",
         "description": "Search films, shows and people.",
         "url": "https://www.imdb.com/",
@@ -794,10 +612,7 @@
         "example": "imdb dune part two"
       },
       {
-        "keys": [
-          "rt",
-          "rottentomatoes"
-        ],
+        "keys": ["rt", "rottentomatoes"],
         "name": "Rotten Tomatoes",
         "description": "Search reviews and scores.",
         "url": "https://www.rottentomatoes.com/",
@@ -806,10 +621,7 @@
         "example": "rt the batman"
       },
       {
-        "keys": [
-          "lb",
-          "letterboxd"
-        ],
+        "keys": ["lb", "letterboxd"],
         "name": "Letterboxd",
         "description": "Search films on Letterboxd.",
         "url": "https://letterboxd.com/",
@@ -818,10 +630,7 @@
         "example": "lb parasite"
       },
       {
-        "keys": [
-          "mal",
-          "anime"
-        ],
+        "keys": ["mal", "anime"],
         "name": "MyAnimeList",
         "description": "Search anime and manga.",
         "url": "https://myanimelist.net/",
@@ -830,9 +639,7 @@
         "example": "mal frieren"
       },
       {
-        "keys": [
-          "steam"
-        ],
+        "keys": ["steam"],
         "name": "Steam",
         "description": "Search the Steam store.",
         "url": "https://store.steampowered.com/",
@@ -841,9 +648,7 @@
         "example": "steam factorio"
       },
       {
-        "keys": [
-          "vimeo"
-        ],
+        "keys": ["vimeo"],
         "name": "Vimeo",
         "description": "Search Vimeo.",
         "url": "https://vimeo.com/",
@@ -852,10 +657,7 @@
         "example": "vimeo short film"
       },
       {
-        "keys": [
-          "tg",
-          "telegram"
-        ],
+        "keys": ["tg", "telegram"],
         "name": "Telegram",
         "description": "Telegram Web, or open a @username.",
         "url": "https://web.telegram.org/",
@@ -865,11 +667,7 @@
         "example": "tg durov"
       },
       {
-        "keys": [
-          "gtrans",
-          "translate",
-          "tr"
-        ],
+        "keys": ["gtrans", "translate", "tr"],
         "name": "Google Translate",
         "description": "Translate text into English (auto-detect source).",
         "url": "https://translate.google.com/",
@@ -878,10 +676,7 @@
         "example": "tr wo ist der bahnhof"
       },
       {
-        "keys": [
-          "gkeep",
-          "keep"
-        ],
+        "keys": ["gkeep", "keep"],
         "name": "Google Keep",
         "description": "Open Keep or search your notes.",
         "url": "https://keep.google.com/",
@@ -890,10 +685,7 @@
         "example": "gkeep groceries"
       },
       {
-        "keys": [
-          "gphotos",
-          "photos"
-        ],
+        "keys": ["gphotos", "photos"],
         "name": "Google Photos",
         "description": "Open Photos or search your library.",
         "url": "https://photos.google.com/",
@@ -902,11 +694,7 @@
         "example": "gphotos graduation"
       },
       {
-        "keys": [
-          "gscholar",
-          "sch",
-          "scholar"
-        ],
+        "keys": ["gscholar", "sch", "scholar"],
         "name": "Google Scholar",
         "description": "Search academic papers.",
         "url": "https://scholar.google.com/",
@@ -915,10 +703,7 @@
         "example": "sch attention is all you need"
       },
       {
-        "keys": [
-          "gcontacts",
-          "contacts"
-        ],
+        "keys": ["gcontacts", "contacts"],
         "name": "Google Contacts",
         "description": "Open Contacts or search people.",
         "url": "https://contacts.google.com/",

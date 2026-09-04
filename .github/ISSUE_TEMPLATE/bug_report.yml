@@ -35,10 +35,11 @@ body:
     attributes:
       label: Rule status
       description: >-
-        The rule-status text at the top of the options page, copied verbatim
-        (e.g. "Intercepting 148 keywords · 2 exempted by you")
+        The rule-status text at the top of the options page, copied verbatim,
+        if any is shown. A healthy profile shows nothing there, which is a
+        fine answer.
     validations:
-      required: true
+      required: false
   - type: textarea
     id: console
     attributes:

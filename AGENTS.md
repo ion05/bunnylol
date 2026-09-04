@@ -8,8 +8,10 @@ Context for AI coding agents working in this repo. Read this before changing any
 
 A Chrome Manifest V3 extension that turns the address bar into a command line, in the style of the
 bunnylol command bar used inside Meta. Type `gh facebook/react` and land on the repo, not on a
-search results page. It is not affiliated with Meta, and the README and any listing copy have to
-say so.
+search results page. It is not affiliated with Meta, and the README, any listing copy AND the extension's own UI have
+to say so. The welcome screen is the one place a user or a store reviewer meets the claim at
+runtime, so the disclaimer lives next to it in `src/options/views/welcome.ts` rather than only in
+the documentation.
 
 The shipped shortcuts are plain data in `src/lib/commands.ts`, grouped into packs the user picks
 from on first run. Everything a user then does to one (rename, re-key, move, switch off, delete) is
@@ -44,8 +46,14 @@ src/lib/validate.ts     The single validation boundary: aliases, URLs, section i
 src/lib/overrides.ts    Shortcut identity (`shortcutId`, `u:` ids) + the edit/delete/section algebra
 src/lib/onboarding.ts   What a pack pick means: `applyCategoryPick`, `migrateNewBuiltins`
 src/lib/merge-import.ts Folding an import onto the state already here (`mergeOverrides`)
-src/lib/storage.ts      chrome.storage.local persistence, JSON import/export, the v1 readers
-src/lib/dnr.ts          declarativeNetRequest rule generation + syncRules
+src/lib/storage.ts      chrome.storage.local persistence, export, and the entry point below
+src/lib/storage/normalize.ts     LENIENT reader: any blob in, a usable state out. Never throws.
+src/lib/storage/parse-import.ts  STRICT import parser + the v1 file reader. Refuses by name.
+src/lib/storage/shared.ts        What both need: guards, the shipped ids, custom-id assignment.
+src/lib/dnr.ts          `syncRules`: the serialized rebuild + the remembered RuleStatus
+src/lib/dnr/rules.ts    Every registrable rule. `buildRules` and `syncRules` share it.
+src/lib/dnr/keywords.ts Which aliases survive the caps, and the two orders they live in
+src/lib/dnr/fit.ts      Chrome's RE2 check, resplitting a refused shard, coverage wording
 src/lib/draft.ts        What the edit form edits, and the pure parsing around it
 src/lib/text.ts         String helpers every surface shares
 src/lib/url.ts          Small URL helpers
@@ -57,8 +65,7 @@ src/options/            Shortcut manager UI (below)
 src/popup/              Toolbar command bar
 design/                 The approved design system. `tokens.css` is shipped; the rest is review.
 scripts/                gen-icons.mjs, package.mjs, and `scripts/lib/` (pure, importable helpers)
-store/                  Web Store listing assets. Outside `public/`, so never packed into dist/.
-docs/                   fonts.md (the bundled Inter), chrome-web-store.md (the submission crib)
+docs/                   fonts.md (the bundled Inter), images/ (the README screenshots)
 extras/packs/           Importable JSON packs. Data, not code; not compiled.
 ```
 
@@ -75,8 +82,21 @@ src/options/dom.ts          Stateless widgets the views assemble panels from
 src/options/rule-status.ts  The pill in the topbar and the coverage line in Settings
 src/options/status.ts       Pure: a `RuleStatus` in, the words and the tone out
 src/options/model/*.ts      browse, collapse, form, welcome: the decisions, without a DOM
-src/options/views/*.ts      browse, form, settings, data, welcome, packs: the DOM
+src/options/views/*.ts      form, settings, data, welcome, packs: the DOM
+src/options/views/browse.ts        The Shortcuts route: panel assembly, and `applyFilter`
+src/options/views/browse-groups.ts The group headings, the runs, and refiling a row between
+                                   them. Writes nothing that is on screen.
+src/options/views/browse-row.ts    One row: the chips, the destination, Edit/Delete/switch
 ```
+
+The browse route is three files split along one line. `applyFilter` in `views/browse.ts` is the only
+writer of `row.hidden`, `rowsHost.hidden`, every count and the "omnibox only" badge, so the other two
+build and refile and write none of them: the headings and the bulk-action buttons are built EMPTY,
+and every function that changes what a group holds takes the repaint as a callback instead of doing
+it. That makes the rule a grep over two short modules rather than a reading of one 380-line closure,
+which is where two shipped bugs lived. `browse-groups.ts` is plain functions over their arguments,
+not a factory closed over the page state: a factory would have to be built before `applyFilter` and
+then be read by it, putting a mutable slot on the very seam the rule lives on.
 
 `views/welcome.ts` and `views/packs.ts` are two screens over one question. `#welcome` is the tab the
 install opens, so it introduces the product and offers Skip; `#packs` is reached on purpose from
@@ -111,8 +131,14 @@ meta, zoom, meet, tracking, track, instagram, whatsapp, word.
 
 ## Invariants that were violated during development
 
-Every one of these was a real shipped bug caught by adversarial verification. They have regression
-tests. **If a test in this list fails, do not "fix" the test.**
+Every one of these was a real shipped bug caught by adversarial verification. **If a test in this
+list fails, do not "fix" the test.**
+
+The suite was cut back to the behaviour a user meets (see "The test suite" below), so an invariant
+here carries **one** test: the smallest one that goes red when that bug comes back. Where an
+invariant is named without a test file, nothing covers it any more and the note is the only thing
+standing between it and the next reviewer. Two are in that state, 11 and 14, and both were already
+uncovered before the cut.
 
 1. **BunnyLol must never intercept its own output.** Some commands resolve to a URL on a search
    engine we intercept (`g`, `ddg`, and historically `weather`). `destination()` in `resolve.ts`
@@ -125,31 +151,40 @@ tests. **If a test in this list fails, do not "fix" the test.**
 2. **DNR rule priority is `redirect (1) < escape (2) < allow (3)`,** and `fitPlan` fails closed:
    an engine gets redirect rules only if Chrome accepted both its allow and escape rules.
    Registering redirects without them leaves the user in a redirect loop with no escape.
+   Guarded by `tests/dnr.test.ts` `describe('force-search escape rules')` for the ladder, and by
+   `tests/sync-rules.test.ts` `describe('a Chrome that refuses the passthrough allow rule')` for the
+   fail-closed half, on the production path.
 
 3. **A failed sync must not leave stale rules live.** `updateDynamicRules` is atomic, so a throw
    leaves the *previous* rules running. `syncRules` retries remove-only, and if that also fails it
-   reports the coverage genuinely still live rather than claiming zero.
+   reports the coverage genuinely still live rather than claiming zero. Guarded by
+   `tests/sync-rules.test.ts` `describe('a Chrome that rejects the rule update')`.
 
 4. **The DNR regex must consume the whole URL remainder,** not just the terminator. Chrome appends
    `&sourceid=chrome&ie=UTF-8` (Bing: `&PC=U316&FORM=CHROMN`, DDG: `&t=hc`) to address-bar
    searches. RE2 has no lookahead, so the pattern swallows the tail and the substitution drops it.
+   Guarded by `tests/dnr.test.ts` "drops the parameters Chrome appends".
 
 5. **Keyword retention is ranked separately from alternation ordering.** The alternation must be
    longest-first so `github` beats `gh`. But truncating *that* order removes exactly the short hot
    aliases: at ~400 custom shortcuts, `gh`, `g` and `npm` silently stopped being intercepted.
+   Guarded by `tests/sync-rules.test.ts` "keeps every builtin alias and drops only custom ones".
 
-6. **All alias, URL and section validation goes through `src/lib/validate.ts`.** Nothing re-derives
-   a rule locally. Today's callers are the import parser (`storage.ts`), the override algebra
+6. **All alias, URL and section validation goes through `src/lib/validate.ts`** (guarded by
+   `tests/validate.test.ts`). Nothing re-derives a rule locally. Today's callers are both storage
+   readers (`storage/parse-import.ts` strictly,
+   `storage/normalize.ts` and `storage/shared.ts` leniently), the override algebra
    (`overrides.ts`), the one shortcut form (through `draft.ts` and `model/form.ts`), the section
-   editor in Settings, and `resolve.ts` for `isInterceptableAlias`. That list will grow, so add a
-   call site rather than a local rule. When the rule lived in whichever module needed it, each had
-   a different hole: whitespace aliases and scheme-less URLs both persisted happily while being
-   unusable. `validateAlias` also rejects an alias starting with an escape prefix, since `resolve()`
-   strips that before the key map is ever consulted.
+   editor and the "Exempt keywords" field in Settings, and `resolve.ts` for `isInterceptableAlias`.
+   That list will grow, so add a call site rather than a local rule. When the rule lived in
+   whichever module needed it, each had a different hole: whitespace aliases and scheme-less URLs
+   both persisted happily while being unusable. `validateAlias` also rejects an alias starting with
+   an escape prefix, since `resolve()` strips that before the key map is ever consulted.
 
 7. **Free text never goes into a slot expecting a specific shape.** Tracking numbers, Zoom meeting
    ids, phone numbers and dictionary headwords all guard their input and degrade to a search.
-   Otherwise `fedex near me open now` renders "tracking number not found".
+   Otherwise `fedex near me open now` renders "tracking number not found". Guarded by
+   `tests/handlers.test.ts` `describe('shape-guarded slots')`.
 
 8. **Arguments are never silently dropped**, with one deliberate, enumerated exception. The cloud
    consoles (`aws`, `gcp`, `vercel`, `netlify`, `cf`) had their `site:` doc search removed on
@@ -157,25 +192,32 @@ tests. **If a test in this list fails, do not "fix" the test.**
    third is a decision someone makes, not a test that quietly stopped caring.
 
 9. **No command may have a write side effect as its default argument behaviour.** `td bank near me`
-   used to open Todoist's quick-add *prefilled*. Quick-add lives on a separate `tda` alias.
+   used to open Todoist's quick-add *prefilled*. Quick-add lives on a separate `tda` alias. Guarded
+   by `tests/commands.test.ts` "never turns a misread search into a write".
 
 10. **`buildKeyMap` is first-writer-wins** and `mergeCommands` puts custom commands first, so a
-    user's own `gh` shadows the builtin rather than being ignored.
+    user's own `gh` shadows the builtin rather than being ignored. Guarded by
+    `tests/resolve.test.ts` "lets a custom command shadow a builtin alias".
 
 11. **User text reaches the DOM only via `textContent`/`createElement`.** A shortcut name is
     untrusted input. `background.ts` XML-escapes omnibox descriptions or Chrome silently drops the
-    suggestion.
+    suggestion. **No test covers this**, and none ever did: it is a convention held by review and by
+    the ban on `innerHTML`. Grep before you add a surface.
 
 12. **`resolve()` never throws.** A handler that blows up degrades to the command's bare
-    destination.
+    destination. Guarded by `tests/resolve.test.ts` "never throws and always yields a url, however
+    hostile the query".
 
 13. **`RuleStatus` separates a fatal `error` from a partial-coverage `warning`.** They used to be
     one field, which made the options page render the red "Rules not registered" state for a single
-    dropped keyword and left the amber state unreachable.
+    dropped keyword and left the amber state unreachable. Guarded by the one case left in
+    `tests/status-pill.test.ts`.
 
 14. **Vite's `crossorigin` and modulepreload tags are stripped** in `vite.config.ts`. On a
     `chrome-extension://` page the browser treats `crossorigin` as a cross-world mismatch and
-    discards the preload, so the attribute costs the very thing it was meant to enable.
+    discards the preload, so the attribute costs the very thing it was meant to enable. **No test
+    covers this**, and none ever did. It is visible only in a built `dist/` page: grep the output
+    for `crossorigin` if you touch the plugin.
 
 15. **`syncRules` is serialized, with one trailing coalesced slot.** Rule ids are renumbered
     densely from the current keyword count, so two overlapping rebuilds read the same `existing`
@@ -197,13 +239,13 @@ tests. **If a test in this list fails, do not "fix" the test.**
     `builtin` or `id`. That is the difference between renaming GitHub and pointing the `github`
     handler at your own host. An edit whose `url` is blank or unparseable inherits the shipped one,
     because `rawDestination` returns `cmd.url` and an empty string is not a destination (invariant
-    12). Guarded by `tests/overrides.test.ts`, by `tests/overrides-security.test.ts` (which drives
-    the hostile shapes one field at a time) and by the whole-path test in `tests/storage.test.ts`
-    `describe('an edit cannot smuggle behaviour through the import')`, which drives the JSON
-    through `importJson` → `applyImport` → `mergeCommands` rather than calling `applyEdit`
-    directly. Its last case hands `mergeCommands` an override object the parser never saw: the
-    storage boundary strips these fields too, so without it the whole block stays green even if
-    `applyEdit` went back to spreading.
+    12). Two tests, because there are two code paths and each answers a different way:
+    `tests/overrides.test.ts` "ignores handler, provider, builtin and id" for `applyEdit`, and
+    `tests/storage.test.ts` "holds even when the edit reaches the merge unparsed" for the storage
+    boundary. The second hands `mergeCommands` an override object the parser never saw, so it stays
+    red even if only `applyEdit` is fixed. The file that drove the hostile shapes one field at a
+    time, `tests/overrides-security.test.ts`, was deleted in the cut: it re-covered these two
+    through a wrapper.
 
 17. **A category is an open section id, and every lookup keyed by one is hostile input.**
     `validateSectionId` is deliberately permissive. It accepts a builtin id, because that is how a
@@ -219,16 +261,18 @@ tests. **If a test in this list fails, do not "fix" the test.**
     hand-edit JSON the user did not write. The one category refusal left is structural: a
     `category` that is not a string names no id to degrade to. A pack SHOULD still declare the
     sections it files things under (`extras/packs/removed-commands.json` is the worked example); it
-    just is not made to. Guarded by `tests/overrides.test.ts`, `tests/storage.test.ts` and
-    `tests/overrides-security.test.ts`.
+    just is not made to. Guarded by `tests/overrides.test.ts` "does not answer with something off
+    Object.prototype" for the lookup, and by `tests/storage.test.ts` for the two degrade paths ("an
+    edit whose category names no section loses the category, not the command" and "files a shortcut
+    under \"custom\" when the STORED blob lost the section").
 
 ## Smaller rules, easy to undo by accident
 
 These are not invariants, since no bug shipped from them. But each is a decision with a reason, and
 the obvious edit reverses it.
 
-- **`applyFilter` in `views/browse.ts` is the only writer of `row.hidden`, `rowsHost.hidden` and
-  every count on the page.** Collapse hides a group by writing the rows host. The filter hides
+- **`applyFilter` in `views/browse.ts` is the only writer of `row.hidden`, `rowsHost.hidden`, every
+  count on the page and the "omnibox only" badge.** Collapse hides a group by writing the rows host. The filter hides
   individual rows and force-shows a collapsed group that matches. Two writers means a row that a
   cleared filter never brings back. The on/off switch is the one control that changes what is on
   screen without a re-render, and it still does not write any of those: it moves the row's node
@@ -299,8 +343,8 @@ the obvious edit reverses it.
   `confirmOpen` until the user answers: an Open button that takes focus, so Enter proceeds, and the
   escape search, whose own navigation is the outcome (the promise deliberately never resolves down
   that path, because a second navigation would race it). A confirmation the page navigates away from
-  on its own is a delay, not a confirmation. `tests/go-dispatch.test.ts` reads the source and fails
-  if a timer or the old toast node comes back.
+  on its own is a delay, not a confirmation. Nothing tests this now: the suite that did read
+  `go.ts` as source text rather than running it, which is the shape the test cut removed.
 - **`Settings.defaultAi` is gone; `settings.aiTemplates` survives with no UI.** The `?` command that
   read the default was deleted outright rather than parked in the removed-commands pack, because a
   keyword whose whole job was to read a setting that no longer exists has nothing to come back to. A
@@ -309,6 +353,25 @@ the obvious edit reverses it.
   by the import parser; it is edited through an exported JSON file. Do not delete the plumbing
   because no card writes it, and do not reintroduce a settings field the resolver would have to read
   to answer a keyword.
+- **Meta shortcuts ship a RELATIVE url.** `bl`, `add` and `set` point at `options.html#…` and the
+  dispatch page absolutises it. Applying `withScheme` unconditionally on save turned a no-change
+  Save into a stored `https://options.html#help` that opened nothing, permanently. See `keptUrl` in
+  `src/lib/draft.ts`.
+- **The live preview substitutes a shipped command at its own registry index.** `buildKeyMap` is
+  first-writer-wins, so appending the draft instead would preview a resolution the save does not
+  produce. See `previewCommands` in `src/options/model/form.ts`.
+- **A re-minted custom id has to be rewritten in `disabled` and `deleted` too.** Otherwise those
+  entries follow the wrong shortcut and a newly imported command inherits the incumbent's history.
+  See `landedAs` in `src/lib/merge-import.ts`.
+- **`--accent` and `--accent-fg` must stay flat hexes.** `scripts/gen-icons.mjs` parses those exact
+  declarations to colour the icon, so wrapping either in `light-dark()` throws the build. The same
+  reason pins `minimum_chrome_version` to 123: `light-dark()` needs it.
+- **`.spec-row` is a harness class.** It belongs to `design/preview.css` and to the artboards. The
+  product renders `.row`. A harness class must never reach the shipped sheet.
+- **`hasOnboarded` is true on every real install** by the time the welcome tab opens, because the
+  starter pick is written first. It comes apart from "a pick is live" for a format 1 profile
+  arriving from Settings, or an install whose write failed: those have every shipped shortcut on and
+  no pick on record, so `initialPicks` opens the starter set ticked rather than an empty screen.
 
 ## Verify by executing, not by reading
 
@@ -316,14 +379,48 @@ The most valuable bugs here were found by *running* code, not inspecting it. The
 correct to three reviewers. Applying it to a real Chrome-generated URL exposed it immediately.
 When you change routing, build the real rules and replay real URLs through them.
 
-`tests/helpers/rules.ts` has the matcher. `tests/sync-rules.test.ts` stubs `globalThis.chrome` and
-exercises the **production** path. Note that only tests call `buildRules`, so a test that drives
-`buildRules` alone is not testing what ships.
+`buildRules` and the production path share `src/lib/dnr/rules.ts`, so what a `buildRules` test
+omits is precisely `dnr/fit.ts`. `tests/helpers/rules.ts` has the matcher. `tests/sync-rules.test.ts`
+stubs `globalThis.chrome` and exercises the **production** path. Note that only tests call
+`buildRules`, so a test that drives `buildRules` alone is not testing what ships.
+
+## The test suite
+
+20 files, about 150 cases, under a second. It was 27 files and 1369 before a deliberate cut, and
+the size is a decision rather than an accident. The question a test has to answer is: **if this
+vanished and the code broke, would a user notice?**
+
+What is here: `resolve()` turning a typed query into a destination and honouring the escape prefix;
+one or two shapes per smart handler; the redirect rules matching a real Chrome-generated search URL
+without swallowing their own output; import/export round-tripping and an import refusing a file that
+would corrupt the profile; the override layer (edit, disable, delete, restore, sections); and a
+handful of property tests over the shipped registry, which is why adding a command needs no new
+test.
+
+What is deliberately not here, and should not come back:
+
+- **Design and token tests.** The stylesheets are reviewed, not asserted on.
+- **View tests that assemble a DOM.** The decisions behind a view are pure and live in
+  `src/options/model/*.ts`; those are testable and a few are tested. The DOM they produce is
+  verified in a browser.
+- **Tests that a removed feature stayed removed.** They test history, not behaviour.
+- **Tests that read source text** rather than running it.
+- **Exhaustive sweeps.** Where a table ran one assertion over all 96 registry rows, it is one
+  property test that names every row that drifted. `it.each` over a registry is how a suite reaches
+  1369 cases without covering anything new.
+- **Duplicates**, including a test that covers through a wrapper what another covers through the
+  thing being wrapped.
+
+An invariant above keeps ONE test, and the comment saying which bug it guards stays with it: that
+comment is why the test is worth its line. Adding a test is welcome when it answers the question at
+the top of this section. Adding one per branch is not.
 
 ## Commands
 
 ```bash
 pnpm install
+pnpm lint          # eslint + prettier --check
+pnpm format        # prettier --write
 pnpm test          # vitest
 pnpm typecheck     # tsc --noEmit
 pnpm build         # gen-icons + typecheck + vite build -> dist/
@@ -343,17 +440,29 @@ gitignored.
 - pnpm, pinned via `packageManager`. Do not run `npm install`: it creates a second lockfile.
 - TypeScript strict, `verbatimModuleSyntax`: use `import type` for type-only imports.
 - Import siblings without a file extension.
-- 2-space indent, single quotes, semicolons, no default exports.
-- **No new dependencies.** The whole thing runs on four devDependencies; inline the functionality.
+- 2-space indent, single quotes, semicolons, no default exports. Enforced: `eslint.config.js` and
+  `.prettierrc.json`, run together by `pnpm lint`. Prettier is set to the style already here
+  (printWidth 100, derived from where the code actually wraps), so it is not a reformat waiting to
+  happen. Every eslint rule switched off names the convention it was fighting; read that before
+  turning one back on. `design/`, `go.html` and Markdown are outside the formatter, for reasons
+  `.prettierignore` gives.
+- **No new dependencies in what ships.** Nothing is bundled into the extension but this repo's own
+  source and one font. Dev tooling is judged on its own merits and is currently prettier and eslint
+  on top of typescript, vite and vitest. Adding to that list is a decision somebody makes on
+  purpose; adding a runtime dependency is not on the table.
 - Comment only where the *reason* is non-obvious. Do not restate the code.
 - Vanilla TS and CSS in the UI. No framework.
 - Colours, sizes and spacing in the UI sheets come from `design/tokens.css`. No literal hex, no raw
-  `font-size: Npx`, and never `color: var(--accent)`. `tests/tokens.test.ts` enforces it. `--accent`
-  is a fill (2.04:1 on white). `--accent-text` is the readable half-lightness twin for text, links
-  and the focus ring.
+  `font-size: Npx`, and never `color: var(--accent)`. This used to be enforced by
+  `tests/tokens.test.ts`, 72 cases over the stylesheets; it is a review rule now. `--accent` is a
+  fill (2.04:1 on white). `--accent-text` is the readable half-lightness twin for text, links and
+  the focus ring.
 - `src/lib` and `src/options/model` must import cleanly under vitest's `environment: node`: no
   `document`, no `chrome.*` at module scope. That is what makes the pure decisions testable without
-  a DOM, and a stray import breaks a suite rather than a feature.
+  a DOM, and a stray import breaks a suite rather than a feature. Every suite runs under `node`
+  now, and there is no DOM environment at all: the one jsdom suite went in the test cut and jsdom
+  went with it. A view is verified in a real browser, which is where layout, `focus()` inside a
+  `display: none` subtree and the CSS `order` reordering are visible anyway.
 - Do not edit `extras/` expecting it to compile. It is intentionally outside tsconfig.
 - `design/` is the approved design bundle. Change it through a design review, not in passing.
 
@@ -387,9 +496,9 @@ Commands are plain data in `src/lib/commands.ts`. When adding or removing one:
 ## Review workflow
 
 Project convention: substantial work arrives as **distinct commits sliced by architectural layer**,
-so each one carries a single reviewable idea and passes the gate (`pnpm typecheck && pnpm test &&
-pnpm build`) on its own. Verify that standing alone: a test that imports a module from a later
-commit silently breaks the property without failing anything.
+so each one carries a single reviewable idea and passes the gate (`pnpm lint && pnpm typecheck &&
+pnpm test && pnpm build`) on its own. Verify that standing alone: a test that imports a module from
+a later commit silently breaks the property without failing anything.
 
 Those commits may be stacked as branches, each PR based on the previous one, or landed as one
 branch. If you stack them, **do not pass `--delete-branch`** when merging: deleting a parent branch
