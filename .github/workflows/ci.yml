@@ -13,7 +13,7 @@ jobs:
     name: lint + typecheck + test + build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # No `version:` input on purpose: action-setup v4 reads
       # `packageManager` from package.json, so CI cannot drift from local.
