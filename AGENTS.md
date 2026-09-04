@@ -50,7 +50,10 @@ src/lib/storage.ts      chrome.storage.local persistence, export, and the entry 
 src/lib/storage/normalize.ts     LENIENT reader: any blob in, a usable state out. Never throws.
 src/lib/storage/parse-import.ts  STRICT import parser + the v1 file reader. Refuses by name.
 src/lib/storage/shared.ts        What both need: guards, the shipped ids, custom-id assignment.
-src/lib/dnr.ts          declarativeNetRequest rule generation + syncRules
+src/lib/dnr.ts          `syncRules`: the serialized rebuild + the remembered RuleStatus
+src/lib/dnr/rules.ts    Every registrable rule. `buildRules` and `syncRules` share it.
+src/lib/dnr/keywords.ts Which aliases survive the caps, and the two orders they live in
+src/lib/dnr/fit.ts      Chrome's RE2 check, resplitting a refused shard, coverage wording
 src/lib/draft.ts        What the edit form edits, and the pure parsing around it
 src/lib/text.ts         String helpers every surface shares
 src/lib/url.ts          Small URL helpers
@@ -343,7 +346,8 @@ The most valuable bugs here were found by *running* code, not inspecting it. The
 correct to three reviewers. Applying it to a real Chrome-generated URL exposed it immediately.
 When you change routing, build the real rules and replay real URLs through them.
 
-`tests/helpers/rules.ts` has the matcher. `tests/sync-rules.test.ts` stubs `globalThis.chrome` and
+`buildRules` and the production path share `src/lib/dnr/rules.ts`, so what a `buildRules` test
+omits is precisely `dnr/fit.ts`. `tests/helpers/rules.ts` has the matcher. `tests/sync-rules.test.ts` stubs `globalThis.chrome` and
 exercises the **production** path. Note that only tests call `buildRules`, so a test that drives
 `buildRules` alone is not testing what ships.
 
