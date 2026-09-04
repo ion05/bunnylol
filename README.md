@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="store/icon128.png" width="96" height="96" alt="BunnyLol logo">
+  <img src="public/icons/icon128.png" width="96" height="96" alt="BunnyLol logo">
 </p>
 
 # BunnyLol
@@ -48,8 +48,7 @@ The toolbar popup gives you autocomplete when you do not want to leave the curre
 
 ### From the Chrome Web Store
 
-Not listed yet. [docs/chrome-web-store.md](docs/chrome-web-store.md) holds the submission material.
-The link goes here once the listing is live.
+Not listed yet. The link goes here once the listing is live.
 
 ### From source
 

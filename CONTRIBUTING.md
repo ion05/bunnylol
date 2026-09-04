@@ -156,5 +156,4 @@ A release is:
    Build fresh rather than trusting a zip already sitting in `release/`: the Web Store enforces
    monotonic versions, so uploading a stale build under a new version costs you the next one too.
 4. Tag `vX.Y.Z`, push the tag, and attach that zip to a GitHub release.
-5. Upload the same zip to the Web Store. [docs/chrome-web-store.md](docs/chrome-web-store.md) has
-   the dashboard answers, and [store/listing.md](store/listing.md) has the copy.
+5. Upload the same zip to the Web Store.

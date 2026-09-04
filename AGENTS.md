@@ -65,8 +65,7 @@ src/options/            Shortcut manager UI (below)
 src/popup/              Toolbar command bar
 design/                 The approved design system. `tokens.css` is shipped; the rest is review.
 scripts/                gen-icons.mjs, package.mjs, and `scripts/lib/` (pure, importable helpers)
-store/                  Web Store listing assets. Outside `public/`, so never packed into dist/.
-docs/                   fonts.md (the bundled Inter), chrome-web-store.md (the submission crib)
+docs/                   fonts.md (the bundled Inter), images/ (the README screenshots)
 extras/packs/           Importable JSON packs. Data, not code; not compiled.
 ```
 
