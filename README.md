@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 BunnyLol enables you to set custom shortcuts for websites in your browser, including faster
-searches for supported websites. Type a keyword and go straight where you meant to go:
+searches for supported websites.
 
 ```
 gh facebook/react   →   github.com/facebook/react
