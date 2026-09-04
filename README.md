@@ -88,10 +88,8 @@ the extension's own pages needs no network.
 
 ## Contributing
 
-[CONTRIBUTING.md](CONTRIBUTING.md) covers the setup, the checks a change has to pass, and how to add
-a command. [AGENTS.md](AGENTS.md) is the architecture note.
-[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) applies. Released versions are listed in
-[CHANGELOG.md](CHANGELOG.md).
+[AGENTS.md](AGENTS.md) covers the setup, the checks a change has to pass, how to add a command, and
+the architecture. Released versions are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## Privacy and security
 
@@ -101,8 +99,7 @@ device, and the only other thing stored is which groups you have folded. Full st
 [PRIVACY.md](PRIVACY.md).
 
 BunnyLol holds redirect rules on three search engines, so a routing bug here is a browsing-data bug.
-Report a vulnerability privately through GitHub's Security tab rather than as an issue:
-[SECURITY.md](SECURITY.md).
+Report a vulnerability privately through GitHub's Security tab rather than as an issue.
 
 ## License
 
