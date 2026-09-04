@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { at } from './helpers/at';
 import {
   MAX_ID_LENGTH,
   MAX_SECTIONS,
@@ -174,7 +175,7 @@ describe('mintUserId', () => {
   it('cannot collide with a shipped id', () => {
     const shipped = new Set(BUILTIN_COMMANDS.map(shortcutId));
     for (const builtin of BUILTIN_COMMANDS) {
-      expect(shipped.has(mintUserId(builtin.keys[0], new Set()))).toBe(false);
+      expect(shipped.has(mintUserId(at(builtin.keys, 0), new Set()))).toBe(false);
     }
   });
 

@@ -356,7 +356,9 @@ function startsAWord(haystack: string, needle: string): boolean {
   for (let from = 0; from <= haystack.length - needle.length;) {
     const at = haystack.indexOf(needle, from);
     if (at < 0) return false;
-    if (at === 0 || !WORD_CHAR.test(haystack[at - 1])) return true;
+    // `charAt`, not `[]`: it is total, and out of range it answers '', which is
+    // not a word character, which is the same answer as being at position 0.
+    if (at === 0 || !WORD_CHAR.test(haystack.charAt(at - 1))) return true;
     from = at + 1;
   }
   return false;

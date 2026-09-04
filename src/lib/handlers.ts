@@ -31,7 +31,10 @@ import { DEFAULT_SETTINGS } from './types';
  * Mode (`udm=50`), which is the same model and does answer from the query
  * string. A bare `gem` still opens the Gemini app itself.
  */
-export const AI_PROVIDERS: AiProvider[] = [
+// Typed as a non-empty tuple rather than `AiProvider[]`, because `findProvider`
+// degrades an unknown provider id to the FIRST entry: emptying this list would
+// not be a shorter menu, it would be an `ai` command that resolves to nothing.
+export const AI_PROVIDERS: [AiProvider, ...AiProvider[]] = [
   {
     id: 'claude',
     label: 'Claude',
@@ -329,11 +332,11 @@ function github(args: string, cmd: Command, settings: Settings): string {
     return tokens.length > 0 ? githubSearch(tokens.join(' ')) : cmd.url || GITHUB_HOME;
   }
 
-  const tokens = stripGithubHost(raw).split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) return cmd.url || GITHUB_HOME;
-
-  const head = tokens[0];
-  const rest = tokens.slice(1).join(' ');
+  // Destructured rather than length-checked: `head` is the same first token
+  // either way, and this is the form the compiler can see is present.
+  const [head, ...afterHead] = stripGithubHost(raw).split(/\s+/).filter(Boolean);
+  if (head === undefined) return cmd.url || GITHUB_HOME;
+  const rest = afterHead.join(' ');
 
   if (!rest && head.toLowerCase() === 'me') {
     const user = (settings.githubUser || '').trim();
@@ -347,15 +350,19 @@ function github(args: string, cmd: Command, settings: Settings): string {
     const repo = `${GITHUB_HOME}${encodePath(path)}`;
     if (!rest) return repo;
 
+    // `rest` joins tokens that were non-empty, so it always splits into at
+    // least one word; a wordless `rest` would name no tab and fall through to
+    // the repo search below, which is where the `?? ''` lands anyway.
     const [flag, ...tail] = rest.split(/\s+/);
-    const tab = GITHUB_TABS[flag.toLowerCase()];
+    const tab = GITHUB_TABS[flag?.toLowerCase() ?? ''];
     if (tab) {
       if (tail.length === 0) return `${repo}/${tab}`;
       const item = GITHUB_NUMBERED[tab];
+      const lone = tail.length === 1 ? tail[0] : undefined;
       // `gh facebook/react pr 123` -> that pull request; `#123` too, since that
       // is how the number is written everywhere else.
-      if (item && tail.length === 1 && /^#?\d+$/.test(tail[0])) {
-        return `${repo}/${item}/${tail[0].replace('#', '')}`;
+      if (item && lone && /^#?\d+$/.test(lone)) {
+        return `${repo}/${item}/${lone.replace('#', '')}`;
       }
       // Words after the flag search within that tab rather than being dropped.
       return `${repo}/${tab}?q=${enc(tail.join(' '))}`;
@@ -393,11 +400,14 @@ function reddit(args: string, cmd: Command, _settings: Settings): string {
   const path = raw.replace(/^(?:https?:\/\/)?(?:www\.|old\.|new\.)?reddit\.com(?:\/|$)/i, '');
   if (!path) return cmd.url || REDDIT_HOME;
 
-  const user = /^\/?u(?:ser)?\/([A-Za-z0-9_-]{1,20})\/?$/.exec(path);
-  if (user) return `${REDDIT_HOME}user/${encodePath(user[1])}/`;
+  // Testing the capture rather than the match: both groups are non-optional, so
+  // a match always fills them, and reading them out is what says so.
+  const [, redditor] = /^\/?u(?:ser)?\/([A-Za-z0-9_-]{1,20})\/?$/.exec(path) ?? [];
+  if (redditor) return `${REDDIT_HOME}user/${encodePath(redditor)}/`;
 
-  const sub = /^\/?r\/([A-Za-z0-9_]{2,21})((?:\/[A-Za-z0-9_-]+)*)\/?$/.exec(path);
-  if (sub) return `${REDDIT_HOME}r/${encodePath(sub[1])}${sub[2] ? encodePath(sub[2]) : '/'}`;
+  const [, sub, subPath] =
+    /^\/?r\/([A-Za-z0-9_]{2,21})((?:\/[A-Za-z0-9_-]+)*)\/?$/.exec(path) ?? [];
+  if (sub) return `${REDDIT_HOME}r/${encodePath(sub)}${subPath ? encodePath(subPath) : '/'}`;
 
   if (/^[A-Za-z0-9_]{2,21}$/.test(path)) return `${REDDIT_HOME}r/${encodePath(path)}/`;
 
@@ -429,8 +439,10 @@ function googleAccount(settings: Settings): string {
  */
 function splitGoogleAccount(args: string, settings: Settings): { account: string; query: string } {
   const raw = args.trim();
-  const match = /^(\d{1,2})(?:\s+([\s\S]*))?$/.exec(raw);
-  if (match) return { account: match[1], query: (match[2] ?? '').trim() };
+  // Group 1 is non-optional, so a match always carries the digits; group 2 is
+  // the one that is genuinely absent for a bare `gmail 1`.
+  const [, account, query] = /^(\d{1,2})(?:\s+([\s\S]*))?$/.exec(raw) ?? [];
+  if (account) return { account, query: (query ?? '').trim() };
   return { account: googleAccount(settings), query: raw };
 }
 
@@ -580,7 +592,9 @@ function meta(args: string, cmd: Command, _settings: Settings): string {
 
   const hash = base.indexOf('#');
   const tail = hash === -1 ? base : base.slice(hash + 1);
-  const route = tail.split('?')[0];
+  // `split` always yields a first piece, and an empty route names no parameter,
+  // which is the same answer this gives a route that is not in the map.
+  const [route = ''] = tail.split('?');
   const param = META_PARAMS[route];
   if (!param) return base;
   const sep = tail.includes('?') ? '&' : '?';

@@ -19,6 +19,7 @@ import { BUILTIN_COMMANDS } from '../commands';
 import {
   MAX_ID_LENGTH,
   USER_ID_PREFIX,
+  firstKey,
   isUserId,
   mintUserId,
   normalizeId,
@@ -89,14 +90,17 @@ export interface CustomEntry {
  * of this exists to prevent.
  */
 export function assignCustomIds(entries: CustomEntry[], strict: boolean): Command[] {
-  const claims = entries.map((entry) => claimedId(entry, strict));
+  // Paired with the entry rather than kept as a second array read back by
+  // index, so a claim cannot come apart from the entry that made it.
+  const claimed = entries.map((entry) => ({ entry, claim: claimedId(entry, strict) }));
   // Seeded with the claims, so a mint cannot land on one that is still owed.
-  const taken = new Set(claims.filter(isUserId));
+  const taken = new Set(claimed.map(({ claim }) => claim).filter(isUserId));
   const handedOut = new Set<string>();
-  return entries.map((entry, index) => {
-    const claim = claims[index];
+  return claimed.map(({ entry, claim }) => {
+    // `firstKey`, the seed `merge-import` mints from too: a normalized command
+    // always has an alias, and this says so without indexing past a length.
     const id =
-      isUserId(claim) && !handedOut.has(claim) ? claim : mintUserId(entry.cmd.keys[0], taken);
+      isUserId(claim) && !handedOut.has(claim) ? claim : mintUserId(firstKey(entry.cmd), taken);
     taken.add(id);
     handedOut.add(id);
     return { ...entry.cmd, id };

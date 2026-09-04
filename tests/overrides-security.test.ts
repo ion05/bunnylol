@@ -21,11 +21,12 @@ import { buildKeyMap, mergeCommands, resolve } from '../src/lib/resolve';
 import { applyImport, exportJson, importJson } from '../src/lib/storage';
 import { DEFAULT_OVERRIDES, DEFAULT_SETTINGS, FALLBACK_SECTION } from '../src/lib/types';
 import type { Command, Overrides, Settings, ShortcutEdit, StoredState } from '../src/lib/types';
+import { at } from './helpers/at';
 import { claim, installChromeStub, resultsUrl } from './helpers/rules';
 
 const CLEAN: StoredState = { overrides: DEFAULT_OVERRIDES, settings: DEFAULT_SETTINGS };
 
-const GOOGLE = SEARCH_ENGINES[0];
+const GOOGLE = at(SEARCH_ENGINES, 0);
 
 interface Landed {
   overrides: Overrides;
@@ -112,7 +113,7 @@ describe('nothing can claim builtin', () => {
         edits: { gh: { builtin: false, name: 'Hub' } },
       }),
     );
-    expect(landed.overrides.custom[0].builtin).toBe(false);
+    expect(at(landed.overrides.custom, 0).builtin).toBe(false);
     expect((landed.by('mine') as Command).builtin).toBe(false);
     expect((landed.by('gh') as Command).builtin).toBe(true);
     expect(landed.overrides.edits.gh).toEqual({ name: 'Hub' });
@@ -148,7 +149,7 @@ describe('nothing can re-key a record', () => {
         settings: DEFAULT_SETTINGS,
       }),
     ) as StoredState;
-    expect(stored.overrides.custom[0].id).toBe('u:mine');
+    expect(at(stored.overrides.custom, 0).id).toBe('u:mine');
     const commands = mergeCommands(BUILTIN_COMMANDS, stored.overrides);
     expect(commands.filter((cmd) => shortcutId(cmd) === 'gh').length).toBe(1);
     expect(buildKeyMap(commands).get('gh')?.url).toBe('https://github.com/');
@@ -316,7 +317,7 @@ describe('an unknown category', () => {
       }),
     ) as StoredState;
     expect(blob.overrides.edits.gh).toEqual({ name: 'Mine' });
-    expect(blob.overrides.custom[0].category).toBe('custom');
+    expect(at(blob.overrides.custom, 0).category).toBe('custom');
     const keyMap = buildKeyMap(mergeCommands(BUILTIN_COMMANDS, blob.overrides));
     expect(keyMap.get('gh')?.category).toBe('dev');
   });

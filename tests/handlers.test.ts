@@ -36,7 +36,9 @@ function settings(patch: Partial<Settings> = {}): Settings {
   return { ...DEFAULT_SETTINGS, ...patch };
 }
 
-function cmd(keys: string[], url: string, handler?: HandlerId): Command {
+// A non-empty tuple, so the lead alias that names the command is present by the
+// type rather than by every call site happening to pass one.
+function cmd(keys: [string, ...string[]], url: string, handler?: HandlerId): Command {
   return {
     keys,
     name: keys[0],

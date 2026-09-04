@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { at } from './helpers/at';
 import { applyImport, exportJson, importJson } from '../src/lib/storage';
 import { BUILTIN_COMMANDS } from '../src/lib/commands';
 import { buildKeyMap, mergeCommands } from '../src/lib/resolve';
@@ -169,7 +170,7 @@ describe('importJson leniency', () => {
     expect(state.overrides.disabled).toEqual(['gh']);
     // Format 1's rebinding map arrives as an edit; there is one writer for keys.
     expect(state.overrides.edits).toEqual({ lh: { keys: ['l'] } });
-    expect(state.overrides.custom[0].keys).toEqual(['tix']);
+    expect(at(state.overrides.custom, 0).keys).toEqual(['tix']);
   });
 
   it('prunes deleted to ids this build actually ships', () => {
@@ -199,7 +200,7 @@ describe('importJson leniency', () => {
     const state = importJson(
       '{"version":1,"overrides":{"custom":[{"keys":["yt"],"url":"https://youtube.com/","category":"media"}]}}',
     );
-    expect(state.overrides.custom[0].category).toBe(FALLBACK_SECTION);
+    expect(at(state.overrides.custom, 0).category).toBe(FALLBACK_SECTION);
   });
 
   it('drops an unknown category from an edit instead of refusing the file', () => {
@@ -262,10 +263,10 @@ describe('importJson leniency', () => {
         },
       }),
     );
-    expect(state.overrides.custom[0].builtin).toBe(false);
+    expect(at(state.overrides.custom, 0).builtin).toBe(false);
     // The rest of the entry survives; only the builtin claim is refused.
-    expect(state.overrides.custom[0].name).toBe('Fake GitHub');
-    expect(state.overrides.custom[0].category).toBe('dev');
+    expect(at(state.overrides.custom, 0).name).toBe('Fake GitHub');
+    expect(at(state.overrides.custom, 0).category).toBe('dev');
   });
 
   it('normalizes keys, category and missing fields on a custom command', () => {
@@ -278,7 +279,7 @@ describe('importJson leniency', () => {
         },
       }),
     );
-    const custom = state.overrides.custom[0];
+    const custom = at(state.overrides.custom, 0);
     expect(custom.keys).toEqual(['tix']);
     expect(custom.url).toBe('https://tix.example/');
     expect(custom.name).toBe('tix');
@@ -350,7 +351,7 @@ describe('importJson leniency', () => {
       '{"overrides":{"custom":[{"keys":["tix"],"url":"https://tix.example/"}]}}',
     );
     const twice = importJson(exportJson({ overrides: once.overrides, settings: DEFAULT_SETTINGS }));
-    expect(twice.overrides.custom[0].id).toBe('u:tix');
+    expect(at(twice.overrides.custom, 0).id).toBe('u:tix');
   });
 
   it('gives two shortcuts with the same keyword different ids', () => {
@@ -403,7 +404,7 @@ describe('importJson leniency', () => {
     const state = importJson(
       '{"overrides":{"custom":[{"keys":["tickets"],"url":"https://tix.example/","id":"u:tix"}]}}',
     );
-    expect(state.overrides.custom[0].id).toBe('u:tix');
+    expect(at(state.overrides.custom, 0).id).toBe('u:tix');
   });
 
   it('mints over an id that is not a string', () => {
@@ -412,7 +413,7 @@ describe('importJson leniency', () => {
     const state = importJson(
       '{"overrides":{"custom":[{"keys":["tix"],"url":"https://tix.example/","id":42}]}}',
     );
-    expect(state.overrides.custom[0].id).toBe('u:tix');
+    expect(at(state.overrides.custom, 0).id).toBe('u:tix');
   });
 });
 
@@ -431,7 +432,7 @@ describe('sections and the categories filed against them', () => {
     const state = importJson(
       '{"overrides":{"sections":[{"id":"sec-work","label":"Work"}],"custom":[{"keys":["w"],"url":"https://w.test/","category":"sec-work"}]}}',
     );
-    expect(state.overrides.custom[0].category).toBe('sec-work');
+    expect(at(state.overrides.custom, 0).category).toBe('sec-work');
     // And the section travels with it, or the group the shortcut names would
     // exist only in the file it came from.
     const saved = JSON.parse(
@@ -913,14 +914,14 @@ describe('interceptStopList', () => {
 describe('a format 1 file', () => {
   it('is accepted and its keyOverrides arrive as an edit', () => {
     const state = importJson('{"version":1,"overrides":{"keyOverrides":{"gh":["hub"]}}}');
-    expect(state.overrides.edits.gh.keys).toEqual(['hub']);
+    expect(state.overrides.edits.gh?.keys).toEqual(['hub']);
     expect(
       mergeCommands(BUILTIN_COMMANDS, state.overrides).find((cmd) => cmd.id === 'gh')?.keys,
     ).toEqual(['hub']);
   });
 
   it('is recognized as a bare overrides snippet too', () => {
-    expect(importJson('{"keyOverrides":{"gh":["hub"]}}').overrides.edits.gh.keys).toEqual(['hub']);
+    expect(importJson('{"keyOverrides":{"gh":["hub"]}}').overrides.edits.gh?.keys).toEqual(['hub']);
   });
 
   it('lets an explicit edit win over the legacy map', () => {
@@ -969,7 +970,10 @@ describe('an edit cannot smuggle behaviour through the import', () => {
       .overrides;
 
   it('keeps only the fields an edit is allowed to name', () => {
-    expect(Object.keys(imported().edits.gh)).toEqual(['url']);
+    const edit = imported().edits.gh;
+    // `edit &&` rather than a default: an edit that went missing answers
+    // `undefined`, which fails, instead of looking like an edit with no fields.
+    expect(edit && Object.keys(edit)).toEqual(['url']);
   });
 
   it("leaves the merged command's handler, builtin flag and id alone", () => {

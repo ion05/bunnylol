@@ -74,11 +74,20 @@ export async function fitPlan(
   const guarded = new Set<SearchEngineId>();
   const allowPlan = buildAllowRules(engines);
   const escapePlan = buildEscapeRules(engines, extensionId);
-  for (const [index, allowRule] of allowPlan.entries()) {
+  // Walked over `engines` rather than over one of the plans, because the engine
+  // is what gets guarded and both plans are keyed by its index.
+  for (const [index, engine] of engines.entries()) {
+    const allowRule = allowPlan[index];
     const escapeRule = escapePlan[index];
+    // Both builders map over `engines`, so an index of `engines` names a rule in
+    // each. Except that `buildEscapeRules` answers `[]` for an empty extension
+    // id, which `planRedirects` also answers `[]` to, so the early return above
+    // has already taken that call. A missing rule is treated as a refused one
+    // for the reason the comment above gives: no escape rule, no redirects.
+    if (!allowRule || !escapeRule) continue;
     if (!(await isSupported(allowRule)) || !(await isSupported(escapeRule))) continue;
     fixed.push(allowRule, escapeRule);
-    guarded.add(engines[index].id);
+    guarded.add(engine.id);
   }
   const unguarded = engines.filter((engine) => !guarded.has(engine.id));
 

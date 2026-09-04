@@ -11,6 +11,7 @@
  */
 
 import { afterEach, describe, expect, it } from 'vitest';
+import { at } from './helpers/at';
 import { BUILTIN_COMMANDS, SEARCH_ENGINES } from '../src/lib/commands';
 import { MAX_RULES, syncRules } from '../src/lib/dnr';
 import { activeKeywords, mergeCommands, resolve } from '../src/lib/resolve';
@@ -246,7 +247,7 @@ describe('a Chrome that rejects the rule update', () => {
     expect(stub.rules().length).toBe(live);
     expect(failed.keywords).toBe(first.keywords);
     expect(failed.error).toMatch(/Storage read failed/);
-    expect(claim(stub.rules(), resultsUrl(SEARCH_ENGINES[0], 'gh+foo'))).toBe('redirect');
+    expect(claim(stub.rules(), resultsUrl(at(SEARCH_ENGINES, 0), 'gh+foo'))).toBe('redirect');
   });
 });
 
@@ -292,7 +293,7 @@ describe('a Chrome that refuses the passthrough allow rule', () => {
 
     // Matched on the pattern's host prefix, not on the substring "google":
     // `google` is also an alias, and it appears in every engine's alternation.
-    const google = enginesOf(['google'])[0];
+    const google = at(enginesOf(['google']), 0);
     const onGoogle = (rule: chrome.declarativeNetRequest.Rule) =>
       (rule.condition.regexFilter as string).includes(google.host.replace(/\./g, '\\.'));
     expect(allows(rules).filter(onGoogle)).toEqual([]);
@@ -325,7 +326,7 @@ describe('a Chrome that refuses the passthrough allow rule', () => {
 
   it('keeps intercepting the engines whose allow rule Chrome did accept', async () => {
     const { rules } = await sync({ state: state(), supports });
-    const bing = enginesOf(['bing'])[0];
+    const bing = at(enginesOf(['bing']), 0);
     expect(claim(rules, resultsUrl(bing, 'gh+foo'))).toBe('redirect');
     expect(claim(rules, `${resultsUrl(bing, 'gh+foo')}&${PASSTHROUGH_PARAM}=1`)).toBe('allow');
   });
@@ -422,7 +423,7 @@ describe('the first word is always a command', () => {
     ['teams that never won a super bowl', 'microsoft.com'],
   ])('intercepts %j and routes it to the command', async (query, destination) => {
     const { rules } = await sync({ state: state() });
-    const url = resultsUrl(SEARCH_ENGINES[0], query.replace(/ /g, '+'));
+    const url = resultsUrl(at(SEARCH_ENGINES, 0), query.replace(/ /g, '+'));
     expect(claim(rules, url)).toBe('redirect');
     expect(resolve(query, commands, { ...DEFAULT_SETTINGS }).url).toContain(destination);
   });
@@ -472,7 +473,7 @@ describe('the force-search escape hatch', () => {
     'resolves the redirected query to a plain marked search (%j)',
     async (prefix) => {
       const { rules } = await sync({ state: state() });
-      const url = resultsUrl(SEARCH_ENGINES[0], `${encodeURIComponent(prefix)}gh+foo`);
+      const url = resultsUrl(at(SEARCH_ENGINES, 0), `${encodeURIComponent(prefix)}gh+foo`);
       // Exactly what go.ts receives: the `q` of the url Chrome redirected to.
       const handed = new URL(
         (redirectTo(rules, url) as string).replace(/^chrome-extension:/, 'https:'),
@@ -490,7 +491,7 @@ describe('the force-search escape hatch', () => {
     'never leaks the escape into the search terms (%j)',
     async (prefix) => {
       const { rules } = await sync({ state: state() });
-      const url = resultsUrl(SEARCH_ENGINES[0], `${encodeURIComponent(prefix)}gh+foo`);
+      const url = resultsUrl(at(SEARCH_ENGINES, 0), `${encodeURIComponent(prefix)}gh+foo`);
       const handed = new URL(
         (redirectTo(rules, url) as string).replace(/^chrome-extension:/, 'https:'),
       ).searchParams.get('q') as string;
@@ -532,7 +533,7 @@ describe('the force-search escape hatch', () => {
     'cannot be claimed by a keyword rule first (%j)',
     async (prefix) => {
       const { rules } = await sync({ state: state() });
-      const url = resultsUrl(SEARCH_ENGINES[0], `${encodeURIComponent(prefix)}gh+foo`);
+      const url = resultsUrl(at(SEARCH_ENGINES, 0), `${encodeURIComponent(prefix)}gh+foo`);
       const escapePriority = Math.max(
         ...escapeRulesOf(rules)
           .filter((rule) => new RegExp(rule.condition.regexFilter as string, 'i').test(url))
@@ -552,7 +553,7 @@ describe('the force-search escape hatch', () => {
 
   it('is registered even for a profile that overflows the rule budget', async () => {
     const { rules } = await sync({ state: state({}, synthetic(3000)) });
-    const url = resultsUrl(SEARCH_ENGINES[0], '%5Cgh+foo');
+    const url = resultsUrl(at(SEARCH_ENGINES, 0), '%5Cgh+foo');
     expect(claim(rules, url)).toBe('redirect');
   });
 });
@@ -654,7 +655,7 @@ describe('concurrent syncs', () => {
     const live = stub.rules().map((rule) => ({ ...rule }));
 
     await expect(
-      chrome.declarativeNetRequest.updateDynamicRules({ addRules: [{ ...live[0] }] }),
+      chrome.declarativeNetRequest.updateDynamicRules({ addRules: [{ ...at(live, 0) }] }),
     ).rejects.toThrow(/already exists/);
     expect(stub.rules()).toEqual(live);
   });

@@ -9,6 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { at } from './helpers/at';
 import { mergeOverrides, signatureOf } from '../src/lib/merge-import';
 import { MAX_SECTIONS, sectionLabel, shortcutId } from '../src/lib/overrides';
 import { exportJson } from '../src/lib/storage';
@@ -48,7 +49,7 @@ describe('mergeOverrides custom commands', () => {
       overrides({ custom: [cmd({ id: 'u:hub', keys: ['gh'], url: 'https://hub.example/' })] }),
     );
     expect(plan.renames).toEqual([{ from: 'gh', to: 'gh2' }]);
-    expect(plan.added[0].keys).toEqual(['gh2']);
+    expect(at(plan.added, 0).keys).toEqual(['gh2']);
   });
 
   it('skips an incoming shortcut identical to one of ours', () => {
@@ -69,7 +70,7 @@ describe('mergeOverrides custom commands', () => {
     );
     // Two shortcuts on one id would share its `edits` and `disabled` entries,
     // and the second would inherit the first's history.
-    expect(plan.added[0].id).toBe('u:pay');
+    expect(at(plan.added, 0).id).toBe('u:pay');
     expect(new Set(plan.overrides.custom.map(shortcutId)).size).toBe(2);
   });
 
@@ -78,7 +79,7 @@ describe('mergeOverrides custom commands', () => {
       overrides(),
       overrides({ custom: [cmd({ keys: ['pay'], url: 'https://pay.example/' })] }),
     );
-    expect(plan.added[0].id).toBe('u:pay');
+    expect(at(plan.added, 0).id).toBe('u:pay');
   });
 
   it('nothing is lost: every incoming shortcut or an equivalent is present after merge', () => {
@@ -182,7 +183,7 @@ describe('mergeOverrides disabled and deleted', () => {
         deleted: ['u:jira'],
       }),
     );
-    expect(plan.added[0].id).toBe('u:jira-2');
+    expect(at(plan.added, 0).id).toBe('u:jira-2');
     expect(plan.overrides.disabled).toEqual(['u:jira-2']);
     expect(plan.overrides.deleted).toEqual(['u:jira-2']);
     expect(plan.disables).toEqual(['u:jira-2']);
@@ -242,7 +243,7 @@ describe('mergeOverrides sections', () => {
       { id: 'sec-work-2', label: 'Client work' },
     ]);
     expect(plan.sections).toEqual([{ id: 'sec-work-2', label: 'Client work' }]);
-    expect(plan.added[0].category).toBe('sec-work-2');
+    expect(at(plan.added, 0).category).toBe('sec-work-2');
     expect(plan.overrides.edits.gh).toEqual({ category: 'sec-work-2' });
   });
 
@@ -273,7 +274,7 @@ describe('mergeOverrides sections', () => {
     );
     expect(plan.overrides.sections).toEqual([{ id: 'dev-2', label: 'Engineering' }]);
     expect(plan.sections).toEqual([{ id: 'dev-2', label: 'Engineering' }]);
-    expect(plan.added[0].category).toBe('dev-2');
+    expect(at(plan.added, 0).category).toBe('dev-2');
     expect(plan.overrides.edits.gh).toEqual({ category: 'dev-2' });
     // Ours keeps the shipped name.
     expect(sectionLabel('dev', plan.overrides.sections)).toBe('Developer');
@@ -310,16 +311,16 @@ describe('mergeOverrides sections', () => {
         custom: [cmd({ id: 'u:pay', keys: ['pay'], category: long })],
       }),
     );
-    const refiled = plan.sections[0].id;
+    const refiled = at(plan.sections, 0).id;
     expect(refiled.length).toBeLessThanOrEqual(MAX_SECTION_ID_LENGTH);
-    expect(plan.added[0].category).toBe(refiled);
+    expect(at(plan.added, 0).category).toBe(refiled);
     // Through the real storage boundary: the section survives the save and the
     // shortcut is still in it.
     const saved = JSON.parse(
       exportJson({ overrides: plan.overrides, settings: DEFAULT_SETTINGS }),
     ) as StoredState;
     expect(saved.overrides.sections.map((section) => section.id)).toEqual([long, refiled]);
-    expect(saved.overrides.custom[0].category).toBe(refiled);
+    expect(at(saved.overrides.custom, 0).category).toBe(refiled);
   });
 
   it('stops adding at MAX_SECTIONS and reports what it left out', () => {
@@ -369,7 +370,7 @@ describe('mergeOverrides sections', () => {
         custom: [cmd({ id: 'u:pay', keys: ['pay'], category: 'sec-work' })],
       }),
     );
-    expect(plan.added[0].category).toBe('sec-work');
+    expect(at(plan.added, 0).category).toBe('sec-work');
     expect(plan.sections).toEqual([{ id: 'sec-work', label: 'Work' }]);
   });
 });

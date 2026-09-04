@@ -7,6 +7,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { at } from './helpers/at';
 import { toNavigableUrl } from '../src/lib/url';
 import { BUILTIN_COMMANDS } from '../src/lib/commands';
 import { mergeCommands, resolve } from '../src/lib/resolve';
@@ -53,7 +54,8 @@ describe('toNavigableUrl', () => {
     const metas = BUILTIN_COMMANDS.filter((cmd) => cmd.handler === 'meta');
     expect(metas.length).toBeGreaterThan(0);
     for (const cmd of metas) {
-      for (const query of [cmd.keys[0], `${cmd.keys[0]} some words`]) {
+      const key = at(cmd.keys, 0);
+      for (const query of [key, `${key} some words`]) {
         const url = toNavigableUrl(resolve(query, commands, DEFAULT_SETTINGS).url);
         expect(url.startsWith(`${EXT_ORIGIN}/`), `${query} -> ${url}`).toBe(true);
       }

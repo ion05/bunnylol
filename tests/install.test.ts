@@ -11,6 +11,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { at } from './helpers/at';
 import { BUILTIN_COMMANDS, SEARCH_ENGINES } from '../src/lib/commands';
 import { lastRuleStatus, syncRules } from '../src/lib/dnr';
 import {
@@ -117,7 +118,7 @@ describe('a fresh install', () => {
   it('does not reset or re-onboard a profile whose storage survived the uninstall', async () => {
     // Any builtin: this one stands in for a shortcut the user switched off by
     // hand, and the point is only that the reinstall leaves it exactly so.
-    const switchedOff = shortcutId(BUILTIN_COMMANDS[0]);
+    const switchedOff = shortcutId(at(BUILTIN_COMMANDS, 0));
     const kept = stored({
       enabledCategories: ['purdue'],
       seenBuiltins: allBuiltinIds(),
@@ -244,7 +245,8 @@ describe('starting over', () => {
   /** A profile that has been lived in: a pick, a shortcut of their own, an
    *  edit, a section, a deletion, a switched-off builtin and settings. */
   function usedProfile(): StoredState {
-    const [first, second] = BUILTIN_COMMANDS;
+    const first = at(BUILTIN_COMMANDS, 0);
+    const second = at(BUILTIN_COMMANDS, 1);
     return {
       overrides: {
         ...DEFAULT_OVERRIDES,

@@ -185,7 +185,11 @@ export function categoryPicks(builtins: BuiltinCommand[]): PickRow[] {
           id: category,
           label: CATEGORY_LABELS[category],
           count: members.length,
-          sample: members.slice(0, 3).map((member) => member.keys[0]),
+          // `flatMap` of the first key, not `map`: every shipped command has at
+          // least one alias (`tests/commands.test.ts` asserts it), and a
+          // keyless one should drop out of the hint rather than put a blank
+          // between two separators in `sample.join(' · ')`.
+          sample: members.slice(0, 3).flatMap((member) => member.keys.slice(0, 1)),
           members,
           starter: starter.has(category),
           optional: optional.has(category),

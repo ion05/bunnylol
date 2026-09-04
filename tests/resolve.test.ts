@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { at } from './helpers/at';
 import {
   activeKeywords,
   buildKeyMap,
@@ -29,7 +30,9 @@ function overrides(patch: Partial<Overrides> = {}): Overrides {
   return { ...DEFAULT_OVERRIDES, ...patch };
 }
 
-function cmd(patch: Partial<Command> & { keys: string[] }): Command {
+// The keys are a non-empty tuple, so the lead alias this fills `name` and `url`
+// from is present by the type rather than by convention.
+function cmd(patch: Partial<Command> & { keys: [string, ...string[]] }): Command {
   return {
     name: patch.keys[0],
     description: '',
@@ -295,8 +298,8 @@ describe('mergeCommands', () => {
     const inputBefore = structuredClone(input);
 
     const merged = mergeCommands(BUILTIN_COMMANDS, input);
-    merged[0].keys.push('mutated');
-    merged[0].name = 'mutated';
+    at(merged, 0).keys.push('mutated');
+    at(merged, 0).name = 'mutated';
 
     expect(BUILTIN_COMMANDS).toEqual(builtinsBefore);
     expect(input).toEqual(inputBefore);
@@ -315,7 +318,7 @@ describe('mergeCommands', () => {
     );
     expect(merged.every((command) => (command.id ?? '') !== '')).toBe(true);
     expect(merged.find((command) => command.name === 'GitHub')?.id).toBe('gh');
-    expect(merged[0].id).toBe('u:tix');
+    expect(at(merged, 0).id).toBe('u:tix');
   });
 
   it('keeps a rebound builtin under its shipped id', () => {
@@ -332,12 +335,12 @@ describe('mergeCommands', () => {
       BUILTIN_COMMANDS,
       overrides({ custom: [cmd({ keys: ['tix'], url: 'https://tix.test/' })] }),
     );
-    expect(merged[0].id).toBe('tix');
+    expect(at(merged, 0).id).toBe('tix');
   });
 
   it('never writes an id back into the registry', () => {
     mergeCommands(BUILTIN_COMMANDS, overrides({ custom: [cmd({ keys: ['tix'] })] }));
-    expect(BUILTIN_COMMANDS[0].id).toBeUndefined();
+    expect(at(BUILTIN_COMMANDS, 0).id).toBeUndefined();
     expect(BUILTIN_COMMANDS.every((command) => command.id === undefined)).toBe(true);
   });
 
@@ -529,7 +532,7 @@ describe('activeKeywords', () => {
     expect(keywords).not.toContain('?');
     expect(new Set(keywords).size).toBe(keywords.length);
     for (let i = 1; i < keywords.length; i += 1) {
-      expect(keywords[i - 1].length).toBeGreaterThanOrEqual(keywords[i].length);
+      expect(at(keywords, i - 1).length).toBeGreaterThanOrEqual(at(keywords, i).length);
     }
   });
 

@@ -9,6 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { at } from './helpers/at';
 import {
   ALWAYS_ON_CATEGORIES,
   HIDDEN_CATEGORIES,
@@ -252,10 +253,10 @@ describe('categoryPicks', () => {
   });
 
   it('copies the keys rather than aliasing the registry', () => {
-    const row = rows[0];
-    row.members[0].keys.push('zz-probe');
+    const row = at(rows, 0);
+    at(row.members, 0).keys.push('zz-probe');
     expect(
-      BUILTIN_COMMANDS.find((cmd) => shortcutId(cmd) === row.members[0].id)?.keys,
+      BUILTIN_COMMANDS.find((cmd) => shortcutId(cmd) === at(row.members, 0).id)?.keys,
     ).not.toContain('zz-probe');
   });
 

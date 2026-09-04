@@ -10,6 +10,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { at } from './helpers/at';
 import { BUILTIN_COMMANDS, SEARCH_ENGINES, destinationOf } from '../src/lib/commands';
 import { AI_PROVIDERS, HANDLERS } from '../src/lib/handlers';
 import { buildKeyMap, resolve } from '../src/lib/resolve';
@@ -90,7 +91,7 @@ describe('BUILTIN_COMMANDS registry', () => {
       if (!cmd.provider) continue;
       expect(ids, `${cmd.keys[0]} names provider ${cmd.provider}`).toContain(cmd.provider);
       expect(claimed.has(cmd.provider), `${cmd.provider} is claimed twice`).toBe(false);
-      claimed.set(cmd.provider, cmd.keys[0]);
+      claimed.set(cmd.provider, at(cmd.keys, 0));
     }
     // Every provider the AI handler can pick is reachable by its own keyword.
     for (const provider of AI_PROVIDERS) expect(claimed.has(provider.id)).toBe(true);
@@ -153,14 +154,14 @@ describe('argument slots', () => {
     return false;
   }
 
-  it.each(BUILTIN_COMMANDS.map((cmd) => [cmd.keys[0], cmd] as const))(
+  it.each(BUILTIN_COMMANDS.map((cmd) => [at(cmd.keys, 0), cmd] as const))(
     '%s keeps free text out of a path slot',
     (_key, cmd) => {
       expect(holdsProbeInPath(resolved(cmd))).toBe(false);
     },
   );
 
-  it.each(BUILTIN_COMMANDS.map((cmd) => [cmd.keys[0], cmd] as const))(
+  it.each(BUILTIN_COMMANDS.map((cmd) => [at(cmd.keys, 0), cmd] as const))(
     '%s never silently drops its arguments',
     (key, cmd) => {
       // `set` is the exception: the settings route has no field that reads an
@@ -184,7 +185,7 @@ describe('argument slots', () => {
     // a keyword that opens somebody else's site. Collected rather than run per
     // command: one failure should name every row that drifted.
     const wrong = BUILTIN_COMMANDS.filter((cmd) => {
-      const first = (cmd.example ?? '').trim().split(/\s+/)[0];
+      const [first = ''] = (cmd.example ?? '').trim().split(/\s+/);
       return first !== '' && !cmd.keys.includes(first);
     }).map((cmd) => `${cmd.keys[0]}: ${cmd.example}`);
     expect(wrong).toEqual([]);

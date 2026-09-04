@@ -10,6 +10,7 @@ import {
   DEFAULT_STOP_LIST,
   FORCE_SEARCH_PREFIXES,
 } from '../src/lib/types';
+import { at } from './helpers/at';
 import { escapeRulesOf, keywordRulesOf, redirectTo as redirectToOf } from './helpers/rules';
 import MANIFEST from '../public/manifest.json';
 
@@ -73,8 +74,10 @@ function redirectTo(
 /** The value the redirect would hand to go.html, or null when nothing matched. */
 function capture(url: string, engine: SearchEngine, keywords: string[] = KEYWORDS): string | null {
   for (const pattern of filtersFor(engine, keywords)) {
-    const match = compile(pattern).exec(url);
-    if (match) return match[1];
+    // The captured value, not the match: the group is not optional, so reading
+    // it out is the same test as `if (match)`.
+    const [, captured] = compile(pattern).exec(url) ?? [];
+    if (captured !== undefined) return captured;
   }
   return null;
 }
@@ -219,7 +222,7 @@ describe('buildRules', () => {
   });
 
   it('regex-escapes keyword metacharacters', () => {
-    const [pattern] = filtersFor(GOOGLE, ['c++', 'a.b', 'x|y', 'q?']);
+    const pattern = at(filtersFor(GOOGLE, ['c++', 'a.b', 'x|y', 'q?']), 0);
     expect(pattern).toContain('c\\+\\+');
     expect(pattern).toContain('a\\.b');
     expect(pattern).toContain('x\\|y');
@@ -269,7 +272,7 @@ describe('buildRules', () => {
     for (const rule of redirectRules(SEARCH_ENGINES)) {
       expect(rule.condition.excludedInitiatorDomains?.length).toBeGreaterThan(0);
     }
-    const [google] = redirectRules([GOOGLE]);
+    const google = at(redirectRules([GOOGLE]), 0);
     expect(google.condition.excludedInitiatorDomains).toContain('www.google.com');
     expect(google.condition.excludedInitiatorDomains).toContain('google.com');
   });
@@ -279,14 +282,14 @@ describe('buildRules', () => {
 
     it('emits one per engine, outranking the redirects', () => {
       expect(rules.length).toBe(SEARCH_ENGINES.length);
-      const redirectPriority = redirectRules(SEARCH_ENGINES)[0].priority as number;
+      const redirectPriority = at(redirectRules(SEARCH_ENGINES), 0).priority as number;
       for (const rule of rules) {
         expect(rule.priority as number).toBeGreaterThan(redirectPriority);
       }
     });
 
     it('matches a BunnyLol-generated search and nothing else', () => {
-      const [google] = rules;
+      const google = at(rules, 0);
       const pattern = compile(google.condition.regexFilter as string);
       expect(pattern.test('https://www.google.com/search?q=gh%20foo&blpass=1')).toBe(true);
       expect(pattern.test('https://www.google.com/search?blpass=1&q=gh%20foo')).toBe(true);
@@ -297,7 +300,9 @@ describe('buildRules', () => {
     it('covers the same query the redirect rule would otherwise catch', () => {
       const url = 'https://www.google.com/search?q=gh%20foo&blpass=1';
       expect(redirectTo(url, GOOGLE)).not.toBeNull();
-      expect(compile(allowRules([GOOGLE])[0].condition.regexFilter as string).test(url)).toBe(true);
+      expect(compile(at(allowRules([GOOGLE]), 0).condition.regexFilter as string).test(url)).toBe(
+        true,
+      );
     });
   });
 
@@ -381,11 +386,10 @@ describe('buildRules', () => {
     it('covers every builtin alias: nothing is dropped', () => {
       const covered = new Set<string>();
       for (const rule of redirectRules(SEARCH_ENGINES, intercepted)) {
-        const alternation = /\(\(\?:(.*?)\)\(\?:\(\?:%20/.exec(
-          rule.condition.regexFilter as string,
-        );
-        if (!alternation) continue;
-        for (const alias of alternation[1].split('|')) covered.add(alias.replace(/\\/g, ''));
+        const [, alternation] =
+          /\(\(\?:(.*?)\)\(\?:\(\?:%20/.exec(rule.condition.regexFilter as string) ?? [];
+        if (alternation === undefined) continue;
+        for (const alias of alternation.split('|')) covered.add(alias.replace(/\\/g, ''));
       }
       expect(intercepted.length).toBeGreaterThan(150);
       expect(intercepted.filter((alias) => !covered.has(alias))).toEqual([]);
@@ -444,7 +448,7 @@ describe('buildRules', () => {
     });
 
     it.each(SEARCH_ENGINES)('matches both escape forms, raw and encoded, on $id', (engine) => {
-      const [rule] = escapeRules([engine], real);
+      const rule = at(escapeRules([engine], real), 0);
       const pattern = compile(rule.condition.regexFilter as string);
       const path = engine.id === 'duckduckgo' ? '/' : '/search';
       for (const value of ['%5Cgh+foo', '\\gh+foo', '=gh+foo', '%3Dgh+foo', '%5C+gh+foo']) {
@@ -473,7 +477,7 @@ describe('buildRules', () => {
     });
 
     it('covers every prefix the resolver honours', () => {
-      const [rule] = escapeRules([GOOGLE], real);
+      const rule = at(escapeRules([GOOGLE], real), 0);
       const pattern = rule.condition.regexFilter as string;
       for (const prefix of FORCE_SEARCH_PREFIXES) {
         expect(pattern, prefix).toContain(encodeURIComponent(prefix));
@@ -508,7 +512,7 @@ describe('buildRules', () => {
 
     it('is claimed by the allow rule, which outranks every other rule', () => {
       const forced = resolve('=gh foo', commands, { ...DEFAULT_SETTINGS });
-      const allow = allowRules([GOOGLE], real)[0];
+      const allow = at(allowRules([GOOGLE], real), 0);
       expect(compile(allow.condition.regexFilter as string).test(forced.url)).toBe(true);
       for (const rule of [
         ...redirectRules(SEARCH_ENGINES, real),

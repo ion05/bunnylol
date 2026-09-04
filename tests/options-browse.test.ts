@@ -8,6 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { at } from './helpers/at';
 import { BUILTIN_COMMANDS } from '../src/lib/commands';
 import { sectionKey, shortcutId } from '../src/lib/overrides';
 import { mergeCommands } from '../src/lib/resolve';
@@ -71,7 +72,7 @@ describe('browseEntries', () => {
 
   it('a custom command comes before the builtins', () => {
     const entries = browseEntries(builtins, overridesWith({ custom: [ticket] }));
-    expect(entries[0].cmd.name).toBe('Tickets');
+    expect(at(entries, 0).cmd.name).toBe('Tickets');
   });
 
   it('a disabled builtin is still an entry, marked disabled', () => {
@@ -309,22 +310,22 @@ describe('hiddenActions', () => {
     // The dishonest label is the one this exists to avoid: a section that is
     // half switched on is not a section this button turns on.
     const { runs } = hiddenActions([{ label: 'Developer', hidden: 5, live: 7 }]);
-    expect(runs[0].label).toBe('Turn on the rest of Developer');
+    expect(at(runs, 0).label).toBe('Turn on the rest of Developer');
   });
 
   it('says "all of" only when none of the section is live', () => {
     // A declined pack: nothing of it is on, so "the rest" would be naming a
     // remainder of nothing.
     const { runs } = hiddenActions([{ label: 'Productivity', hidden: 12, live: 0 }]);
-    expect(runs[0].label).toBe('Turn on all of Productivity');
+    expect(at(runs, 0).label).toBe('Turn on all of Productivity');
   });
 
   it('offers no action for a run of one', () => {
     // The row's own switch already does it in one click, so a second control
     // beside it would be a second way to make the same gesture.
     const { runs } = hiddenActions([{ label: 'Developer', hidden: 1, live: 2 }]);
-    expect(runs[0].shown).toBe(true);
-    expect(runs[0].label).toBeNull();
+    expect(at(runs, 0).shown).toBe(true);
+    expect(at(runs, 0).label).toBeNull();
   });
 
   it('offers the whole-group action only once more than one run is drawn', () => {

@@ -70,15 +70,16 @@ describe('the fixtures the rest of this file asserts on', () => {
 
 /** Everything inside tokens.css's single `:root` block, comments removed. */
 const rootBlock = (() => {
-  const body = /:root\s*\{([\s\S]*?)\n\}/.exec(stripComments(tokens));
-  if (!body) throw new Error('tokens.css has no :root block');
-  return body[1];
+  const [, body] = /:root\s*\{([\s\S]*?)\n\}/.exec(stripComments(tokens)) ?? [];
+  if (body === undefined) throw new Error('tokens.css has no :root block');
+  return body;
 })();
 
-const declarations = [...rootBlock.matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)].map((m) => ({
-  name: m[1],
-  value: m[2].trim(),
-}));
+// Destructured with defaults rather than indexed: neither group is optional, so
+// a match fills both, and this is the form that says so without an assertion.
+const declarations = [...rootBlock.matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)].map(
+  ([, name = '', value = '']) => ({ name, value: value.trim() }),
+);
 
 describe('design tokens', () => {
   it('declares every colour as a light-dark() pair bar the two documented flat tokens', () => {
@@ -323,7 +324,7 @@ describe('the options page implements the approved component contract', () => {
     expect(Object.keys(CLASS_SOURCES).length).toBeGreaterThan(8);
     const rendered = new Map<string, string>();
     for (const [file, source] of Object.entries(CLASS_SOURCES)) {
-      for (const [, list] of source.matchAll(CLASS_LITERAL)) {
+      for (const [, list = ''] of source.matchAll(CLASS_LITERAL)) {
         for (const token of list.trim().split(/\s+/)) if (token) rendered.set(token, file);
       }
     }
@@ -612,8 +613,11 @@ describe('the extension icon', () => {
   /** A hex from tokens.css as [r, g, b]. */
   const rgb = (hex: string): number[] => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 
+  // A DataView rather than four indexes: big-endian is its default, it is
+  // already unsigned, and a read past the end is a RangeError instead of four
+  // `undefined`s shifting into a plausible-looking length.
   const uint32 = (bytes: Uint8Array, at: number): number =>
-    ((bytes[at] << 24) | (bytes[at + 1] << 16) | (bytes[at + 2] << 8) | bytes[at + 3]) >>> 0;
+    new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(at);
 
   /**
    * Reads the pixels of a PNG this repo generated: one IDAT, no interlacing,

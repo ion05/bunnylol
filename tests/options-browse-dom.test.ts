@@ -34,6 +34,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { at } from './helpers/at';
 import { BUILTIN_COMMANDS } from '../src/lib/commands';
 import { shortcutId } from '../src/lib/overrides';
 import type { Command } from '../src/lib/types';
@@ -272,7 +273,7 @@ describe('a run bulk action', () => {
     // The whole point: a burst of per-row writes is the pattern invariant 15
     // exists to survive, so the run is ONE write for two rows.
     expect(vi.mocked(commitOverrides)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(commitOverrides).mock.calls[0][0].disabled).toEqual([]);
+    expect(at(vi.mocked(commitOverrides).mock.calls, 0)[0].disabled).toEqual([]);
     expect(getState().overrides.disabled).toEqual([]);
 
     // And the page moved in the same tick as the click, without waiting on it.

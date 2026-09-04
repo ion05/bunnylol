@@ -21,15 +21,21 @@ export function stripComments(css: string): string {
  * a commented-out declaration above the live one would otherwise win the match.
  */
 export function tokenValue(css: string, name: string, scheme: 'light' | 'dark'): string {
-  const decl = new RegExp(`--${name}:\\s*([^;]+);`).exec(stripComments(css))?.[1].trim();
+  const decl = new RegExp(`--${name}:\\s*([^;]+);`).exec(stripComments(css))?.[1]?.trim();
   if (!decl) throw new Error(`no --${name} in tokens.css`);
+  // Neither group is optional and neither can match empty, so a side is present
+  // exactly when the pattern matched: `?? decl` is the "not a pair" answer, not
+  // a stand-in for a missing capture.
   const pair = /^light-dark\(\s*([^,]+?)\s*,\s*([^)]+?)\s*\)$/.exec(decl);
-  return pair ? (scheme === 'light' ? pair[1] : pair[2]) : decl;
+  const side = pair?.[scheme === 'light' ? 1 : 2];
+  return side ?? decl;
 }
 
 /** Every `selector { ... }` rule body in a sheet, comments already stripped. */
 export function ruleBodies(css: string): string[] {
-  return [...stripComments(css).matchAll(/\{([^{}]*)\}/g)].map((m) => m[1]);
+  // `[^{}]*` is not optional and matches the empty body happily, so the default
+  // is the value the group would have carried, not a substitute for it.
+  return [...stripComments(css).matchAll(/\{([^{}]*)\}/g)].map(([, body = '']) => body);
 }
 
 /**
@@ -38,10 +44,14 @@ export function ruleBodies(css: string): string[] {
  * `{`, which is the selector, whether or not it sits inside an `@media` block.
  */
 export function rules(css: string): { selector: string; body: string }[] {
-  return [...stripComments(css).matchAll(/([^{}]*)\{([^{}]*)\}/g)].map((m) => ({
-    selector: m[1].trim().replace(/\s+/g, ' '),
-    body: m[2],
-  }));
+  // Same as `ruleBodies`: neither group is optional, so the defaults are the
+  // empty selector list and the empty body a match can genuinely carry.
+  return [...stripComments(css).matchAll(/([^{}]*)\{([^{}]*)\}/g)].map(
+    ([, selector = '', body = '']) => ({
+      selector: selector.trim().replace(/\s+/g, ' '),
+      body,
+    }),
+  );
 }
 
 /**

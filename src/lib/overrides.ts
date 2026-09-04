@@ -673,5 +673,8 @@ function aliasList(raw: unknown): string[] {
 }
 
 function sameKeys(a: string[], b: string[]): boolean {
-  return a.length === b.length && a.every((key, i) => key.toLowerCase() === b[i].toLowerCase());
+  // `b[i]?.` rather than an index that assumes the length check: the only way
+  // it answers `undefined` is a shorter `b`, and "not the same keys" is the
+  // right answer to that anyway.
+  return a.length === b.length && a.every((key, i) => key.toLowerCase() === b[i]?.toLowerCase());
 }

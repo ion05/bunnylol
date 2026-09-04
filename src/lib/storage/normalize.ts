@@ -332,11 +332,14 @@ export function normalizeCommand(raw: unknown, known: Set<string>): Command | nu
   if (!source) return null;
   const keys = normalizeAliases(source.keys);
   const url = safeUrl(source.url);
-  if (keys.length === 0 || !url) return null;
+  // The lead alias stands in for `keys.length === 0`: same test, and it is the
+  // one the unnamed fallback below needs to be present.
+  const lead = keys[0];
+  if (lead === undefined || !url) return null;
 
   const cmd: Command = {
     keys,
-    name: trimmed(source.name) || keys[0],
+    name: trimmed(source.name) || lead,
     description: trimmed(source.description),
     url,
     category: normalizeCategory(source.category, known),

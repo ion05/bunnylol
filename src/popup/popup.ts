@@ -151,7 +151,11 @@ function setSelected(index: number, scroll = false): void {
     node.setAttribute('aria-selected', on ? 'true' : 'false');
     if (on && scroll) node.scrollIntoView({ block: 'nearest' });
   });
-  if (index >= 0) input.setAttribute('aria-activedescendant', rowNodes[index].id);
+  // Named by the node rather than by the index. -1 is the raw-text slot, which
+  // owns no row; an index naming no row is the same situation, and dropping the
+  // attribute is already the answer to it.
+  const active = index >= 0 ? rowNodes[index] : undefined;
+  if (active) input.setAttribute('aria-activedescendant', active.id);
   else input.removeAttribute('aria-activedescendant');
   renderDest();
 }

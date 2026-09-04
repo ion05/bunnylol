@@ -510,8 +510,10 @@ function paintPreview(
   // the user reads the wrong explanation for what the rows are showing.
   const notes: string[] = [];
 
-  const keys = splitKeys(draft.keys);
-  if (keys.length === 0 || !draft.url.trim()) {
+  // The lead alias stands in for `keys.length === 0`: same test, and it is the
+  // one the preview rows below are typed with.
+  const [key] = splitKeys(draft.keys);
+  if (key === undefined || !draft.url.trim()) {
     rows.append(
       el('div', {
         class: 'preview-row',
@@ -534,7 +536,6 @@ function paintPreview(
   const commands = previewCommands(BUILTIN_COMMANDS, overrides, cmd, target.id, target.shipped);
   const switchedOff =
     target.id !== '' && overrides.disabled.some((id) => normalizeId(id) === target.id);
-  const key = keys[0];
   const sampleArgs = getSampleArgs();
   const withArgs = sampleArgs.trim() ? `${key} ${sampleArgs.trim()}` : key;
 

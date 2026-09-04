@@ -19,6 +19,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { at } from './helpers/at';
 import { BUILTIN_COMMANDS, SEARCH_ENGINES } from '../src/lib/commands';
 import { buildRules, MAX_ALTERNATION_CHARS, MAX_RULES, syncRules } from '../src/lib/dnr';
 import { activeKeywords, mergeCommands, resolve, stripPassthrough } from '../src/lib/resolve';
@@ -142,7 +143,8 @@ describe('the rules syncRules registers', () => {
 
       for (const cmd of BUILTIN_COMMANDS) {
         for (const args of ARG_SHAPES) {
-          const query = args ? `${cmd.keys[0]} ${args}` : cmd.keys[0];
+          const key = at(cmd.keys, 0);
+          const query = args ? `${key} ${args}` : key;
           const { url } = resolve(query, COMMANDS, SETTINGS);
           const redirects = RULES.filter(
             (rule) => rule.action.type === 'redirect' && matches(rule, url),

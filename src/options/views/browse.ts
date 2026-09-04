@@ -448,13 +448,17 @@ export function renderBrowse(): Node[] {
       })),
     );
     runRefs.forEach((run, index) => {
+      // `hiddenActions` answers one entry per run it was handed, and it was
+      // handed `runRefs`, so this is present at every index of it.
+      const state = painted.runs[index];
+      if (!state) return;
       // Silent while a query is live: the filter's answer is one ranked list
       // across every section, so a heading claiming to name a run of the rows
       // under it would be naming a run the ranking has already broken up. The
       // whole-group action goes with them, for the reason `toolbarActions`
       // does: it would act on rows the query is not showing.
-      run.head.hidden = query !== '' || !painted.runs[index].shown;
-      const label = painted.runs[index].label;
+      run.head.hidden = query !== '' || !state.shown;
+      const label = state.label;
       run.action.hidden = label === null;
       if (label !== null) run.action.textContent = label;
     });

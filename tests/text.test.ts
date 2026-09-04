@@ -12,6 +12,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { at } from './helpers/at';
 import {
   clone,
   countShipped,
@@ -109,8 +110,8 @@ describe('clone', () => {
     const source = { custom: [{ keys: ['tix'] }], disabled: [] };
     const copy = clone(source);
     expect(copy).toEqual(source);
-    copy.custom[0].keys.push('tickets');
-    expect(source.custom[0].keys).toEqual(['tix']);
+    at(copy.custom, 0).keys.push('tickets');
+    expect(at(source.custom, 0).keys).toEqual(['tix']);
   });
 });
 

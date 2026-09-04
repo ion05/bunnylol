@@ -149,9 +149,13 @@ export function originOf(value: string): string {
 export function parsePrefill(raw: string): Draft {
   const draft: Draft = { ...EMPTY_DRAFT };
   const tokens = raw.trim().split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) return draft;
+  const first = tokens[0];
+  if (first === undefined) return draft;
 
-  if (!looksLikeUrl(tokens[0])) draft.keys = splitKeys(tokens.shift() ?? '').join(', ');
+  if (!looksLikeUrl(first)) {
+    tokens.shift();
+    draft.keys = splitKeys(first).join(', ');
+  }
 
   const urls: string[] = [];
   const words: string[] = [];

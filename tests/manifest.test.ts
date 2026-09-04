@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { at } from './helpers/at';
 import { SEARCH_ENGINES } from '../src/lib/commands';
 import MANIFEST from '../public/manifest.json';
 import PKG from '../package.json';
@@ -25,8 +26,8 @@ describe('manifest', () => {
   });
 
   it('exposes only go.html to the web', () => {
-    const [war, ...rest] = MANIFEST.web_accessible_resources;
-    expect(rest).toEqual([]);
+    const war = at(MANIFEST.web_accessible_resources, 0);
+    expect(MANIFEST.web_accessible_resources).toHaveLength(1);
     // go.js and assets/* are same-origin subresources of an extension page, so
     // go.html pulls them in on its own; listing them only let the three engines
     // probe them, sourcemaps included.
@@ -39,7 +40,7 @@ describe('manifest', () => {
 
   it('scopes the resource and the host permissions to the engines it intercepts', () => {
     const origins = SEARCH_ENGINES.map((engine) => `https://${engine.host}/*`).sort();
-    expect([...MANIFEST.web_accessible_resources[0].matches].sort()).toEqual(origins);
+    expect([...at(MANIFEST.web_accessible_resources, 0).matches].sort()).toEqual(origins);
     // A host permission the redirect rules do not use is an access grant the
     // store has to re-review, so widening this is a deliberate edit here first.
     expect([...MANIFEST.host_permissions].sort()).toEqual(origins);
