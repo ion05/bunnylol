@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { build, defineConfig } from 'vite';
 import type { Plugin } from 'vite';
 
 /**
@@ -17,9 +17,44 @@ function stripCrossorigin(): Plugin {
   };
 }
 
+/**
+ * Manifest content scripts are classic scripts, not ES modules, so the Amazon
+ * Goodreads entry cannot share the main build's `format: 'es'`. A second Vite
+ * build in `closeBundle` emits one IIFE next to the rest of `dist/`.
+ */
+function contentScripts(): Plugin {
+  return {
+    name: 'bunnylol:content-scripts',
+    apply: 'build',
+    async closeBundle() {
+      await build({
+        configFile: false,
+        publicDir: false,
+        logLevel: 'warn',
+        build: {
+          emptyOutDir: false,
+          outDir: 'dist',
+          target: 'es2022',
+          minify: false,
+          sourcemap: true,
+          rollupOptions: {
+            input: 'src/content/amazon-goodreads.ts',
+            output: {
+              format: 'iife',
+              name: 'bunnylolAmazonGoodreads',
+              entryFileNames: 'amazon-goodreads.js',
+              inlineDynamicImports: true,
+            },
+          },
+        },
+      });
+    },
+  };
+}
+
 // Paths are relative to `root` so the config typechecks without @types/node.
 export default defineConfig({
-  plugins: [stripCrossorigin()],
+  plugins: [stripCrossorigin(), contentScripts()],
   build: {
     outDir: 'dist',
     emptyOutDir: true,

@@ -57,8 +57,10 @@ src/lib/dnr/fit.ts      Chrome's RE2 check, resplitting a refused shard, coverag
 src/lib/draft.ts        What the edit form edits, and the pure parsing around it
 src/lib/text.ts         String helpers every surface shares
 src/lib/url.ts          Small URL helpers
+src/lib/amazon-book.ts  Amazon product HTML → ISBN → Goodreads URL. Pure.
 src/lib/install.ts      The onInstalled branch: starter pick, rule sync, welcome tab
 src/background.ts       MV3 service worker: listener registration, rule sync, omnibox
+src/content/            Isolated-world content scripts. `amazon-goodreads.ts` is IIFE-bundled.
 src/go/go.ts            Dispatch page: resolves and navigates
 src/ui/dom.ts           `el` / `mark` / `nextId`: the element builders every surface shares
 src/options/            Shortcut manager UI (below)

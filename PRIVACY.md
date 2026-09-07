@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Last updated: 2026-09-03
+Last updated: 2026-09-07
 
 ## Summary
 
@@ -37,15 +37,21 @@ one of your keywords, Chrome rewrites the URL to the extension's own
 then reads the query string, and it never goes anywhere else. Searches that
 do not match are left untouched and go to the search engine as normal.
 
-## What the extension cannot see
+## What the extension can see
 
-BunnyLol has no content scripts, reads no page content, and has no access to
-your browsing history. It does not request the `tabs` permission. Three places
-open a tab, and all of them use only `chrome.tabs.create` and
-`chrome.tabs.update`, which do not require that permission: the toolbar popup
-(`src/popup/popup.ts`), the omnibox keyword (`src/background.ts`), and the
-welcome tab shown once on install (`src/lib/install.ts`). Neither call can
-read a tab, only point one at a URL.
+BunnyLol does not request the `tabs` permission and has no access to your
+browsing history. Three places open a tab, and all of them use only
+`chrome.tabs.create` and `chrome.tabs.update`, which do not require that
+permission: the toolbar popup (`src/popup/popup.ts`), the omnibox keyword
+(`src/background.ts`), and the welcome tab shown once on install
+(`src/lib/install.ts`). Neither call can read a tab, only point one at a URL.
+
+The one content script is `src/content/amazon-goodreads.ts`, injected only on
+`amazon.com` product pages. It reads the page locally to find a labelled ISBN
+(or a JSON-LD `isbn`) and, when it finds one, draws a button. Clicking that
+button navigates your tab to Goodreads. The ISBN never leaves the browser
+except as the path of that navigation you started. Pages without an ISBN are
+untouched. No other site is injected into.
 
 ## Third parties
 
