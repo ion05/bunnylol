@@ -38,6 +38,13 @@
     "page": "options.html",
     "open_in_tab": true
   },
+  "content_scripts": [
+    {
+      "matches": ["https://www.amazon.com/*", "https://amazon.com/*", "https://smile.amazon.com/*"],
+      "js": ["amazon-goodreads.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "web_accessible_resources": [
     {
       "resources": ["go.html"],

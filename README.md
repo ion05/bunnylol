@@ -21,7 +21,8 @@ It is an independent, unofficial project, inspired by an internal tool at Meta c
 
 Manifest V3. 93 shortcuts ship across 180 keywords, and every one of them can be renamed, re-keyed,
 moved, switched off or deleted. No runtime dependencies, no network requests of its own, and nothing
-leaves your machine. See [PRIVACY.md](PRIVACY.md).
+leaves your machine. On Amazon.com book pages a content script reads the ISBN locally to offer a
+Goodreads button. See [PRIVACY.md](PRIVACY.md).
 
 ## A look inside
 
@@ -37,6 +38,11 @@ New shortcuts use the same resolver as the address bar, so the form can show the
 before you save:
 
 ![BunnyLol shortcut editor with a live MDN preview](docs/images/editor.png)
+
+On an Amazon.com book page, **View on Goodreads** sits under the title and opens
+the same book on Goodreads from its ISBN. No ISBN, no button.
+
+![View on Goodreads button on an Amazon book page](docs/images/amazon-goodreads-button.png)
 
 The toolbar popup gives you autocomplete when you do not want to leave the current page:
 

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- On Amazon.com book pages, a **View on Goodreads** button next to the title.
+  BunnyLol reads the ISBN off the product details (locally) and opens
+  `goodreads.com/book/isbn/…` for that same book. Pages without an ISBN are
+  left alone.
+
 ## [1.1.0] - 2026-09-02
 
 ### Added
