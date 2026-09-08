@@ -502,6 +502,17 @@ export const BUILTIN_COMMANDS: BuiltinCommand[] = [
     builtin: true,
     example: 'arxiv speculative decoding',
   },
+  {
+    keys: ['java-docs'],
+    name: 'Java Docs',
+    description: 'Search the Java SE API documentation.',
+    // Oracle publishes Javadoc per release and has no unversioned search URL.
+    url: 'https://docs.oracle.com/en/java/javase/26/docs/api/index.html',
+    searchUrl: 'https://docs.oracle.com/en/java/javase/26/docs/api/search.html?q={q}',
+    category: 'dev',
+    builtin: true,
+    example: 'java-docs HashMap',
+  },
 
   // ------------------------------------------------------------ search ----
   {
