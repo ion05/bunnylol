@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Last updated: 2026-09-07
+Last updated: 2026-09-24
 
 ## Summary
 
@@ -12,7 +12,10 @@ telemetry, no remote code and no network requests of its own.
 BunnyLol keeps one JSON value under the key `bunnylol.state.v1` (`STORAGE_KEY`
 in `src/lib/types.ts`) in `chrome.storage.local` on your device (`saveState`
 in `src/lib/storage.ts`). It holds your custom shortcuts, any shipped
-shortcuts you turned off or edited, and your settings. Nothing is written to
+shortcuts you turned off or edited, and your settings. The settings include
+`dismissedSuggestions`, the hostnames of any shortcut suggestions you
+dismissed (see below), and nothing else about the sites you visit. Like the
+rest of the state, that list is in the exported file. Nothing is written to
 `chrome.storage.sync`. Uninstalling the extension deletes it.
 
 The extension also caches its rule-registration status under
@@ -39,8 +42,8 @@ do not match are left untouched and go to the search engine as normal.
 
 ## What the extension can see
 
-BunnyLol does not request the `tabs` permission and has no access to your
-browsing history. Three places open a tab, and all of them use only
+BunnyLol does not request the `tabs` permission. It has no access to your
+browsing history unless you opt in, as described below. Three places open a tab, and all of them use only
 `chrome.tabs.create` and `chrome.tabs.update`, which do not require that
 permission: the toolbar popup (`src/popup/popup.ts`), the omnibox keyword
 (`src/background.ts`), and the welcome tab shown once on install
@@ -52,6 +55,26 @@ The one content script is `src/content/amazon-goodreads.ts`, injected only on
 button navigates your tab to Goodreads. The ISBN never leaves the browser
 except as the path of that navigation you started. Pages without an ISBN are
 untouched. No other site is injected into.
+
+### Shortcut suggestions (opt-in)
+
+`history` is an optional permission (`optional_permissions` in
+`public/manifest.json`). BunnyLol asks for it only when you click **Suggest
+shortcuts**, on the Shortcuts page or the welcome screen, and Chrome shows
+its own prompt. Until you accept, the extension cannot read your history.
+
+With the permission granted, the options page and the toolbar popup call
+`chrome.history.search` for the last 90 days when they open (`loadSuggestions`
+in `src/lib/history.ts`). The visits are ranked locally (`suggestShortcuts` in
+`src/lib/suggest.ts`) into a few sites you might want a keyword for. Sites a
+shortcut already reaches, search engines, `localhost`, IP addresses and hosts
+you dismissed are skipped. The visits are never stored and never sent
+anywhere; they are read again the next time either page opens. The only
+thing kept is the hostname of a suggestion you dismiss with ×.
+
+To revoke the permission, open `chrome://extensions`, click **Details** on
+BunnyLol and remove it under **Permissions**, or remove it from Chrome's
+extension permission settings. Suggestions stop, and nothing else changes.
 
 ## Third parties
 

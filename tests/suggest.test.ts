@@ -40,11 +40,7 @@ describe('suggestShortcuts', () => {
   });
 
   it('falls back to another keyword when the obvious one is taken', () => {
-    const [s] = suggestShortcuts(
-      [{ url: 'https://gh.example.com/', visitCount: 9 }],
-      commands,
-      [],
-    );
+    const [s] = suggestShortcuts([{ url: 'https://gh.example.com/', visitCount: 9 }], commands, []);
     expect(s!.alias).not.toBe('gh');
     expect(validateAlias(s!.alias).ok).toBe(true);
     expect(commands.some((c) => c.keys.includes(s!.alias))).toBe(false);

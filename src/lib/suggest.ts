@@ -85,7 +85,13 @@ export function suggestShortcuts(
     const alias = pickAlias(host, taken);
     if (!alias) continue;
     taken.add(alias);
-    out.push({ alias, url: site.origin, name: siteName(site.title, host), host, score: site.score });
+    out.push({
+      alias,
+      url: site.origin,
+      name: siteName(site.title, host),
+      host,
+      score: site.score,
+    });
   }
   return out;
 }

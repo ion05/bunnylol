@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   BunnyLol reads the ISBN off the product details (locally) and opens
   `goodreads.com/book/isbn/…` for that same book. Pages without an ISBN are
   left alone.
+- **Suggest shortcuts**, on the Shortcuts page and the welcome screen. With
+  your permission, BunnyLol reads the last 90 days of your history locally
+  and offers a keyword for the sites you keep going back to that no shortcut
+  reaches yet. Add opens the New shortcut form already filled in, × dismisses
+  a site for good, and the toolbar popup lists up to three while its box is
+  empty. `history` is an optional permission, asked for only when you click
+  the button, so updating does not prompt or disable anything. The visits
+  are never stored or sent; only the dismissed sites are kept, and exported.
 
 ## [1.1.0] - 2026-09-02
 

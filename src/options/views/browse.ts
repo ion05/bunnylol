@@ -38,6 +38,7 @@ import { getCommands, getFilter, getState, setFilter, takeNotice } from '../stor
 import type { GroupRef, RowRef, RunRef } from './browse-groups';
 import { makeGroup, makeRun, move, place, rowsOf, turnOn } from './browse-groups';
 import { renderRow } from './browse-row';
+import { renderSuggestions } from './suggestions';
 
 /** The group every switched-off shortcut is drawn under, last on the page. */
 const HIDDEN_TITLE = 'Hidden shortcuts';
@@ -128,6 +129,7 @@ export function renderBrowse(): Node[] {
   const groups = el('div', { class: 'groups' });
   const empty = el('div', { class: 'empty' });
   empty.hidden = true;
+  const suggestions = renderSuggestions();
 
   const groupRefs: GroupRef[] = [];
   const runRefs: RunRef[] = [];
@@ -306,6 +308,7 @@ export function renderBrowse(): Node[] {
               toolbarActions,
             ],
           }),
+          suggestions,
           groups,
           empty,
         ],
@@ -362,6 +365,7 @@ export function renderBrowse(): Node[] {
     // this too, so there is one place the filter's effect on the page is
     // decided.
     toolbarActions.hidden = query !== '';
+    suggestions.hidden = query !== '';
 
     // `suggest()` gives keyword-first ranking; the substring pass then widens it
     // to descriptions so the box behaves like a filter and not just a launcher.

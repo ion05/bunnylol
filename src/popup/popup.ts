@@ -7,8 +7,11 @@
  * resolver and `chrome.tabs`.
  */
 
+import { loadSuggestions } from '../lib/history';
 import { resolve, suggest } from '../lib/resolve';
 import { loadResolveContext } from '../lib/storage';
+import { prefillFor } from '../lib/suggest';
+import type { Suggestion } from '../lib/suggest';
 import { errorText, firstToken, prettyUrl, restOfLine } from '../lib/text';
 import { toNavigableUrl } from '../lib/url';
 import type { Command, Settings } from '../lib/types';
@@ -69,6 +72,17 @@ list.id = 'results';
 list.setAttribute('role', 'listbox');
 list.setAttribute('aria-label', 'Matching shortcuts');
 
+// Buttons, not listbox options: Tab from the empty input reaches them, and the
+// combobox's arrow-key model stays about the list alone.
+const suggested = el('section', {
+  class: 'suggested',
+  attrs: { 'aria-label': 'Suggested shortcuts' },
+});
+suggested.hidden = true;
+
+const pane = el('div', { class: 'pane' });
+pane.append(suggested, list);
+
 const optionsButton = el('button', { class: 'link', text: 'Manage shortcuts' });
 optionsButton.type = 'button';
 
@@ -80,7 +94,7 @@ footer.append(
 
 const bar = el('div', { class: 'bar' });
 bar.append(input);
-root.append(bar, dest, list, footer);
+root.append(bar, dest, pane, footer);
 
 // ------------------------------------------------------------- rendering ---
 
@@ -101,8 +115,37 @@ function render(): void {
     );
   }
   list.scrollTop = 0;
+  suggested.hidden = input.value !== '' || suggested.childElementCount === 0;
   input.setAttribute('aria-expanded', matches.length > 0 ? 'true' : 'false');
   renderDest();
+}
+
+function renderSuggestions(suggestions: Suggestion[]): void {
+  if (suggestions.length === 0) return;
+  suggested.replaceChildren(
+    el('h2', { class: 'suggested-label', text: 'Suggested shortcuts' }),
+    ...suggestions.map(buildSuggestion),
+  );
+  suggested.hidden = input.value !== '';
+}
+
+/** Opens the ordinary New shortcut form prefilled: the popup never writes a shortcut itself. */
+function buildSuggestion(s: Suggestion): HTMLButtonElement {
+  const button = el('button', { class: 'row suggestion' });
+  button.type = 'button';
+  const text = el('span', { class: 'row-text' });
+  text.append(
+    el('span', { class: 'row-name', text: s.name }),
+    el('span', { class: 'row-desc', text: prettyUrl(s.url) }),
+  );
+  button.append(el('span', { class: 'row-key', text: s.alias }), text);
+  button.addEventListener('click', () => {
+    const url = chrome.runtime.getURL(
+      `options.html#new?prefill=${encodeURIComponent(prefillFor(s))}`,
+    );
+    void chrome.tabs.create({ url }).then(() => window.close());
+  });
+  return button;
 }
 
 function buildRow(cmd: Command, keyword: string, index: number): HTMLLIElement {
@@ -353,6 +396,8 @@ const readyPromise = loadResolveContext().then((context) => {
   ready = true;
   // The user may already have typed while storage was loading.
   render();
+  // Never asks for `history`: a permission prompt would close the popup.
+  void loadSuggestions(commands, settings, 3).then(renderSuggestions);
 });
 
 // Attached separately so `readyPromise` still rejects for `navigate`, which

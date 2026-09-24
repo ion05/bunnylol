@@ -690,6 +690,17 @@ a {
   }
 }
 
+/* The suggestions host is empty until history is read, and stays empty with
+   nothing to offer; it must not take a gap in the panel meanwhile. */
+.suggest:empty {
+  display: none;
+}
+
+/* A suggestion's Add is the whole point of the row, so it is not hover-only. */
+.suggest .row-actions .btn {
+  opacity: 1;
+}
+
 .empty {
   padding: var(--sp-9) var(--sp-7);
   font-size: var(--fs-13);

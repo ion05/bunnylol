@@ -44,6 +44,14 @@ the same book on Goodreads from its ISBN. No ISBN, no button.
 
 ![View on Goodreads button on an Amazon book page](docs/images/amazon-goodreads-button.png)
 
+**Suggest shortcuts** (opt-in) looks at the sites you visit most and offers a keyword for each one
+no shortcut reaches yet: a card on the Shortcuts page, and up to three rows in the toolbar popup
+while its box is empty. Add opens the New shortcut form already filled in, and × dismisses a site
+for good. It needs Chrome's optional `history` permission, requested only when you click the
+button. Your history is read locally, on demand, and never stored or sent.
+
+![Suggested shortcuts card on the Shortcuts page](docs/images/suggestions.png)
+
 The toolbar popup gives you autocomplete when you do not want to leave the current page:
 
 <p align="center">
