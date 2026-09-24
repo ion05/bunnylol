@@ -36,6 +36,7 @@ const STATE: StoredState = {
     googleAccount: 2,
     interceptStopList: ['new', 'r'],
     dispatchToast: true,
+    dismissedSuggestions: ['pitchfork.com'],
   },
 };
 

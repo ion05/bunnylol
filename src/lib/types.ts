@@ -170,6 +170,11 @@ export interface Settings {
    * as "off". Grep landed you here: there is no toast left to find.
    */
   dispatchToast: boolean;
+  /**
+   * Hosts (no `www.`) the user dismissed from shortcut suggestions, so they are
+   * never offered again. See `lib/suggest.ts`.
+   */
+  dismissedSuggestions: string[];
 }
 
 export type SearchEngineId = 'google' | 'bing' | 'duckduckgo';
@@ -333,6 +338,7 @@ export const DEFAULT_SETTINGS: Settings = {
   googleAccount: 0,
   interceptStopList: [...DEFAULT_STOP_LIST],
   dispatchToast: false,
+  dismissedSuggestions: [],
 };
 
 export const DEFAULT_OVERRIDES: Overrides = {

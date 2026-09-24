@@ -77,7 +77,22 @@ export function normalizeSettings(raw: unknown): Settings {
     googleAccount: normalizeAccount(source.googleAccount),
     interceptStopList: normalizeStopList(source.interceptStopList),
     dispatchToast: source.dispatchToast === true,
+    dismissedSuggestions: normalizeHosts(source.dismissedSuggestions),
   };
+}
+
+/** Enough for years of dismissals; a hand-edited file cannot grow it unbounded. */
+const MAX_DISMISSED = 500;
+
+function normalizeHosts(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const hosts = new Set<string>();
+  for (const entry of raw) {
+    if (hosts.size >= MAX_DISMISSED) break;
+    const host = trimmed(entry).toLowerCase();
+    if (host && !/\s/.test(host)) hosts.add(host);
+  }
+  return [...hosts];
 }
 
 /**
