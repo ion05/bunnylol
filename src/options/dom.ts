@@ -14,11 +14,12 @@ export function button(label: string, onClick: () => void, className = 'btn'): H
   return node;
 }
 
-/** The two glyphs the row actions use, as path data for a 16px viewBox. Built
+/** The glyphs the row actions use, as path data for a 16px viewBox. Built
  *  with `createElementNS` rather than markup so nothing here ever parses HTML. */
 const ICONS = {
   pencil: 'M11.5 2.5a1.4 1.4 0 0 1 2 2L6 12l-3 1 1-3 7.5-7.5zM10 4l2 2',
   trash: 'M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5M6.8 7v4M9.2 7v4',
+  close: 'M4.5 4.5l7 7M11.5 4.5l-7 7',
 } as const;
 
 export function icon(name: keyof typeof ICONS): SVGElement {

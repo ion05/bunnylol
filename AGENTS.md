@@ -58,6 +58,8 @@ src/lib/draft.ts        What the edit form edits, and the pure parsing around it
 src/lib/text.ts         String helpers every surface shares
 src/lib/url.ts          Small URL helpers
 src/lib/amazon-book.ts  Amazon product HTML → ISBN → Goodreads URL. Pure.
+src/lib/suggest.ts      `suggestShortcuts`: visited pages → ranked keyword suggestions. Pure.
+src/lib/history.ts      The only `chrome.history` caller: optional-permission check, request, read
 src/lib/install.ts      The onInstalled branch: starter pick, rule sync, welcome tab
 src/background.ts       MV3 service worker: listener registration, rule sync, omnibox
 src/content/            Isolated-world content scripts. `amazon-goodreads.ts` is IIFE-bundled.
@@ -374,6 +376,15 @@ the obvious edit reverses it.
   starter pick is written first. It comes apart from "a pick is live" for a format 1 profile
   arriving from Settings, or an install whose write failed: those have every shipped shortcut on and
   no pick on record, so `initialPicks` opens the starter set ticked rather than an empty screen.
+- **`history` stays in `optional_permissions`.** Adding a permission to `permissions` makes Chrome
+  disable the extension on update for every existing user until they accept the new warning.
+  `tests/manifest.test.ts` guards it. `src/lib/history.ts` is the only file that requests or reads
+  it, and it treats "not granted" as no suggestions, never as an error. The request must run inside
+  the click handler: Chrome refuses it otherwise.
+- **`suggest.ts` stays pure, like `resolve.ts`.** No `chrome.*` and no DOM, so the ranking is tested
+  with a plain array. A suggestion becomes a shortcut only through the ordinary New shortcut form,
+  so every keyword still passes `validateAlias`. Only `settings.dismissedSuggestions` persists; the
+  visits never do.
 
 ## Verify by executing, not by reading
 
@@ -388,7 +399,7 @@ stubs `globalThis.chrome` and exercises the **production** path. Note that only 
 
 ## The test suite
 
-20 files, about 150 cases, under a second. It was 27 files and 1369 before a deliberate cut, and
+22 files, about 150 cases, under a second. It was 27 files and 1369 before a deliberate cut, and
 the size is a decision rather than an accident. The question a test has to answer is: **if this
 vanished and the code broke, would a user notice?**
 

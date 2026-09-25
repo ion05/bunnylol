@@ -16,6 +16,7 @@
     "type": "module"
   },
   "permissions": ["storage", "declarativeNetRequest"],
+  "optional_permissions": ["history"],
   "host_permissions": [
     "https://www.google.com/*",
     "https://www.bing.com/*",

@@ -13,6 +13,7 @@
  * the escape-hatch explainer, and Skip.
  */
 
+import { hasHistoryAccess, requestHistoryAccess } from '../../lib/history';
 import { FORCE_SEARCH_PREFIXES } from '../../lib/types';
 import { el } from '../../ui/dom';
 import { button } from '../dom';
@@ -45,6 +46,7 @@ export function renderWelcome(): Node[] {
         ' BunnyLol is an independent open-source project.',
     }),
     ...choice.nodes,
+    historyOffer(),
     escapeNote(),
   ];
 
@@ -60,6 +62,34 @@ export function renderWelcome(): Node[] {
   nodes.push(el('div', { class: 'form-actions', children: [proceed, skip] }), error);
 
   return [el('section', { class: 'welcome', children: nodes })];
+}
+
+/**
+ * The opt-in to shortcut suggestions. Not a pack and not part of the pick: it
+ * asks Chrome for the optional `history` permission and writes no state, so
+ * Skip and Continue mean what they meant before.
+ */
+function historyOffer(): HTMLElement {
+  const ask = button(
+    'Suggest shortcuts from my history',
+    // Straight from the click: Chrome refuses a request without a user gesture.
+    () => void requestHistoryAccess().then((ok) => ok && done()),
+    'btn btn-sm',
+  );
+  const done = (): void => {
+    ask.textContent = 'On: suggestions appear on your Shortcuts page';
+    ask.disabled = true;
+  };
+  void hasHistoryAccess().then((ok) => ok && done());
+  return el('div', {
+    class: 'btn-row',
+    children: [
+      el('p', {
+        text: 'Want suggestions too? BunnyLol can suggest shortcuts for the sites you visit most.',
+      }),
+      ask,
+    ],
+  });
 }
 
 /**

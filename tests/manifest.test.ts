@@ -36,4 +36,11 @@ describe('manifest', () => {
     // store has to re-review, so widening this is a deliberate edit here first.
     expect([...MANIFEST.host_permissions].sort()).toEqual(origins);
   });
+
+  it('asks for history only when the user opts in to suggestions', () => {
+    // A new REQUIRED permission makes Chrome disable the extension for every
+    // existing user until they accept it on chrome://extensions.
+    expect(MANIFEST.permissions).not.toContain('history');
+    expect(MANIFEST.optional_permissions).toEqual(['history']);
+  });
 });

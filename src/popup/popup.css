@@ -88,15 +88,65 @@ body {
   text-overflow: ellipsis;
 }
 
-.results {
-  /* Fixed height, not max-height: the box keeps its size as matches come and go. */
+/* Fixed height, not max-height: the box keeps its size as matches come and go,
+   and as the suggestions above the list appear and disappear. */
+.pane {
+  display: flex;
+  flex-direction: column;
   height: var(--popup-list-h);
+  border-top: 1px solid var(--border);
+}
+
+.results {
+  flex: 1;
+  min-height: 0;
   margin: 0;
   padding: var(--sp-2);
   overflow-y: auto;
   overscroll-behavior: contain;
-  border-top: 1px solid var(--border);
   list-style: none;
+}
+
+.suggested {
+  flex: none;
+  padding: var(--sp-2) var(--sp-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.suggested[hidden] {
+  display: none;
+}
+
+.suggested-label {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-4);
+  color: var(--text-faint);
+  font-size: var(--fs-11);
+  font-weight: var(--fw-medium);
+}
+
+/* A button wearing the row's clothes: Tab reaches it, Enter and Space press it. */
+.suggestion {
+  width: 100%;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.suggestion:last-child {
+  margin-bottom: var(--sp-2);
+}
+
+.suggestion:hover {
+  background: var(--bg-sunken);
+}
+
+.suggestion:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
 }
 
 .results::-webkit-scrollbar {
