@@ -57,7 +57,7 @@ src/lib/dnr/fit.ts      Chrome's RE2 check, resplitting a refused shard, coverag
 src/lib/draft.ts        What the edit form edits, and the pure parsing around it
 src/lib/text.ts         String helpers every surface shares
 src/lib/url.ts          Small URL helpers
-src/lib/amazon-book.ts  Amazon product HTML → ISBN → Goodreads URL. Pure.
+src/lib/amazon-book.ts  Amazon product HTML → ISBN (or ASIN) → Goodreads URL. Pure.
 src/lib/suggest.ts      `suggestShortcuts`: visited pages → ranked keyword suggestions. Pure.
 src/lib/history.ts      The only `chrome.history` caller: optional-permission check, request, read
 src/lib/install.ts      The onInstalled branch: starter pick, rule sync, welcome tab

@@ -4,7 +4,7 @@
  * parsed as HTML we did not write (invariant 11).
  */
 
-import { extractIsbn, goodreadsUrlForIsbn, isAmazonProductPath } from '../lib/amazon-book';
+import { goodreadsUrlForPage, isAmazonProductPath } from '../lib/amazon-book';
 
 const HOST_ID = 'bunnylol-goodreads';
 
@@ -53,14 +53,13 @@ function refresh(): void {
 
   if (mountedFor && document.getElementById(HOST_ID)) return;
 
-  const isbn = extractIsbn(document.documentElement.innerHTML);
-  if (!isbn) {
+  const url = goodreadsUrlForPage(location.pathname, document.documentElement.innerHTML);
+  if (!url) {
     unmount();
     mountedFor = null;
     return;
   }
 
-  const url = goodreadsUrlForIsbn(isbn);
   unmount();
   mount(url);
   mountedFor = url;

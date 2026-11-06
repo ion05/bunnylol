@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **View on Goodreads** now shows up on Audible and Kindle pages that list no
+  ISBN. BunnyLol hands Goodreads the Amazon ASIN instead, which it resolves to
+  the same edition. The ISBN reader also keeps looking past the first
+  "ISBN-13" it finds on the page, and checks the check digit, so a label with
+  no number next to it no longer hides the button.
+
 ### Added
 
 - On Amazon.com book pages, a **View on Goodreads** button next to the title.
