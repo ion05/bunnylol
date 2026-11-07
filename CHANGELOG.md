@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-06
+
+### Fixed
+
+- **View on Goodreads** now shows up on Audible and Kindle pages that list no
+  ISBN. BunnyLol hands Goodreads the Amazon ASIN instead, which it resolves to
+  the same edition. The ISBN reader also keeps looking past the first
+  "ISBN-13" it finds on the page, and checks the check digit, so a label with
+  no number next to it no longer hides the button.
+
 ### Added
 
 - On Amazon.com book pages, a **View on Goodreads** button next to the title.
@@ -139,5 +149,6 @@ written against, which is why it has no link below.
   `declarativeNetRequest`, a shortcut manager (options page), a toolbar
   popup, and an omnibox keyword (`bl`).
 
-[Unreleased]: https://github.com/ion05/bunnylol/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/ion05/bunnylol/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/ion05/bunnylol/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/ion05/bunnylol/releases/tag/v1.1.0

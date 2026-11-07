@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "BunnyLol",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Keyword shortcuts for your address bar. Type gh facebook/react and go straight there.",
   "homepage_url": "https://github.com/ion05/bunnylol",
   "minimum_chrome_version": "123",
